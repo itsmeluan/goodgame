@@ -1,0 +1,1 @@
+export const GROUPED_SECTION_POLISH_ENABLED = true;

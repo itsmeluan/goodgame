@@ -1,0 +1,11 @@
+node_modules
+.DS_Store
+.expo
+**/.expo/
+apps/mobile/.expo/
+.expo-shared
+dist
+coverage
+.env
+.env.local
+supabase/.temp

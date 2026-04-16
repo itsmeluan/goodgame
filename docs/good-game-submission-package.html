@@ -1,0 +1,691 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Good Game - Pacote Completo de Submissao</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #1f1f1f;
+        line-height: 1.5;
+        margin: 40px;
+      }
+      h1, h2, h3, h4 {
+        color: #111111;
+      }
+      h1 {
+        font-size: 30px;
+        margin-bottom: 6px;
+      }
+      h2 {
+        font-size: 22px;
+        margin-top: 30px;
+        border-bottom: 1px solid #dddddd;
+        padding-bottom: 6px;
+      }
+      h3 {
+        font-size: 18px;
+        margin-top: 24px;
+      }
+      h4 {
+        font-size: 15px;
+        margin-top: 18px;
+      }
+      p, li {
+        font-size: 12px;
+      }
+      code {
+        font-family: Menlo, Consolas, monospace;
+        background: #f5f5f5;
+        padding: 1px 4px;
+        border-radius: 4px;
+      }
+      pre {
+        background: #f7f7f7;
+        border: 1px solid #e5e5e5;
+        padding: 12px;
+        border-radius: 8px;
+        white-space: pre-wrap;
+        font-size: 11px;
+      }
+      .meta {
+        color: #666666;
+        margin-bottom: 24px;
+      }
+      .callout {
+        border: 1px solid #f3c7ab;
+        background: #fff6f0;
+        padding: 14px 16px;
+        border-radius: 10px;
+        margin: 16px 0;
+      }
+      .ok {
+        border-left: 4px solid #f7935a;
+        padding-left: 12px;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 12px 0 18px;
+      }
+      th, td {
+        border: 1px solid #dddddd;
+        padding: 8px 10px;
+        vertical-align: top;
+        font-size: 11px;
+      }
+      th {
+        background: #f3f3f3;
+        text-align: left;
+      }
+      ul, ol {
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Good Game - Pacote Completo de Submissao</h1>
+    <p class="meta">
+      Documento operacional para seguir a submissao do app no dia seguinte.<br />
+      Gerado em 11 de abril de 2026.
+    </p>
+
+    <div class="callout ok">
+      <strong>Status atual da release:</strong> a release candidata esta configurada para usar
+      login por e-mail e senha, criacao de conta e recuperacao de senha. O login social com
+      Google e Apple foi escondido por feature flag para evitar risco de review nesta primeira
+      submissao.
+    </div>
+
+    <h2>1. Informacoes-chave do app</h2>
+
+    <h3>Identidade do app enviada para a Apple</h3>
+    <ul>
+      <li><strong>Nome do app:</strong> <code>Good Game</code></li>
+      <li><strong>Bundle principal atual:</strong> <code>com.martinsluan.goodgame.dev</code></li>
+      <li><strong>Scheme principal:</strong> <code>goodgame</code></li>
+      <li><strong>App de teste:</strong> nao enviar. Nao usar o <code>Good Game Teste</code> na submissao.</li>
+    </ul>
+
+    <h3>URLs publicas prontas</h3>
+    <ul>
+      <li><strong>Site publico:</strong> <code>https://itsmeluan.github.io/good-game-pages/</code></li>
+      <li><strong>Support URL:</strong> <code>https://itsmeluan.github.io/good-game-pages/support/</code></li>
+      <li><strong>Privacy Policy URL:</strong> <code>https://itsmeluan.github.io/good-game-pages/privacy/</code></li>
+      <li><strong>Community Safety URL:</strong> <code>https://itsmeluan.github.io/good-game-pages/safety/</code></li>
+    </ul>
+
+    <h3>Contato publico</h3>
+    <ul>
+      <li><strong>E-mail de suporte / review:</strong> <code>goodgamehelpme@gmail.com</code></li>
+    </ul>
+
+    <h3>Repositorio do site publico</h3>
+    <ul>
+      <li><strong>GitHub:</strong> <code>https://github.com/itsmeluan/good-game-pages</code></li>
+    </ul>
+
+    <h2>2. O que precisa estar pronto antes de clicar em Submit for Review</h2>
+
+    <ol>
+      <li>Build candidata funcionando em <strong>Release</strong> no iPhone.</li>
+      <li>Conta de review 1 criada e com e-mail confirmado.</li>
+      <li>Conta de review 2 criada e com e-mail confirmado.</li>
+      <li>Conta 1 com pelo menos um jogo aberto.</li>
+      <li>Conta 2 amiga da conta 1 e participante de pelo menos um jogo.</li>
+      <li>Pelo menos um chat com mensagens entre as contas.</li>
+      <li>URL de suporte, privacidade e seguranca revisadas no navegador.</li>
+      <li>Screenshots finais do app principal prontos.</li>
+      <li>Versao e build number conferidos no Xcode.</li>
+      <li>Archive gerado a partir da scheme <code>Good Game</code>.</li>
+    </ol>
+
+    <h2>3. Checklist final de QA antes da submissao</h2>
+
+    <p>Usar build <strong>Release</strong> instalada no iPhone.</p>
+
+    <h3>Entrada e conta</h3>
+    <ul>
+      <li>abrir o app do zero e confirmar que a home carrega sem erro;</li>
+      <li>entrar com e-mail e senha;</li>
+      <li>criar conta nova;</li>
+      <li>validar aceite legal;</li>
+      <li>desconectar e entrar novamente;</li>
+      <li>validar exclusao de conta em ambiente de teste;</li>
+      <li>validar esqueci minha senha;</li>
+      <li>confirmar que Google e Apple nao aparecem na tela de login desta release.</li>
+    </ul>
+
+    <h3>Perfil</h3>
+    <ul>
+      <li>abrir Minha Conta;</li>
+      <li>editar nome, handle, bio e bairro;</li>
+      <li>trocar a foto do perfil;</li>
+      <li>editar interesses e formatos;</li>
+      <li>salvar;</li>
+      <li>fechar e abrir novamente para confirmar persistencia.</li>
+    </ul>
+
+    <h3>Mapa</h3>
+    <ul>
+      <li>permitir localizacao;</li>
+      <li>validar centralizacao inicial;</li>
+      <li>tocar no botao de voltar para minha localizacao;</li>
+      <li>arrastar, zoom e rotacao do mapa;</li>
+      <li>tocar em pin de jogo;</li>
+      <li>tocar em pin de local;</li>
+      <li>tocar em cluster;</li>
+      <li>validar que o balao aparece e fecha corretamente;</li>
+      <li>validar que os pins nao piscam nem somem.</li>
+    </ul>
+
+    <h3>Jogos e locais</h3>
+    <ul>
+      <li>criar partida com endereco digitado;</li>
+      <li>criar partida usando local existente;</li>
+      <li>editar data, hora e local;</li>
+      <li>entrar em partida;</li>
+      <li>mudar status para Tenho interesse, Confirmado e Nao vou;</li>
+      <li>sair da partida;</li>
+      <li>como criador, encerrar;</li>
+      <li>como criador, cancelar;</li>
+      <li>como criador, excluir partida de teste;</li>
+      <li>criar local publico ou loja especializada;</li>
+      <li>editar local;</li>
+      <li>excluir local de teste;</li>
+      <li>validar pin e card do local no mapa.</li>
+    </ul>
+
+    <h3>Chats, amigos, avisos e historico</h3>
+    <ul>
+      <li>abrir lista de chats;</li>
+      <li>entrar em chat;</li>
+      <li>enviar mensagem;</li>
+      <li>responder mensagem;</li>
+      <li>trocar imagem do chat;</li>
+      <li>validar leitura automatica;</li>
+      <li>validar Marcar todos como lido;</li>
+      <li>validar secao Encerrados;</li>
+      <li>enviar solicitacao de amizade;</li>
+      <li>aceitar solicitacao;</li>
+      <li>recusar solicitacao;</li>
+      <li>remover amigo;</li>
+      <li>abrir perfil publico a partir de amigos;</li>
+      <li>testar denunciar usuario;</li>
+      <li>testar bloquear usuario;</li>
+      <li>abrir usuarios bloqueados e desbloquear;</li>
+      <li>abrir Avisos;</li>
+      <li>marcar todos como lidos;</li>
+      <li>tocar em aviso de chat;</li>
+      <li>tocar em aviso de partida;</li>
+      <li>abrir Historico;</li>
+      <li>validar partidas encerradas/canceladas.</li>
+    </ul>
+
+    <h3>Performance e realtime</h3>
+    <ul>
+      <li>deixar app em background e voltar;</li>
+      <li>abrir e fechar varias vezes;</li>
+      <li>navegar com muitos pins visiveis;</li>
+      <li>usar filtros, ordenacao e troca entre Jogos e Locais;</li>
+      <li>validar que nao ha overlays transparentes, toques vazando ou teclado cobrindo campos;</li>
+      <li>com duas contas, validar amizade em tempo real;</li>
+      <li>com duas contas, validar entrada/saida de partida em tempo real;</li>
+      <li>com duas contas, validar mensagens em tempo real;</li>
+      <li>validar que bolinhas vermelhas e avisos nao somem antes da leitura.</li>
+    </ul>
+
+    <h2>4. Contas de review para a Apple</h2>
+
+    <h3>Conta 1 - principal</h3>
+    <ul>
+      <li><strong>Funcao:</strong> conta principal usada pelo reviewer para navegar.</li>
+      <li><strong>Nome sugerido:</strong> <code>Good Game Review Host</code></li>
+      <li><strong>Handle sugerido:</strong> <code>gg_review_host</code></li>
+      <li><strong>Deve estar com:</strong> perfil completo, foto, bairro, bio, interesses, 1 jogo criado, chat acessivel.</li>
+    </ul>
+
+    <h3>Conta 2 - auxiliar</h3>
+    <ul>
+      <li><strong>Funcao:</strong> conta secundaria para testar interacoes sociais.</li>
+      <li><strong>Nome sugerido:</strong> <code>Good Game Review Guest</code></li>
+      <li><strong>Handle sugerido:</strong> <code>gg_review_guest</code></li>
+      <li><strong>Deve estar com:</strong> perfil completo, amizade com a conta 1, entrada no jogo da conta 1 e 1 ou 2 mensagens no chat.</li>
+    </ul>
+
+    <h3>Preencher antes de submeter</h3>
+    <table>
+      <tr>
+        <th>Item</th>
+        <th>Conta 1</th>
+        <th>Conta 2</th>
+      </tr>
+      <tr>
+        <td>E-mail</td>
+        <td>[PREENCHER]</td>
+        <td>[PREENCHER]</td>
+      </tr>
+      <tr>
+        <td>Senha</td>
+        <td>[PREENCHER]</td>
+        <td>[PREENCHER]</td>
+      </tr>
+      <tr>
+        <td>E-mail confirmado</td>
+        <td>Sim / Nao</td>
+        <td>Sim / Nao</td>
+      </tr>
+      <tr>
+        <td>Perfil completo</td>
+        <td>Sim / Nao</td>
+        <td>Sim / Nao</td>
+      </tr>
+    </table>
+
+    <p><strong>Regra importante:</strong> nao usar contas pessoais e nao apagar essas contas ate a Apple aprovar.</p>
+
+    <h2>5. Campos do App Store Connect para preencher</h2>
+
+    <h3>Create New App</h3>
+    <table>
+      <tr>
+        <th>Campo</th>
+        <th>Valor</th>
+      </tr>
+      <tr>
+        <td>Platform</td>
+        <td>iOS</td>
+      </tr>
+      <tr>
+        <td>Name</td>
+        <td>Good Game</td>
+      </tr>
+      <tr>
+        <td>Primary Language</td>
+        <td>Portuguese (Brazil)</td>
+      </tr>
+      <tr>
+        <td>Bundle ID</td>
+        <td>Selecionar o app principal. Atual: <code>com.martinsluan.goodgame.dev</code></td>
+      </tr>
+      <tr>
+        <td>SKU</td>
+        <td>Sugestao: <code>good-game-ios-001</code></td>
+      </tr>
+    </table>
+
+    <h3>App Information</h3>
+    <table>
+      <tr>
+        <th>Campo</th>
+        <th>Valor sugerido</th>
+      </tr>
+      <tr>
+        <td>Name</td>
+        <td>Good Game</td>
+      </tr>
+      <tr>
+        <td>Subtitle</td>
+        <td>Encontre mesas e jogadores por perto</td>
+      </tr>
+      <tr>
+        <td>Primary Category</td>
+        <td>Social Networking</td>
+      </tr>
+      <tr>
+        <td>Secondary Category</td>
+        <td>Entertainment</td>
+      </tr>
+      <tr>
+        <td>Privacy Policy URL</td>
+        <td>https://itsmeluan.github.io/good-game-pages/privacy/</td>
+      </tr>
+      <tr>
+        <td>Support URL</td>
+        <td>https://itsmeluan.github.io/good-game-pages/support/</td>
+      </tr>
+    </table>
+
+    <h3>Texto promocional</h3>
+    <pre>Descubra jogadores, organize partidas presenciais e acompanhe chats, locais e avisos em tempo real.</pre>
+
+    <h3>Descricao</h3>
+    <pre>Good Game conecta jogadores para partidas presenciais de card games, board games e outros jogos de mesa.
+
+Com o app, você pode encontrar mesas e locais próximos, criar partidas, entrar em grupos, conversar no chat da partida e acompanhar avisos importantes em tempo real.
+
+No Good Game você consegue:
+• descobrir partidas e lojas perto de você no mapa;
+• criar seus próprios jogos com data, horário e local;
+• entrar em partidas e atualizar seu status de presença;
+• conversar com outros jogadores no chat do grupo;
+• adicionar amigos e acompanhar a comunidade local;
+• sugerir novos locais para a comunidade;
+• editar perfil, interesses e formatos favoritos.
+
+Privacidade e segurança fazem parte da experiência: o app oferece controles de conta, exclusão de conta, bloqueio e denúncia de usuários.
+
+Se você quer encontrar gente para jogar, organizar encontros presenciais e acompanhar a cena local de forma simples, o Good Game foi feito para isso.</pre>
+
+    <h3>Palavras-chave</h3>
+    <pre>magic,commander,tcg,rpg,tabuleiro,jogos,mesas,lojas,eventos,jogadores</pre>
+
+    <h3>Campos que ainda exigem decisao manual</h3>
+    <ul>
+      <li>screenshots finais;</li>
+      <li>age rating questionnaire;</li>
+      <li>horario de atendimento e prazo de resposta na pagina de suporte, se quiser detalhar melhor;</li>
+      <li>review accounts reais;</li>
+      <li>build number final.</li>
+    </ul>
+
+    <h2>6. App Privacy - preenchimento final recomendado</h2>
+
+    <div class="callout">
+      <strong>Configuracao geral:</strong><br />
+      Data Collection = Yes<br />
+      Tracking = No
+    </div>
+
+    <table>
+      <tr>
+        <th>Tipo de dado</th>
+        <th>Marcar?</th>
+        <th>Linked to User</th>
+        <th>Tracking</th>
+        <th>Finalidade</th>
+        <th>Observacao</th>
+      </tr>
+      <tr>
+        <td>Contact Info &gt; Name</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Nome de exibicao do perfil.</td>
+      </tr>
+      <tr>
+        <td>Contact Info &gt; Email Address</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Login, conta, suporte e recuperacao de senha.</td>
+      </tr>
+      <tr>
+        <td>Contact Info &gt; Physical Address</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Endereco digitado para jogos e locais.</td>
+      </tr>
+      <tr>
+        <td>Location &gt; Precise Location</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Mapa, proximidade, criacao de jogos e locais.</td>
+      </tr>
+      <tr>
+        <td>Contacts</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Declarado de forma conservadora por causa do grafo social de amizades.</td>
+      </tr>
+      <tr>
+        <td>User Content &gt; Photos or Videos</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Foto de perfil e imagem do chat/grupo.</td>
+      </tr>
+      <tr>
+        <td>User Content &gt; Emails or Text Messages</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Mensagens do chat.</td>
+      </tr>
+      <tr>
+        <td>User Content &gt; Other User Content</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Bio, descricoes, sugestoes de local, denuncias e outros textos publicados.</td>
+      </tr>
+      <tr>
+        <td>Identifiers &gt; User ID</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>ID da conta no backend.</td>
+      </tr>
+      <tr>
+        <td>Identifiers &gt; Device ID</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Declarado de forma conservadora por causa do expo push token/dispositivo.</td>
+      </tr>
+      <tr>
+        <td>Search History</td>
+        <td>Sim</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality</td>
+        <td>Busca de endereco e busca de jogadores.</td>
+      </tr>
+      <tr>
+        <td>Usage Data &gt; Product Interaction</td>
+        <td>Somente se PostHog estiver ativo na build enviada</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>Analytics</td>
+        <td>Hoje o .env.local nao mostra chave ativa.</td>
+      </tr>
+      <tr>
+        <td>Diagnostics &gt; Crash Data</td>
+        <td>Somente se Sentry estiver ativo na build enviada</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality / Analytics</td>
+        <td>Hoje o .env.local nao mostra DSN ativo.</td>
+      </tr>
+      <tr>
+        <td>Diagnostics &gt; Performance Data</td>
+        <td>Somente se Sentry estiver ativo na build enviada</td>
+        <td>Yes</td>
+        <td>No</td>
+        <td>App Functionality / Analytics</td>
+        <td>Hoje o .env.local nao mostra DSN ativo.</td>
+      </tr>
+    </table>
+
+    <h3>Nao marcar</h3>
+    <ul>
+      <li>Phone Number</li>
+      <li>Health &amp; Fitness</li>
+      <li>Payment Info</li>
+      <li>Purchases</li>
+      <li>Audio Data</li>
+      <li>Browsing History</li>
+      <li>Advertising Data</li>
+      <li>Sensitive Info</li>
+    </ul>
+
+    <h2>7. App Review Information</h2>
+
+    <table>
+      <tr>
+        <th>Campo</th>
+        <th>Valor</th>
+      </tr>
+      <tr>
+        <td>Review contact email</td>
+        <td><code>goodgamehelpme@gmail.com</code></td>
+      </tr>
+      <tr>
+        <td>Review contact name</td>
+        <td>[PREENCHER]</td>
+      </tr>
+      <tr>
+        <td>Review contact phone</td>
+        <td>[PREENCHER]</td>
+      </tr>
+      <tr>
+        <td>Sign-in required</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
+        <td>Username</td>
+        <td>Conta 1</td>
+      </tr>
+      <tr>
+        <td>Password</td>
+        <td>Senha da Conta 1</td>
+      </tr>
+    </table>
+
+    <h3>Review Notes - modelo final</h3>
+    <pre>Good Game is a community app for discovering and organizing in-person tabletop and card game meetups nearby.
+
+Important for this review:
+- This release supports email/password sign in.
+- Social login with Google and Apple is not enabled in this release.
+- The app includes user-generated content such as public profiles, chats, meetup descriptions, and venue suggestions.
+- Users can report and block other users from the public profile screen.
+- Account deletion is available inside My Account.
+
+Suggested review flow:
+1. Sign in with Review Account 1.
+2. Allow location access to view nearby meetups and venues on the map.
+3. Open a meetup and join it.
+4. Open the meetup chat and send a message.
+5. Open a public player profile from Friends, Chats, or meetup participants to test Report User and Block User.
+6. Open My Account to review account management and account deletion.
+
+Review Account 1
+Email: [CONTA_1_EMAIL]
+Password: [CONTA_1_SENHA]
+
+Review Account 2
+Email: [CONTA_2_EMAIL]
+Password: [CONTA_2_SENHA]
+
+Review Account 2 can be used to validate social flows such as:
+- friend requests
+- meetup participation
+- chat interactions
+- notifications and in-app alerts
+
+Public links:
+Support URL: https://itsmeluan.github.io/good-game-pages/support/
+Privacy Policy URL: https://itsmeluan.github.io/good-game-pages/privacy/
+Community Safety URL: https://itsmeluan.github.io/good-game-pages/safety/</pre>
+
+    <h2>8. Assets e materiais para subir</h2>
+
+    <ul>
+      <li>icone final do app;</li>
+      <li>screenshots do app principal;</li>
+      <li>splash final, se ainda houver ajuste pendente;</li>
+      <li>descricao e textos da App Store;</li>
+      <li>contas de review;</li>
+      <li>URLs publicas de suporte e privacidade.</li>
+    </ul>
+
+    <h3>Screenshots sugeridos</h3>
+    <ul>
+      <li>Mapa com pins de jogos e locais;</li>
+      <li>Lista Jogos e Locais;</li>
+      <li>Detalhes de partida / chat;</li>
+      <li>Perfil do usuario;</li>
+      <li>Amigos;</li>
+      <li>Criacao de novo jogo.</li>
+    </ul>
+
+    <h2>9. Build e upload no Xcode</h2>
+
+    <ol>
+      <li>Abrir <code>apps/mobile/ios/GoodGame.xcworkspace</code>.</li>
+      <li>Selecionar a scheme <code>Good Game</code>.</li>
+      <li>Selecionar <code>Any iOS Device</code>.</li>
+      <li>Conferir signing, bundle e versao/build.</li>
+      <li>Rodar <code>Product &gt; Clean Build Folder</code> se quiser comecar limpo.</li>
+      <li>Gerar <code>Product &gt; Archive</code>.</li>
+      <li>No Organizer, escolher <code>Distribute App</code>.</li>
+      <li>Escolher <code>App Store Connect &gt; Upload</code>.</li>
+      <li>Esperar processamento da build no App Store Connect.</li>
+      <li>Associar a build a versao correta no App Store Connect.</li>
+    </ol>
+
+    <h2>10. Passos finais no App Store Connect</h2>
+
+    <ol>
+      <li>Confirmar que a build processou sem erro.</li>
+      <li>Associar a build a versao do app.</li>
+      <li>Revisar todos os campos preenchidos.</li>
+      <li>Selecionar <strong>Manual Release</strong>.</li>
+      <li>Clicar em <code>Add for Review</code>.</li>
+      <li>Clicar em <code>Submit for Review</code>.</li>
+    </ol>
+
+    <h2>11. Itens que ainda podem impedir a submissao amanhã</h2>
+
+    <ul>
+      <li>falta de screenshots finais;</li>
+      <li>contas de review ainda nao criadas ou nao confirmadas;</li>
+      <li>qualquer bug novo em release no iPhone;</li>
+      <li>build enviada a partir do app errado (<code>Good Game Teste</code>);</li>
+      <li>alteracao de chaves de analytics/crash sem atualizar o App Privacy;</li>
+      <li>push remoto ainda nao validado, se você considerar isso bloqueador para lancamento publico.</li>
+    </ul>
+
+    <h2>12. O que ficou deliberadamente fora desta primeira submissao</h2>
+
+    <ul>
+      <li>login com Google;</li>
+      <li>login com Apple.</li>
+    </ul>
+
+    <p>
+      Esses fluxos continuam parcialmente preparados no projeto, mas foram escondidos da interface
+      por feature flag para evitar risco de review e risco de produto nesta primeira release.
+    </p>
+
+    <h2>13. Referencias oficiais uteis</h2>
+
+    <ul>
+      <li>App Review Guidelines: <code>https://developer.apple.com/app-store/review/guidelines/</code></li>
+      <li>Add a new app: <code>https://developer.apple.com/help/app-store-connect/create-an-app-record/add-a-new-app</code></li>
+      <li>Manage App Privacy: <code>https://developer.apple.com/help/app-store-connect/manage-app-information/manage-app-privacy</code></li>
+      <li>App Privacy Details: <code>https://developer.apple.com/app-store/app-privacy-details/</code></li>
+      <li>Submit an app: <code>https://developer.apple.com/help/app-store-connect/manage-submissions-to-app-review/submit-an-app</code></li>
+      <li>App Review Information: <code>https://developer.apple.com/help/app-store-connect/reference/app-review-information</code></li>
+    </ul>
+
+    <h2>14. Mini checklist de manha</h2>
+
+    <ol>
+      <li>abrir este documento;</li>
+      <li>criar/preencher as 2 contas de review;</li>
+      <li>validar a build Release no iPhone uma ultima vez;</li>
+      <li>tirar/organizar screenshots finais;</li>
+      <li>preencher App Store Connect com os textos deste documento;</li>
+      <li>gerar archive no Xcode;</li>
+      <li>fazer upload;</li>
+      <li>associar a build;</li>
+      <li>colar review notes com as credenciais;</li>
+      <li>Submit for Review.</li>
+    </ol>
+  </body>
+</html>
