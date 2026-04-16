@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Good Game",
+    "slug": "good-game",
+    "scheme": "goodgame",
+    "version": "1.0",
+    "owner": "good-game",
+    "experiments": {
+      "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "fa021ea6-92de-4e62-ae08-b64758c03259"
+      }
+    }
+  }
+}

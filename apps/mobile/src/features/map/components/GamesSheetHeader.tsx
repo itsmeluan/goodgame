@@ -1,0 +1,207 @@
+import { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Pressable, StyleSheet, Text, View, type ViewProps } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+import { AppleGlassSurface } from "@/components/AppleGlassSurface";
+import { palette, radius, spacing } from "@/theme/tokens";
+
+type GamesSheetHeaderProps = {
+  expanded: boolean;
+  meetupCount: number;
+  venueCount: number;
+  section: "meetups" | "venues";
+  panHandlers?: ViewProps;
+  onSelectMeetups: () => void;
+  onSelectVenues: () => void;
+};
+
+export function GamesSheetHeader({
+  meetupCount,
+  venueCount,
+  section,
+  panHandlers,
+  onSelectMeetups,
+  onSelectVenues,
+}: GamesSheetHeaderProps) {
+  const insets = useSafeAreaInsets();
+  const [tabsRailWidth, setTabsRailWidth] = useState(0);
+  const tabHighlightProgress = useRef(new Animated.Value(section === "venues" ? 1 : 0)).current;
+
+  useEffect(() => {
+    tabHighlightProgress.stopAnimation();
+    Animated.timing(tabHighlightProgress, {
+      toValue: section === "venues" ? 1 : 0,
+      duration: 300,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [section, tabHighlightProgress]);
+
+  const railInnerWidth = Math.max(tabsRailWidth - 8, 0);
+  const tabWidth = railInnerWidth / 2;
+  const tabTranslateX = tabHighlightProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, tabWidth],
+  });
+
+  return (
+    <View
+      style={[
+        styles.handleArea,
+        {
+          paddingLeft: insets.left + spacing.lg,
+          paddingRight: insets.right + spacing.lg,
+        },
+      ]}
+      {...panHandlers}
+    >
+      <View style={styles.handle} />
+      <Text style={styles.subtitle}>{meetupCount} partidas · {venueCount} locais por perto</Text>
+
+      <View style={styles.tabsRow}>
+        <View
+          style={styles.tabsRail}
+          onLayout={(event) => {
+            const nextWidth = event.nativeEvent.layout.width;
+            if (nextWidth > 0 && nextWidth !== tabsRailWidth) {
+              setTabsRailWidth(nextWidth);
+            }
+          }}
+        >
+          <AppleGlassSurface
+            pointerEvents="none"
+            variant="dark"
+            intensity="regular"
+            style={styles.tabsRailSurface}
+          />
+          {tabWidth > 0 ? (
+            <Animated.View
+              pointerEvents="none"
+              style={[
+                styles.tabHighlight,
+                {
+                  width: tabWidth,
+                  transform: [{ translateX: tabTranslateX }],
+                },
+              ]}
+            />
+          ) : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver lista de jogos"
+            onPress={onSelectMeetups}
+            style={({ pressed }) => [
+              styles.tabButton,
+              styles.tabButtonInactive,
+              pressed ? styles.drawerButtonPressed : null,
+            ]}
+          >
+            <Text
+              style={[
+                styles.tabLabel,
+                section === "meetups" ? styles.tabLabelActive : styles.tabLabelInactive,
+              ]}
+            >
+              Jogos
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Ver lista de locais"
+            onPress={onSelectVenues}
+            style={({ pressed }) => [
+              styles.tabButton,
+              styles.tabButtonInactive,
+              pressed ? styles.drawerButtonPressed : null,
+            ]}
+          >
+            <Text
+              style={[
+                styles.tabLabel,
+                section === "venues" ? styles.tabLabelActive : styles.tabLabelInactive,
+              ]}
+            >
+              Locais
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  handleArea: {
+    alignItems: "stretch",
+    justifyContent: "center",
+    paddingTop: 10,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(231,216,188,0.06)",
+    gap: 8,
+  },
+  handle: {
+    width: 52,
+    height: 5,
+    borderRadius: radius.pill,
+    backgroundColor: "rgba(231,216,188,0.24)",
+    alignSelf: "center",
+  },
+  subtitle: {
+    color: palette.pine,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: "center",
+  },
+  tabsRow: {
+    alignItems: "center",
+  },
+  tabsRail: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: radius.pill,
+    padding: 4,
+    overflow: "hidden",
+    minHeight: 48,
+  },
+  tabsRailSurface: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: radius.pill,
+  },
+  tabButton: {
+    flex: 1,
+    minHeight: 40,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabButtonActive: {
+    backgroundColor: palette.ember,
+  },
+  tabButtonInactive: {
+    backgroundColor: "transparent",
+  },
+  tabLabel: {
+    fontSize: 17,
+    fontWeight: "700",
+  },
+  tabLabelActive: {
+    color: palette.ink,
+  },
+  tabLabelInactive: {
+    color: palette.parchment,
+  },
+  tabHighlight: {
+    position: "absolute",
+    left: 4,
+    top: 4,
+    bottom: 4,
+    borderRadius: radius.pill,
+    backgroundColor: palette.ember,
+  },
+  drawerButtonPressed: {
+    opacity: 0.82,
+  },
+});

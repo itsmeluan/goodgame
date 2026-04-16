@@ -1,0 +1,29 @@
+{
+  "cli": {
+    "version": "18.5.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "beta": {
+      "autoIncrement": true
+    },
+    "production": {
+      "autoIncrement": true
+    }
+  },
+  "submit": {
+    "beta": {
+      "android": {
+        "track": "internal"
+      }
+    },
+    "production": {}
+  }
+}
