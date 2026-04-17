@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
@@ -114,6 +114,8 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
   resolveMeetupById,
 }: GamesSheetMeetupsTabProps<Item>) {
   const [routeStack, setRouteStack] = useState<MeetupRoute[]>([]);
+  const onOpenManageMeetupRef = useRef(onOpenManageMeetup);
+  onOpenManageMeetupRef.current = onOpenManageMeetup;
   const currentSortLabel =
     sortOptions.find((option) => option.value === sortMode)?.label ?? "Mais perto";
 
@@ -146,7 +148,7 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
       return;
     }
 
-    onOpenManageMeetup(meetup);
+    onOpenManageMeetupRef.current(meetup);
     setRouteStack([
       {
         key: `manage:${externalManageRequest.groupId}:${externalManageRequest.meetupId}`,
@@ -156,7 +158,6 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
       },
     ]);
     onConsumedExternalManageRequest?.();
-    // Intentionally omit onOpenManageMeetup from deps — parent passes a new inline function each render.
   }, [externalManageRequest, onConsumedExternalManageRequest, resolveMeetupForRoute]);
 
   const pushGroupRoute = (groupId: string) => {

@@ -95,7 +95,9 @@ export function AppShell() {
           setPasswordRecoveryPending(await getPendingPasswordRecoveryState());
         }
       } catch (authRedirectError) {
-        console.warn("[auth-redirect]", authRedirectError);
+        if (__DEV__) {
+          console.warn("[auth-redirect]", authRedirectError);
+        }
       }
     };
 

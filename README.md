@@ -121,6 +121,7 @@ npm run start:tunnel
 
 - As validações locais de UI e polish do GG passam a ser feitas por padrão no iOS Simulator, não no Expo Go.
 - `cd apps/mobile && npx tsc --noEmit`
+- `cd apps/mobile && npx eslint src --max-warnings 0` (o projeto trata avisos do ESLint como falha; corrija antes de merge)
 - `cd apps/mobile && npm run lint -- --quiet=false`
 - `cd apps/mobile && npx expo-doctor`
 - `cd apps/mobile && xcodebuild -workspace ios/GoodGame.xcworkspace -scheme GoodGame -configuration Release -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.4' build`

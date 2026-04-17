@@ -288,7 +288,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [locatingDraftPoint, setLocatingDraftPoint] = useState(false);
   const [lastDashboardSyncAt, setLastDashboardSyncAt] = useState<Date | null>(null);
   const [lastMessageSyncAt, setLastMessageSyncAt] = useState<Date | null>(null);
-  const [lastNotificationSyncAt, setLastNotificationSyncAt] = useState<Date | null>(null);
+  const [, setLastNotificationSyncAt] = useState<Date | null>(null);
   const [lastFriendSyncAt, setLastFriendSyncAt] = useState<Date | null>(null);
   const [lastAccountSyncAt, setLastAccountSyncAt] = useState<Date | null>(null);
   const [meetupTitle, setMeetupTitle] = useState("");
@@ -393,7 +393,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     groupId: string;
     meetupId: string;
   } | null>(null);
-  const [expandedVenueInfoId, setExpandedVenueInfoId] = useState<string | null>(null);
+  const [, setExpandedVenueInfoId] = useState<string | null>(null);
   const [expandedVenueManageId, setExpandedVenueManageId] = useState<string | null>(null);
   const [deletingEntityId, setDeletingEntityId] = useState<string | null>(null);
   const [removingMeetupMemberId, setRemovingMeetupMemberId] = useState<string | null>(null);
@@ -442,6 +442,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       options?: { animate?: boolean; direction?: "left" | "right" | "none" }
     ) => void
   >(() => {});
+  const animateGamesSheetRef = useRef<(expanded: boolean) => void>(() => {});
+  const animatePageOutToMapRef = useRef<(onClosed?: () => void) => void>(() => {});
   const animatePageInRef = useRef<() => void>(() => {});
   const closeComposerRef = useRef<(animated?: boolean) => void>(() => {});
   const closeCurrentPageToMapRef = useRef<() => void>(() => {});
@@ -3628,6 +3630,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     });
   }
   switchGamesSheetSectionRef.current = switchGamesSheetSection;
+  animateGamesSheetRef.current = animateGamesSheet;
 
   const {
     handleSearchPlayers,
@@ -4032,6 +4035,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       onClosed?.();
     });
   }
+  animatePageOutToMapRef.current = animatePageOutToMap;
 
   function dismissKeyboardThen(action: () => void) {
     Keyboard.dismiss();
@@ -4680,15 +4684,15 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     }
 
     Keyboard.dismiss();
-    closeComposer(false);
+    closeComposerRef.current(false);
     setDrawerOpen(false);
 
     const groupId = slugifyGameLabel(inferGameNameFromLabels([meetup.formatName]));
 
     const apply = () => {
-      switchGamesSheetSection("meetups", { animate: false });
+      switchGamesSheetSectionRef.current("meetups", { animate: false });
       setGamesSheetPreviewMode(false);
-      animateGamesSheet(true);
+      animateGamesSheetRef.current(true);
       setExpandedGameGroups((current) => ({
         ...current,
         [groupId]: true,
@@ -4698,21 +4702,14 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
 
     if (activeScreen !== "map") {
       chatReturnSnapshotRef.current = null;
-      animatePageOutToMap(() => {
+      animatePageOutToMapRef.current(() => {
         requestAnimationFrame(apply);
       });
       return;
     }
 
     apply();
-  }, [
-    activeScreen,
-    animateGamesSheet,
-    animatePageOutToMap,
-    closeComposer,
-    effectiveSelectedChatMeetup,
-    switchGamesSheetSection,
-  ]);
+  }, [activeScreen, effectiveSelectedChatMeetup]);
 
   if (loading) {
     return (
