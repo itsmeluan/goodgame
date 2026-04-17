@@ -3,6 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/AppleListNavigation";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
+import { ChatMeetupListLeading } from "@/features/map/components/ChatMeetupListLeading";
 import { MapClosePageButton } from "@/features/map/components/MapClosePageButton";
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
@@ -24,9 +25,11 @@ export type ChatListSection = {
 type ChatsPageProps = {
   sections: ChatListSection[];
   unreadChatMeetupIds: Set<string>;
-  selectedChatMeetupId: string | null;
   nowTimestamp: number;
   bottomInset: number;
+  /** When provided with `onRouteStackChange`, nested stack is controlled (persists under chat room overlay). */
+  routeStackKeys?: string[];
+  onRouteStackChange?: (keys: string[]) => void;
   onOpenChat: (meetupId: string) => void;
   onClose: () => void;
 };
@@ -34,13 +37,16 @@ type ChatsPageProps = {
 export function ChatsPage({
   sections,
   unreadChatMeetupIds,
-  selectedChatMeetupId,
   nowTimestamp,
   bottomInset,
+  routeStackKeys: controlledRouteKeys,
+  onRouteStackChange,
   onOpenChat,
   onClose,
 }: ChatsPageProps) {
-  const [routeKeys, setRouteKeys] = useState<string[]>([]);
+  const [internalRouteKeys, setInternalRouteKeys] = useState<string[]>([]);
+  const isControlled = onRouteStackChange != null;
+  const routeKeys = isControlled ? (controlledRouteKeys ?? []) : internalRouteKeys;
 
   const availableSections = useMemo(
     () => sections.filter((section) => section.chats.length > 0),
@@ -48,11 +54,23 @@ export function ChatsPage({
   );
 
   const pushRoute = (key: string) => {
-    setRouteKeys((current) => (current[current.length - 1] === key ? current : [...current, key]));
+    if (isControlled) {
+      const current = routeKeys;
+      const next = current[current.length - 1] === key ? current : [...current, key];
+      onRouteStackChange?.(next);
+    } else {
+      setInternalRouteKeys((current) =>
+        current[current.length - 1] === key ? current : [...current, key]
+      );
+    }
   };
 
   const popRoute = () => {
-    setRouteKeys((current) => current.slice(0, -1));
+    if (isControlled) {
+      onRouteStackChange?.(routeKeys.slice(0, -1));
+    } else {
+      setInternalRouteKeys((current) => current.slice(0, -1));
+    }
   };
 
   const routes = [
@@ -85,7 +103,7 @@ export function ChatsPage({
                     trailingValue={String(section.chats.length)}
                     onPress={() => pushRoute(section.id)}
                     separator={index > 0}
-                    tone={section.archived ? "default" : "accent"}
+                    tone="default"
                     size="compact"
                   />
                 ))}
@@ -114,7 +132,6 @@ export function ChatsPage({
             meetups={section?.chats ?? []}
             sectionArchived={Boolean(section?.archived)}
             unreadChatMeetupIds={unreadChatMeetupIds}
-            selectedChatMeetupId={selectedChatMeetupId}
             nowTimestamp={nowTimestamp}
             onOpenChat={onOpenChat}
           />
@@ -139,7 +156,6 @@ function ChatsSectionScene({
   meetups,
   sectionArchived,
   unreadChatMeetupIds,
-  selectedChatMeetupId,
   nowTimestamp,
   onOpenChat,
 }: {
@@ -148,7 +164,6 @@ function ChatsSectionScene({
   meetups: MeetupPost[];
   sectionArchived: boolean;
   unreadChatMeetupIds: Set<string>;
-  selectedChatMeetupId: string | null;
   nowTimestamp: number;
   onOpenChat: (meetupId: string) => void;
 }) {
@@ -168,32 +183,28 @@ function ChatsSectionScene({
             const overdue = !sectionArchived && isMeetupOverdue(meetup, nowTimestamp);
 
             const hasUnread = unreadChatMeetupIds.has(meetup.id);
-            const isLastOpened = selectedChatMeetupId === meetup.id;
-            const highlightOpen = !sectionArchived && isLastOpened;
+            const statusLine =
+              effectiveStatus === "closed" || effectiveStatus === "cancelled"
+                ? formatMeetupStatus(effectiveStatus)
+                : null;
+            const addressLine =
+              formatCompactAddress(meetup.addressLabel || meetup.locationHint) ||
+              meetup.locationHint;
+            const overdueLine = overdue ? "Horário em atraso" : null;
 
             return (
               <AppleListRow
                 key={meetup.id}
-                icon={{
-                  iosName: overdue ? "clock.badge.exclamationmark.fill" : "message.fill",
-                  fallbackName: overdue ? "schedule" : "chat",
-                }}
+                leading={<ChatMeetupListLeading meetup={meetup} />}
                 label={meetup.title}
-                subtitle={`${formatDateTime(meetup.startsAt)}\n${
-                  formatCompactAddress(meetup.addressLabel || meetup.locationHint) ||
-                  meetup.locationHint
-                }\n${formatMeetupStatus(effectiveStatus)}`}
-                trailingValue={
-                  hasUnread ? "Novo" : highlightOpen ? "Aberto" : null
-                }
+                subtitle={[formatDateTime(meetup.startsAt), addressLine, statusLine, overdueLine]
+                  .filter(Boolean)
+                  .join("\n")}
+                trailingValue={hasUnread ? "Novo" : null}
                 onPress={() => onOpenChat(meetup.id)}
                 separator={index > 0}
                 tone={
-                  hasUnread || highlightOpen
-                    ? "accent"
-                    : overdue
-                      ? "danger"
-                      : "default"
+                  hasUnread ? "accent" : overdue ? "danger" : "default"
                 }
                 size="compact"
               />

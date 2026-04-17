@@ -11,6 +11,7 @@ type GamesSheetHeaderProps = {
   venueCount: number;
   section: "meetups" | "venues";
   panHandlers?: ViewProps;
+  onDismissPinCallout?: () => void;
   onSelectMeetups: () => void;
   onSelectVenues: () => void;
 };
@@ -20,6 +21,7 @@ export function GamesSheetHeader({
   venueCount,
   section,
   panHandlers,
+  onDismissPinCallout,
   onSelectMeetups,
   onSelectVenues,
 }: GamesSheetHeaderProps) {
@@ -54,6 +56,7 @@ export function GamesSheetHeader({
         },
       ]}
       {...panHandlers}
+      onTouchStart={onDismissPinCallout}
     >
       <View style={styles.handle} />
       <Text style={styles.subtitle}>{meetupCount} partidas · {venueCount} locais por perto</Text>

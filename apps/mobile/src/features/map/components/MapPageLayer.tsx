@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { Animated } from "react-native";
+import { Animated, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
@@ -24,6 +24,8 @@ export type MapPageLayerProps = {
   opacity: AnimatedScalar;
   translateY: AnimatedScalar;
   scale: AnimatedScalar;
+  /** Slide chat room horizontally when opened from chat list (native driver). */
+  chatRoomTranslateX: Animated.Value;
   pageScreen: PageScreen;
   chatViewMode: ChatViewMode;
   profileName: string;
@@ -43,6 +45,7 @@ export function MapPageLayer({
   opacity,
   translateY,
   scale,
+  chatRoomTranslateX,
   pageScreen,
   chatViewMode,
   profileName,
@@ -56,6 +59,35 @@ export function MapPageLayer({
   onCloseCurrentPage,
   onClosePlayerProfile,
 }: MapPageLayerProps) {
+  const pageChrome = (
+    <SafeAreaView
+      pointerEvents={pageScreen === "chats" && chatViewMode === "room" ? "none" : "auto"}
+      style={styles.pageSafeArea}
+      edges={["top", "bottom"]}
+    >
+      <View pointerEvents="none" style={styles.pageBackdropBase} />
+      <AppleGlassSurface
+        pointerEvents="none"
+        variant="dark"
+        intensity="clear"
+        style={styles.pageBackdropGlass}
+      />
+      <MapPageHeader
+        pageScreen={pageScreen}
+        profileName={profileName}
+        profileAvatarUrl={profileAvatarUrl}
+        showUnreadMenuIndicator={showUnreadMenuIndicator}
+        onOpenMenu={onOpenMenu}
+        onOpenAccount={onOpenAccount}
+        onCloseCurrentPage={onCloseCurrentPage}
+        onClosePlayerProfile={onClosePlayerProfile}
+        panHandlers={dismissPanHandlers}
+      />
+
+      <MapPageContent {...pageContentProps} />
+    </SafeAreaView>
+  );
+
   return (
     <Animated.View
       pointerEvents={active ? "auto" : "none"}
@@ -67,31 +99,35 @@ export function MapPageLayer({
         },
       ]}
     >
-      {pageScreen === "chats" && chatViewMode === "room" ? (
-        <ChatRoomPage chatScreenProps={chatScreenProps} />
+      {pageScreen === "chats" ? (
+        <View style={layerStyles.chatsStackHost}>
+          {pageChrome}
+          {chatViewMode === "room" ? (
+            <Animated.View
+              style={[
+                layerStyles.chatRoomOverlay,
+                { transform: [{ translateX: chatRoomTranslateX }] },
+              ]}
+            >
+              <ChatRoomPage chatScreenProps={chatScreenProps} />
+            </Animated.View>
+          ) : null}
+        </View>
       ) : (
-        <SafeAreaView style={styles.pageSafeArea} edges={["top", "bottom"]}>
-          <AppleGlassSurface
-            pointerEvents="none"
-            variant="dark"
-            intensity="clear"
-            style={styles.pageBackdropSurface}
-          />
-          <MapPageHeader
-            pageScreen={pageScreen}
-            profileName={profileName}
-            profileAvatarUrl={profileAvatarUrl}
-            showUnreadMenuIndicator={showUnreadMenuIndicator}
-            onOpenMenu={onOpenMenu}
-            onOpenAccount={onOpenAccount}
-            onCloseCurrentPage={onCloseCurrentPage}
-            onClosePlayerProfile={onClosePlayerProfile}
-            panHandlers={dismissPanHandlers}
-          />
-
-          <MapPageContent {...pageContentProps} />
-        </SafeAreaView>
+        pageChrome
       )}
     </Animated.View>
   );
 }
+
+const layerStyles = StyleSheet.create({
+  chatsStackHost: {
+    flex: 1,
+    overflow: "hidden",
+  },
+  chatRoomOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 2,
+    elevation: 8,
+  },
+});

@@ -18,6 +18,7 @@ export type MapScreenLayerProps<
   active: boolean;
   mapProps: ComponentProps<typeof InteractiveMap>;
   topOverlay: {
+    onDismissPinCallout?: () => void;
     profileName: string;
     profileAvatarUrl: string | null;
     showUnreadMenuIndicator: boolean;
@@ -34,6 +35,7 @@ export type MapScreenLayerProps<
     onOpenComposer: () => void;
   };
   gamesSheet: {
+    onDismissPinCallout?: () => void;
     top: number;
     height: number;
     translateY: Animated.Value;
@@ -73,8 +75,13 @@ export type MapScreenLayerProps<
       openDetail: () => void,
       separator: boolean
     ) => ReactElement;
-    renderMeetupDetail: (item: MeetupItem, openManage: () => void) => ReactElement;
-    renderMeetupManage: (item: MeetupItem) => ReactElement;
+    renderMeetupDetail: (
+      item: MeetupItem,
+      openManage: () => void,
+      openParticipants: () => void
+    ) => ReactElement;
+    renderMeetupManage: (item: MeetupItem, openManageParticipants: () => void) => ReactElement;
+    renderMeetupParticipants: (item: MeetupItem) => ReactElement;
     renderVenueListItem: (
       item: VenueItem,
       openDetail: () => void,

@@ -8,6 +8,7 @@ import {
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
+import { ChatMeetupListLeading } from "@/features/map/components/ChatMeetupListLeading";
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
 import { formatDateTime, formatMeetupStatus } from "@/lib/formatting";
@@ -30,7 +31,6 @@ type DrawerChatsPanelProps = {
   archivedChats: MeetupPost[];
   expandedGroupIds: Record<string, boolean>;
   unreadChatMeetupIds: Set<string>;
-  selectedChatMeetupId: string | null;
   nowTimestamp: number;
   onBack: () => void;
   onToggleGroup: (groupId: string) => void;
@@ -42,7 +42,6 @@ export function DrawerChatsPanel({
   archivedChats,
   expandedGroupIds: _expandedGroupIds,
   unreadChatMeetupIds,
-  selectedChatMeetupId,
   nowTimestamp,
   onBack,
   onToggleGroup: _onToggleGroup,
@@ -100,7 +99,7 @@ export function DrawerChatsPanel({
                   trailingValue={String(game.chats.length)}
                   onPress={() => pushRoute(game.id)}
                   separator={index > 0}
-                  tone={game.archived ? "default" : "accent"}
+                  tone="default"
                   size="compact"
                 />
               ))}
@@ -126,7 +125,6 @@ export function DrawerChatsPanel({
             meetups={group?.chats ?? []}
             archived={Boolean(group?.archived)}
             unreadChatMeetupIds={unreadChatMeetupIds}
-            selectedChatMeetupId={selectedChatMeetupId}
             nowTimestamp={nowTimestamp}
             onOpenChat={onOpenChat}
           />
@@ -179,14 +177,12 @@ function DrawerChatListScene({
   meetups,
   archived,
   unreadChatMeetupIds,
-  selectedChatMeetupId,
   nowTimestamp,
   onOpenChat,
 }: {
   meetups: MeetupPost[];
   archived: boolean;
   unreadChatMeetupIds: Set<string>;
-  selectedChatMeetupId: string | null;
   nowTimestamp: number;
   onOpenChat: (meetupId: string) => void;
 }) {
@@ -198,28 +194,25 @@ function DrawerChatListScene({
             const effectiveStatus = resolveMeetupEffectiveStatus(meetup, nowTimestamp);
             const overdue = !archived && isMeetupOverdue(meetup, nowTimestamp);
 
+            const statusLine =
+              effectiveStatus === "closed" || effectiveStatus === "cancelled"
+                ? formatMeetupStatus(effectiveStatus)
+                : null;
+            const overdueLine = overdue ? "Horário em atraso" : null;
+
             return (
               <AppleListRow
                 key={meetup.id}
-                icon={{
-                  iosName: overdue ? "clock.badge.exclamationmark.fill" : "message.fill",
-                  fallbackName: overdue ? "schedule" : "chat",
-                }}
+                leading={<ChatMeetupListLeading meetup={meetup} />}
                 label={meetup.title}
-                subtitle={`${formatDateTime(meetup.startsAt)}\n${formatMeetupStatus(
-                  effectiveStatus
-                )}`}
-                trailingValue={
-                  unreadChatMeetupIds.has(meetup.id)
-                    ? "Novo"
-                    : selectedChatMeetupId === meetup.id
-                      ? "Aberto"
-                      : null
-                }
+                subtitle={[formatDateTime(meetup.startsAt), statusLine, overdueLine]
+                  .filter(Boolean)
+                  .join("\n")}
+                trailingValue={unreadChatMeetupIds.has(meetup.id) ? "Novo" : null}
                 onPress={() => onOpenChat(meetup.id)}
                 separator={index > 0}
                 tone={
-                  unreadChatMeetupIds.has(meetup.id) || selectedChatMeetupId === meetup.id
+                  unreadChatMeetupIds.has(meetup.id)
                     ? "accent"
                     : overdue
                       ? "danger"

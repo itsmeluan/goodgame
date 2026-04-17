@@ -45,10 +45,10 @@ export function PrimaryButton({
       : tone === "danger"
         ? "dark"
         : tone === "dangerGhost"
-          ? "accent"
+          ? "dark"
           : "dark";
   const surfaceIntensity = tone === "primary" ? "regular" : "clear";
-  const useGlassSurface = tone !== "danger";
+  const useGlassSurface = tone !== "danger" && tone !== "dangerGhost";
 
   return (
     <Pressable
@@ -94,7 +94,7 @@ export function PrimaryButton({
           color={
             tone === "danger"
               ? DANGER_LABEL_COLOR
-              : tone === "primary"
+              : tone === "primary" || tone === "dangerGhost"
                 ? palette.ink
                 : palette.sand
           }
@@ -150,9 +150,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.012)",
     borderColor: "rgba(233,226,215,0.1)",
   },
+  /** Solid watermelon — same family as MeetupSheetCard destructive actions. */
   dangerGhost: {
-    backgroundColor: "rgba(231,122,132,0.06)",
-    borderColor: "rgba(231,122,132,0.2)",
+    backgroundColor: palette.watermelon,
+    borderColor: "rgba(17,17,17,0.12)",
   },
   primaryShadow: {
     shadowColor: "#F18F5C",
@@ -203,6 +204,6 @@ const styles = StyleSheet.create({
     color: palette.sand,
   },
   dangerGhostLabel: {
-    color: "#F4A1A8",
+    color: palette.ink,
   },
 });

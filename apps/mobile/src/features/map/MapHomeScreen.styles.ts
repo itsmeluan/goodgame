@@ -357,22 +357,34 @@ export const styles = StyleSheet.create({
     color: palette.sand,
     fontSize: 15,
   },
+  /** Map page stack (Chats, Avisos, etc.): base matches Novo jogo sheet tone; glass layer is drawn above without map bleed. */
   pageSafeArea: {
     flex: 1,
-    backgroundColor: "rgba(7,12,18,0.86)",
+    backgroundColor: palette.sheetBaseChrome,
   },
-  pageBackdropSurface: {
+  /** Opaque wash under page glass — blocks the map; same rgb plane as Novo jogo `sheet` (12,14,20) at α=1. */
+  pageBackdropBase: {
     position: "absolute",
     left: -screenEdgeGlassBleed,
     right: -screenEdgeGlassBleed,
     top: 0,
     bottom: 0,
     borderWidth: 0,
-    backgroundColor: "rgba(26,44,62,0.3)",
+    backgroundColor: palette.sheetBaseChrome,
+  },
+  /** Glass veneer over `pageBackdropBase` (same geometry as composer sheets). */
+  pageBackdropGlass: {
+    position: "absolute",
+    left: -screenEdgeGlassBleed,
+    right: -screenEdgeGlassBleed,
+    top: 0,
+    bottom: 0,
+    borderWidth: 0,
+    overflow: "hidden",
   },
   chatPageSafeArea: {
     flex: 1,
-    backgroundColor: "#0B0B0B",
+    backgroundColor: palette.sheetBaseChrome,
   },
   pageLayer: {
     ...StyleSheet.absoluteFillObject,

@@ -12,6 +12,7 @@ type VenueStackRoute =
   | { key: string; venueId: string; surface: "manage" };
 
 type GamesSheetVenuesTabProps<Item extends { id: string; name: string; neighborhood?: string | null }> = {
+  onDismissPinCallout?: () => void;
   sceneWidth?: number;
   titleNote: string;
   bottomPadding: number;
@@ -31,6 +32,7 @@ type GamesSheetVenuesTabProps<Item extends { id: string; name: string; neighborh
 };
 
 export function GamesSheetVenuesTab<Item extends { id: string; name: string; neighborhood?: string | null }>({
+  onDismissPinCallout,
   sceneWidth,
   titleNote,
   bottomPadding,
@@ -112,6 +114,7 @@ export function GamesSheetVenuesTab<Item extends { id: string; name: string; nei
       key: "root",
       content: (
         <ScrollView
+          onTouchStart={onDismissPinCallout}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
         >
@@ -139,6 +142,7 @@ export function GamesSheetVenuesTab<Item extends { id: string; name: string; nei
         key: entry.key,
         content: (
           <ScrollView
+            onTouchStart={onDismissPinCallout}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[styles.sceneContent, { paddingBottom: bottomPadding }]}
           >

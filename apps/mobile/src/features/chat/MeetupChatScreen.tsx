@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
+  ActivityIndicator,
   Animated,
   FlatList,
   Keyboard,
-  KeyboardAvoidingView,
   PanResponder,
   Platform,
   Pressable,
@@ -16,18 +16,27 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppIcon } from "@/components/AppIcon";
-import { AppleListGroup, AppleListRow } from "@/components/AppleListNavigation";
 import { Avatar } from "@/components/Avatar";
 import { ChoiceChip } from "@/components/ChoiceChip";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import {
+  SHEET_BACK_BUTTON_MIN_HEIGHT,
+  SheetBackButton,
+  SheetCircleIconButton,
+} from "@/components/SheetBackButton";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
+import {
+  MeetupParticipantsBlock,
+  ParticipantAvatar,
+  sortMeetupParticipantsPresence,
+} from "@/features/chat/MeetupParticipantsBlock";
 import {
   formatAttendanceStatus,
   formatCompactAddress,
   formatMeetupStatus,
 } from "@/lib/formatting";
 import { triggerHaptic } from "@/lib/haptics";
-import { palette, radius, sheetContentGutter, spacing } from "@/theme/tokens";
+import { palette, radius, spacing } from "@/theme/tokens";
 import type {
   AttendanceStatus,
   ChatMessage,
@@ -59,7 +68,10 @@ type MeetupChatScreenProps = {
   onClearReply: () => void;
   onChangeMessageBody: (value: string) => void;
   onSendMessage: () => void;
-  onOpenMap: () => void;
+  /** Mapa com pin do jogo e balão de detalhes (preview). */
+  onOpenMeetupPinOnMap: () => void;
+  /** Abre edição da partida na sheet de jogos (criador). */
+  onEditMeetup: () => void;
   onLeaveMeetup: () => void;
   onUpdateAttendanceStatus: (status: AttendanceStatus) => void;
   onUpdateMeetupStatus: (status: "closed" | "cancelled") => void;
@@ -74,8 +86,6 @@ const attendanceOrder: AttendanceStatus[] = [
   "confirmed",
   "not_going",
 ];
-
-const CHAT_EDGE_PADDING = spacing.lg;
 
 export function MeetupChatScreen({
   currentUserId,
@@ -101,7 +111,8 @@ export function MeetupChatScreen({
   onClearReply,
   onChangeMessageBody,
   onSendMessage,
-  onOpenMap,
+  onOpenMeetupPinOnMap,
+  onEditMeetup,
   onLeaveMeetup,
   onUpdateAttendanceStatus,
   onUpdateMeetupStatus,
@@ -112,7 +123,9 @@ export function MeetupChatScreen({
 }: MeetupChatScreenProps) {
   const insets = useSafeAreaInsets();
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [manageParticipantsAvatarsMode, setManageParticipantsAvatarsMode] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [ratingPanelExpanded, setRatingPanelExpanded] = useState(false);
   const messageListRef = useRef<FlatList<ChatMessage> | null>(null);
 
   useEffect(() => {
@@ -120,6 +133,22 @@ export function MeetupChatScreen({
       messageListRef.current?.scrollToEnd({ animated: true });
     });
   }, [messages.length]);
+
+  useEffect(() => {
+    if (!detailsOpen) {
+      setManageParticipantsAvatarsMode(false);
+    }
+  }, [detailsOpen]);
+
+  useEffect(() => {
+    if (keyboardVisible) {
+      setRatingPanelExpanded(false);
+    }
+  }, [keyboardVisible]);
+
+  useEffect(() => {
+    setRatingPanelExpanded(false);
+  }, [meetup?.id]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener("keyboardWillShow", () => {
@@ -155,48 +184,18 @@ export function MeetupChatScreen({
   );
 
   const sortedParticipants = useMemo(
-    () =>
-      [...meetupPresence].sort((left, right) => {
-        if (left.role === "creator" && right.role !== "creator") {
-          return -1;
-        }
-
-        if (left.role !== "creator" && right.role === "creator") {
-          return 1;
-        }
-
-        const leftRank = getAttendanceRank(left.attendanceStatus);
-        const rightRank = getAttendanceRank(right.attendanceStatus);
-
-        if (leftRank !== rightRank) {
-          return leftRank - rightRank;
-        }
-
-        return new Date(left.joinedAt).getTime() - new Date(right.joinedAt).getTime();
-      }),
+    () => sortMeetupParticipantsPresence(meetupPresence),
     [meetupPresence]
   );
 
-  const participantSummary = useMemo(() => {
-    const confirmed = meetupPresence.filter((member) =>
-      ["confirmed", "going", "on_the_way", "arrived", "left"].includes(
-        member.attendanceStatus
-      )
-    ).length;
-    const interested = meetupPresence.filter((member) =>
-      ["interested"].includes(member.attendanceStatus)
-    ).length;
-    const notGoing = meetupPresence.filter((member) =>
-      ["not_going", "cant_make_it"].includes(member.attendanceStatus)
-    ).length;
+  const ratingTargets = useMemo(
+    () => sortedParticipants.filter((member) => member.userId !== currentUserId),
+    [currentUserId, sortedParticipants]
+  );
 
-    return {
-      total: meetupPresence.length,
-      confirmed,
-      interested,
-      notGoing,
-    };
-  }, [meetupPresence]);
+  const showRatingBar =
+    canRateSelectedChatMeetup && !keyboardVisible && ratingTargets.length > 0;
+  const showRatingExpandedList = showRatingBar && ratingPanelExpanded;
 
   const renderMessage = useCallback(
     ({ item: message, index }: { item: ChatMessage; index: number }) => {
@@ -256,10 +255,16 @@ export function MeetupChatScreen({
                     isMine ? styles.replyPreviewBubbleMine : styles.replyPreviewBubbleOther,
                   ]}
                 >
-                  <Text style={styles.replyPreviewAuthor} numberOfLines={1}>
+                  <Text
+                    style={[styles.replyPreviewAuthor, isMine ? styles.replyPreviewAuthorOnMine : null]}
+                    numberOfLines={1}
+                  >
                     {message.replyPreviewAuthorName}
                   </Text>
-                  <Text style={styles.replyPreviewText} numberOfLines={2}>
+                  <Text
+                    style={[styles.replyPreviewText, isMine ? styles.replyPreviewTextOnMine : null]}
+                    numberOfLines={2}
+                  >
                     {message.replyPreviewBody}
                   </Text>
                 </View>
@@ -286,7 +291,8 @@ export function MeetupChatScreen({
                     iosName="checkmark.circle.fill"
                     fallbackName="done-all"
                     size={15}
-                    color="rgba(246,242,234,0.78)"
+                    color={palette.ink}
+                    type="monochrome"
                   />
                 ) : null}
               </View>
@@ -301,19 +307,14 @@ export function MeetupChatScreen({
   if (!meetup) {
     return (
       <View style={styles.emptyScreen}>
-        <View style={styles.chatHeaderBar}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Voltar ao mapa"
-            onPress={onBack}
-            style={({ pressed }) => [
-              styles.headerBackButton,
-              pressed ? styles.headerBackButtonPressed : null,
-            ]}
-          >
-            <AppIcon iosName="chevron.left" fallbackName="arrow-back" size={22} color={palette.sand} />
-          </Pressable>
-          <Text style={styles.emptyHeaderTitle}>Grupo</Text>
+        <View style={[styles.chatHeaderBar, styles.chatHeaderBarEmpty]}>
+          <View style={[styles.chatHeaderBarSide, styles.chatHeaderBarSideStart]}>
+            <SheetBackButton onPress={onBack} accessibilityLabel="Voltar ao mapa" iconCircle />
+          </View>
+          <Text style={styles.emptyHeaderTitle} numberOfLines={1}>
+            Grupo
+          </Text>
+          <View style={styles.chatHeaderBarSide} />
         </View>
 
         <View style={styles.emptyBodyWrap}>
@@ -327,34 +328,17 @@ export function MeetupChatScreen({
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? Math.max(insets.bottom - 6, 18) : 0}
-    >
+    <View style={styles.screen}>
       <SlidingSheetStack
+        style={{ flex: 1, backgroundColor: "transparent" }}
+        contentStyle={{ backgroundColor: "transparent" }}
         routes={[
           {
             key: "chat",
             content: (
               <View style={styles.screen}>
                 <View style={styles.chatHeaderBar}>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel="Voltar ao mapa"
-                    onPress={onBack}
-                    style={({ pressed }) => [
-                      styles.headerBackButton,
-                      pressed ? styles.headerBackButtonPressed : null,
-                    ]}
-                  >
-                    <AppIcon
-                      iosName="chevron.left"
-                      fallbackName="arrow-back"
-                      size={22}
-                      color={palette.sand}
-                    />
-                  </Pressable>
+                  <SheetBackButton onPress={onBack} accessibilityLabel="Voltar ao mapa" iconCircle />
 
                   <View style={styles.chatHeaderMainRow}>
                     <Pressable
@@ -394,33 +378,21 @@ export function MeetupChatScreen({
                       ) : null}
                     </Pressable>
 
-                    <Pressable
-                      accessibilityRole="button"
+                    <View style={styles.chatHeaderTextBlock}>
+                      <Text style={styles.chatTitle} numberOfLines={2}>
+                        {meetup.title}
+                      </Text>
+                      <Text style={styles.chatSubtitle} numberOfLines={1}>
+                        {meetup.formatName}
+                      </Text>
+                    </View>
+                    <SheetCircleIconButton
                       accessibilityLabel="Abrir detalhes da partida"
+                      iosName="info"
+                      fallbackName="info"
+                      iconSize={14}
                       onPress={() => setDetailsOpen(true)}
-                      style={({ pressed }) => [
-                        styles.chatHeaderInfoPress,
-                        pressed ? styles.headerBackButtonPressed : null,
-                      ]}
-                    >
-                      <View style={styles.chatHeaderTextBlock}>
-                        <Text style={styles.chatHeaderStatusLine} numberOfLines={1}>
-                          {formatMeetupStatus(meetup.status)}
-                        </Text>
-                        <Text style={styles.chatTitle} numberOfLines={2}>
-                          {meetup.title}
-                        </Text>
-                        <Text style={styles.chatSubtitle} numberOfLines={1}>
-                          {meetup.formatName}
-                        </Text>
-                      </View>
-                      <AppIcon
-                        iosName="chevron.right"
-                        fallbackName="chevron-right"
-                        size={18}
-                        color={palette.pine}
-                      />
-                    </Pressable>
+                    />
                   </View>
                 </View>
 
@@ -434,8 +406,11 @@ export function MeetupChatScreen({
                     contentContainerStyle={[
                       styles.messageListContent,
                       {
-                        paddingBottom:
-                          canRateSelectedChatMeetup && !keyboardVisible ? spacing.md : spacing.xl,
+                        paddingBottom: showRatingBar
+                          ? ratingPanelExpanded
+                            ? spacing.lg
+                            : spacing.sm
+                          : spacing.xl,
                       },
                     ]}
                     showsVerticalScrollIndicator={false}
@@ -459,37 +434,106 @@ export function MeetupChatScreen({
 
                 {messageError ? <Text style={styles.messageError}>{messageError}</Text> : null}
 
-                {canRateSelectedChatMeetup && !keyboardVisible ? (
-                  <View style={styles.ratingStrip}>
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={styles.ratingRow}
+                {showRatingBar ? (
+                  <View style={styles.ratingBarWrap}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        ratingPanelExpanded
+                          ? "Recolher avaliação de participantes"
+                          : "Avaliar participantes"
+                      }
+                      onPress={() => {
+                        triggerHaptic("selection");
+                        setRatingPanelExpanded((current) => !current);
+                      }}
+                      style={({ pressed }) => [
+                        styles.ratingTogglePill,
+                        ratingPanelExpanded
+                          ? styles.ratingTogglePillGlass
+                          : styles.ratingTogglePillOrange,
+                        pressed ? styles.ratingTogglePillPressed : null,
+                      ]}
                     >
-                      {sortedParticipants
-                        .filter((member) => member.userId !== currentUserId)
-                        .map((member) => (
-                          <View key={`rating-${member.userId}`} style={styles.ratingCard}>
-                            <ParticipantAvatar member={member} />
-                            <Text style={styles.ratingName} numberOfLines={1}>
-                              {member.displayName}
-                            </Text>
-                            <View style={styles.ratingActions}>
-                              <PrimaryButton
-                                label={ratingActionId === member.userId ? "..." : "5★"}
-                                onPress={() => onRateMember(member.userId, true, 5)}
-                                size="compact"
-                              />
-                              <PrimaryButton
-                                label="No-show"
-                                onPress={() => onRateMember(member.userId, false)}
-                                tone="ghost"
-                                size="compact"
-                              />
+                      <Text
+                        style={[
+                          styles.ratingTogglePillText,
+                          ratingPanelExpanded
+                            ? styles.ratingTogglePillTextGlass
+                            : styles.ratingTogglePillTextOrange,
+                        ]}
+                      >
+                        {ratingPanelExpanded ? "Recolher" : "Avaliar participantes"}
+                      </Text>
+                    </Pressable>
+                    {showRatingExpandedList ? (
+                      <View style={styles.ratingStrip}>
+                        <ScrollView
+                          horizontal
+                          showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={styles.ratingRow}
+                        >
+                          {ratingTargets.map((member) => (
+                            <View key={`rating-${member.userId}`} style={styles.ratingCard}>
+                              <ParticipantAvatar member={member} />
+                              <Text style={styles.ratingName} numberOfLines={1}>
+                                {member.displayName}
+                              </Text>
+                              <View style={styles.ratingActions}>
+                                {ratingActionId === member.userId ? (
+                                  <ActivityIndicator color={palette.ember} size="small" />
+                                ) : (
+                                  <View style={styles.ratingIconRow}>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      accessibilityLabel="Nota 5, compareceu"
+                                      onPress={() => {
+                                        triggerHaptic("soft");
+                                        onRateMember(member.userId, true, 5);
+                                      }}
+                                      style={({ pressed }) => [
+                                        styles.ratingThumbCircle,
+                                        styles.ratingThumbUp,
+                                        pressed ? styles.ratingThumbPressed : null,
+                                      ]}
+                                    >
+                                      <AppIcon
+                                        iosName="hand.thumbsup.fill"
+                                        fallbackName="thumb-up"
+                                        size={18}
+                                        color={palette.ink}
+                                        type="monochrome"
+                                      />
+                                    </Pressable>
+                                    <Pressable
+                                      accessibilityRole="button"
+                                      accessibilityLabel="No-show, não compareceu"
+                                      onPress={() => {
+                                        triggerHaptic("soft");
+                                        onRateMember(member.userId, false);
+                                      }}
+                                      style={({ pressed }) => [
+                                        styles.ratingThumbCircle,
+                                        styles.ratingThumbDown,
+                                        pressed ? styles.ratingThumbPressed : null,
+                                      ]}
+                                    >
+                                      <AppIcon
+                                        iosName="hand.thumbsdown.fill"
+                                        fallbackName="thumb-down"
+                                        size={18}
+                                        color={palette.sand}
+                                        type="monochrome"
+                                      />
+                                    </Pressable>
+                                  </View>
+                                )}
+                              </View>
                             </View>
-                          </View>
-                        ))}
-                    </ScrollView>
+                          ))}
+                        </ScrollView>
+                      </View>
+                    ) : null}
                   </View>
                 ) : null}
 
@@ -497,8 +541,11 @@ export function MeetupChatScreen({
                   <View
                     style={[
                       styles.composerWrap,
+                      showRatingBar ? styles.footerNoTopHairline : null,
                       {
-                        paddingBottom: keyboardVisible ? 0 : Math.max(insets.bottom - 6, 0),
+                        paddingBottom: keyboardVisible
+                          ? spacing.sm
+                          : Math.max(insets.bottom - 6, 0),
                       },
                     ]}
                   >
@@ -569,8 +616,11 @@ export function MeetupChatScreen({
                   <View
                     style={[
                       styles.closedGroupNotice,
+                      showRatingBar ? styles.footerNoTopHairline : null,
                       {
-                        paddingBottom: keyboardVisible ? 0 : Math.max(insets.bottom - 6, 0),
+                        paddingBottom: keyboardVisible
+                          ? spacing.sm
+                          : Math.max(insets.bottom - 6, 0),
                       },
                     ]}
                   >
@@ -587,6 +637,16 @@ export function MeetupChatScreen({
             ? [
                 {
                   key: "details",
+                  headerRight: (
+                    <SheetCircleIconButton
+                      accessibilityLabel="Ver no mapa"
+                      iosName="map.fill"
+                      fallbackName="map"
+                      diameter={SHEET_BACK_BUTTON_MIN_HEIGHT}
+                      iconSize={18}
+                      onPress={onOpenMeetupPinOnMap}
+                    />
+                  ),
                   content: (
                     <ScrollView
                       contentContainerStyle={[styles.sceneContent, styles.sceneContentCompactLead]}
@@ -595,9 +655,14 @@ export function MeetupChatScreen({
                       bounces={false}
                     >
                       <View style={styles.sceneLeadMinimal}>
-                        <Text style={styles.detailsStatusLine}>
-                          {formatMeetupStatus(meetup.status)}
-                        </Text>
+                        <View style={styles.sceneLeadDateTime} pointerEvents="box-none">
+                          <Text style={styles.detailsLeadDate}>
+                            {formatMeetupDate(meetup.startsAt)}
+                          </Text>
+                          <Text style={styles.detailsLeadTime}>
+                            {formatMeetupTime(meetup.startsAt)}
+                          </Text>
+                        </View>
                         <Text style={styles.detailsFormatEyebrow}>{meetup.formatName}</Text>
                         <Text style={styles.detailsLeadTitle}>{meetup.title}</Text>
                         <Text style={styles.detailsLeadAddress}>
@@ -605,46 +670,7 @@ export function MeetupChatScreen({
                         </Text>
                       </View>
 
-                      <AppleListGroup>
-                        <AppleListRow
-                          icon={{ iosName: "calendar", fallbackName: "calendar-today" }}
-                          label="Quando"
-                          subtitle={formatMeetupDate(meetup.startsAt)}
-                          trailingValue={formatMeetupTime(meetup.startsAt)}
-                          showChevron={false}
-                          size="compact"
-                        />
-                        <AppleListRow
-                          separator
-                          icon={{ iosName: "flag.fill", fallbackName: "flag" }}
-                          label="Status"
-                          trailingValue={formatMeetupStatus(meetup.status)}
-                          showChevron={false}
-                          tone="accent"
-                          size="compact"
-                        />
-                        <AppleListRow
-                          separator
-                          icon={{ iosName: "mappin.and.ellipse", fallbackName: "location-on" }}
-                          label="Endereço"
-                          subtitle={formatCompactAddress(meetup.addressLabel || meetup.locationHint)}
-                          trailingValue="Mapa"
-                          onPress={onOpenMap}
-                          size="compact"
-                        />
-                      </AppleListGroup>
-
                       <View style={styles.statusPanel}>
-                        <View style={styles.sectionHeaderRow}>
-                          <Text style={styles.sectionCaption}>Meu status</Text>
-                          {myPresence ? (
-                            <View style={styles.inlineStateChip}>
-                              <Text style={styles.inlineStateChipLabel}>
-                                {formatAttendanceStatus(myPresence.attendanceStatus)}
-                              </Text>
-                            </View>
-                          ) : null}
-                        </View>
                         <View style={styles.statusChipRow}>
                           {attendanceOrder.map((status) => (
                             <ChoiceChip
@@ -670,71 +696,31 @@ export function MeetupChatScreen({
                         </View>
                       ) : null}
 
-                      <View style={styles.participantsSection}>
-                        <View style={styles.sectionHeaderStack}>
-                          <View style={styles.sectionHeaderRow}>
-                            <Text style={styles.sectionCaption}>
-                              Participantes {loadingMeetupPresence ? "· sincronizando..." : ""}
-                            </Text>
-                            <View style={styles.inlineStateChip}>
-                              <Text style={styles.inlineStateChipLabel}>
-                                {participantSummary.total} no chat
-                              </Text>
-                            </View>
-                          </View>
-                          <View style={styles.participantSummaryRow}>
-                            <SummaryChip
-                              label={`${participantSummary.confirmed} confirmado${
-                                participantSummary.confirmed === 1 ? "" : "s"
-                              }`}
-                              tone="positive"
-                            />
-                            <SummaryChip
-                              label={`${participantSummary.interested} com interesse`}
-                              tone="warning"
-                            />
-                            {participantSummary.notGoing ? (
-                              <SummaryChip
-                                label={`${participantSummary.notGoing} não vai`}
-                                tone="danger"
-                              />
-                            ) : null}
-                          </View>
-                        </View>
-                        <ScrollView
-                          horizontal
-                          showsHorizontalScrollIndicator={false}
-                          contentContainerStyle={styles.participantsRow}
-                        >
-                          {sortedParticipants.map((member) => (
-                            <Pressable
-                              key={member.userId}
-                              onPress={() => onOpenPlayerProfile(member.userId)}
-                              style={({ pressed }) => [
-                                styles.participantItem,
-                                pressed ? styles.participantItemPressed : null,
-                              ]}
-                            >
-                              <ParticipantAvatar member={member} />
-                              <Text style={styles.participantName} numberOfLines={1}>
-                                {member.displayName}
-                              </Text>
-                            </Pressable>
-                          ))}
-                        </ScrollView>
-                      </View>
+                      <MeetupParticipantsBlock
+                        meetup={meetup}
+                        meetupPresence={meetupPresence}
+                        loadingMeetupPresence={loadingMeetupPresence}
+                        onOpenPlayerProfile={onOpenPlayerProfile}
+                        onRemoveParticipant={onRemoveParticipant}
+                        removingParticipantId={removingParticipantId}
+                        manageAvatarsMode={manageParticipantsAvatarsMode}
+                        onManageAvatarsModeChange={setManageParticipantsAvatarsMode}
+                      />
 
                       {meetup.isCreator ? (
                         <View style={styles.creatorSection}>
-                          <View style={styles.sectionHeaderStack}>
-                            <View style={styles.sectionHeaderRow}>
-                              <Text style={styles.sectionCaption}>Gerenciar partida</Text>
-                            </View>
-                            <Text style={styles.sectionHelper}>
-                              Removidos perdem acesso ao chat.
-                            </Text>
+                          <View style={styles.sectionHeaderRow}>
+                            <Text style={styles.sectionCaption}>Gerenciar partida</Text>
                           </View>
                           <View style={styles.actionRow}>
+                            <View style={styles.actionCell}>
+                              <PrimaryButton
+                                label="Editar"
+                                onPress={onEditMeetup}
+                                tone="ghost"
+                                fullWidth
+                              />
+                            </View>
                             <View style={styles.actionCell}>
                               <PrimaryButton
                                 label={
@@ -744,6 +730,7 @@ export function MeetupChatScreen({
                                 }
                                 onPress={() => onUpdateMeetupStatus("closed")}
                                 tone="ghost"
+                                fullWidth
                               />
                             </View>
                             <View style={styles.actionCell}>
@@ -755,91 +742,10 @@ export function MeetupChatScreen({
                                 }
                                 onPress={() => onUpdateMeetupStatus("cancelled")}
                                 tone="dangerGhost"
+                                fullWidth
                               />
                             </View>
                           </View>
-                          {sortedParticipants.filter((member) => member.role !== "creator")
-                            .length ? (
-                            <View style={styles.manageParticipantsWrap}>
-                              <View style={styles.sectionHeaderRow}>
-                                <Text style={styles.manageParticipantsTitle}>Participantes</Text>
-                                <View style={styles.inlineStateChip}>
-                                  <Text style={styles.inlineStateChipLabel}>
-                                    {
-                                      sortedParticipants.filter(
-                                        (member) => member.role !== "creator"
-                                      ).length
-                                    }
-                                  </Text>
-                                </View>
-                              </View>
-                              <View style={styles.manageParticipantsList}>
-                                {sortedParticipants
-                                  .filter((member) => member.role !== "creator")
-                                  .map((member, index) => (
-                                    <View
-                                      key={`manage-${member.userId}`}
-                                      style={[
-                                        styles.manageParticipantRow,
-                                        index > 0 ? styles.manageParticipantRowWithSeparator : null,
-                                      ]}
-                                    >
-                                      <Pressable
-                                        onPress={() => onOpenPlayerProfile(member.userId)}
-                                        style={({ pressed }) => [
-                                          styles.manageParticipantCopy,
-                                          pressed ? styles.participantItemPressed : null,
-                                        ]}
-                                      >
-                                        <Avatar
-                                          name={member.displayName}
-                                          uri={member.avatarUrl}
-                                          size={36}
-                                        />
-                                        <View style={styles.manageParticipantText}>
-                                          <Text
-                                            style={styles.manageParticipantName}
-                                            numberOfLines={1}
-                                          >
-                                            {member.displayName}
-                                          </Text>
-                                          <View style={styles.manageParticipantMetaRow}>
-                                            <StatusPill status={member.attendanceStatus} />
-                                          </View>
-                                        </View>
-                                      </Pressable>
-                                      <Pressable
-                                        accessibilityRole="button"
-                                        accessibilityLabel={`Remover ${member.displayName} da partida`}
-                                        onPress={() => onRemoveParticipant(member.userId)}
-                                        style={({ pressed }) => [
-                                          styles.manageParticipantRemove,
-                                          pressed
-                                            ? styles.manageParticipantRemovePressed
-                                            : null,
-                                        ]}
-                                        disabled={removingParticipantId === member.userId}
-                                      >
-                                        <AppIcon
-                                          iosName={
-                                            removingParticipantId === member.userId
-                                              ? "arrow.triangle.2.circlepath"
-                                              : "person.badge.minus"
-                                          }
-                                          fallbackName={
-                                            removingParticipantId === member.userId
-                                              ? "sync"
-                                              : "person-remove"
-                                          }
-                                          size={18}
-                                          color={palette.sand}
-                                        />
-                                      </Pressable>
-                                    </View>
-                                  ))}
-                              </View>
-                            </View>
-                          ) : null}
                         </View>
                       ) : null}
                     </ScrollView>
@@ -849,66 +755,9 @@ export function MeetupChatScreen({
             : []),
         ]}
         onPop={() => setDetailsOpen(false)}
-        scenePaddingHorizontal={sheetContentGutter}
+        scenePaddingHorizontal={0}
+        sceneHeaderPaddingHorizontal={spacing.lg}
       />
-    </KeyboardAvoidingView>
-  );
-}
-
-function SummaryChip({
-  label,
-  tone,
-}: {
-  label: string;
-  tone: "positive" | "warning" | "danger";
-}) {
-  const toneStyle =
-    tone === "positive"
-      ? styles.summaryChipPositive
-      : tone === "danger"
-        ? styles.summaryChipDanger
-        : styles.summaryChipWarning;
-
-  return (
-    <View style={[styles.summaryChip, toneStyle]}>
-      <Text style={styles.summaryChipLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function StatusPill({ status }: { status: AttendanceStatus }) {
-  const visuals = getAttendanceVisuals(status);
-
-  return (
-    <View
-      style={[
-        styles.statusPill,
-        {
-          borderColor: visuals.borderColor,
-          backgroundColor: `${visuals.borderColor}22`,
-        },
-      ]}
-    >
-      <Text style={[styles.statusPillLabel, { color: visuals.borderColor }]}>
-        {formatAttendanceStatus(status)}
-      </Text>
-    </View>
-  );
-}
-
-function ParticipantAvatar({ member }: { member: MeetupMemberPresence }) {
-  const visuals = getAttendanceVisuals(member.attendanceStatus);
-
-  return (
-    <View style={styles.participantAvatarWrap}>
-      <View style={[styles.participantAvatarFrame, { borderColor: visuals.borderColor }]}>
-        <Avatar name={member.displayName} uri={member.avatarUrl} size={54} />
-      </View>
-      {visuals.badgeLabel ? (
-        <View style={[styles.participantBadge, { backgroundColor: visuals.badgeColor }]}>
-          <Text style={styles.participantBadgeLabel}>{visuals.badgeLabel}</Text>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -1021,54 +870,6 @@ function ReplySwipeMessage({
   );
 }
 
-function getAttendanceVisuals(status: AttendanceStatus) {
-  if (status === "confirmed" || status === "going" || status === "on_the_way" || status === "arrived" || status === "left") {
-    return {
-      borderColor: "#2AAE67",
-      badgeColor: "#2AAE67",
-      badgeLabel: "✓",
-    };
-  }
-
-  if (status === "interested") {
-    return {
-      borderColor: "#D4A632",
-      badgeColor: null,
-      badgeLabel: null,
-    };
-  }
-
-  if (status === "not_going" || status === "cant_make_it") {
-    return {
-      borderColor: "#D75656",
-      badgeColor: "#D75656",
-      badgeLabel: "×",
-    };
-  }
-
-  return {
-    borderColor: "#D4A632",
-    badgeColor: null,
-    badgeLabel: null,
-  };
-}
-
-function getAttendanceRank(status: AttendanceStatus) {
-  if (status === "confirmed" || status === "going" || status === "on_the_way" || status === "arrived" || status === "left") {
-    return 0;
-  }
-
-  if (status === "interested") {
-    return 1;
-  }
-
-  if (status === "not_going" || status === "cant_make_it") {
-    return 2;
-  }
-
-  return 3;
-}
-
 function formatMessageClock(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
@@ -1094,30 +895,34 @@ function formatMeetupTime(iso: string) {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: "transparent",
   },
   emptyScreen: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: "transparent",
   },
   chatHeaderBar: {
     flexDirection: "row",
     alignItems: "center",
     gap: spacing.sm,
-    paddingHorizontal: 0,
-    paddingVertical: spacing.sm,
-    backgroundColor: palette.ink,
+    paddingHorizontal: spacing.lg,
+    paddingTop: 10,
+    paddingBottom: 14,
+    backgroundColor: "transparent",
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: palette.line,
   },
-  chatHeaderMainRow: {
+  chatHeaderBarEmpty: {
+    gap: 0,
+  },
+  chatHeaderBarSide: {
     flex: 1,
     minWidth: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
   },
-  chatHeaderInfoPress: {
+  chatHeaderBarSideStart: {
+    alignItems: "flex-start",
+  },
+  chatHeaderMainRow: {
     flex: 1,
     minWidth: 0,
     flexDirection: "row",
@@ -1128,21 +933,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     gap: 3,
-  },
-  chatHeaderStatusLine: {
-    color: palette.pine,
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: "700",
-    letterSpacing: 0.4,
-    textTransform: "uppercase",
-  },
-  headerBackButton: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.pill,
-    alignItems: "center",
-    justifyContent: "center",
   },
   headerBackButtonPressed: {
     opacity: 0.85,
@@ -1171,7 +961,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: palette.ember,
     borderWidth: 2,
-    borderColor: "#121212",
+    borderColor: "rgba(6,10,9,0.92)",
   },
   chatTitle: {
     color: palette.sand,
@@ -1185,12 +975,11 @@ const styles = StyleSheet.create({
     lineHeight: 16,
   },
   emptyHeaderTitle: {
-    flex: 1,
+    flexShrink: 0,
     color: palette.sand,
     fontSize: 17,
     fontWeight: "800",
     textAlign: "center",
-    marginRight: 40,
   },
   emptyBodyWrap: {
     flex: 1,
@@ -1198,6 +987,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.xl,
+    backgroundColor: palette.pageChrome,
   },
   emptyTitle: {
     color: palette.sand,
@@ -1214,6 +1004,7 @@ const styles = StyleSheet.create({
   sceneContent: {
     paddingTop: spacing.xs,
     paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.lg,
     gap: spacing.lg,
   },
   sceneContentCompactLead: {
@@ -1223,16 +1014,33 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     width: "100%",
     gap: 4,
+    position: "relative",
+    /** Space for absolute date/time column so title/address don’t run underneath. */
+    paddingRight: 92,
   },
-  detailsStatusLine: {
-    color: palette.pine,
-    fontSize: 11,
-    lineHeight: 15,
+  sceneLeadDateTime: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    alignItems: "flex-end",
+    gap: 2,
+    zIndex: 1,
+  },
+  /** Same as `AppleListRow` `rowLabelCompact` (“Quando”). */
+  detailsLeadDate: {
+    color: palette.sand,
+    fontSize: 15,
+    lineHeight: 19,
     fontWeight: "700",
-    letterSpacing: 0.35,
-    textTransform: "uppercase",
-    alignSelf: "stretch",
-    textAlign: "left",
+    textAlign: "right",
+  },
+  /** Same as compact row trailing time (accent / `palette.ember`). */
+  detailsLeadTime: {
+    color: palette.ember,
+    fontSize: 15,
+    lineHeight: 18,
+    fontWeight: "800",
+    textAlign: "right",
   },
   detailsFormatEyebrow: {
     color: palette.ember,
@@ -1273,29 +1081,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingLeft: 0,
   },
-  sectionHeaderStack: {
-    gap: spacing.xs,
-  },
   sectionHeaderRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: spacing.sm,
-  },
-  inlineStateChip: {
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: "transparent",
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: palette.line,
-  },
-  inlineStateChipLabel: {
-    color: palette.sand,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  participantsSection: {
     gap: spacing.sm,
   },
   sectionCaption: {
@@ -1304,172 +1093,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     letterSpacing: 0.1,
   },
-  sectionHelper: {
-    color: palette.mist,
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  participantSummaryRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-  },
-  summaryChip: {
-    borderRadius: radius.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderWidth: StyleSheet.hairlineWidth,
-  },
-  summaryChipPositive: {
-    backgroundColor: "rgba(42,174,103,0.12)",
-    borderColor: palette.line,
-  },
-  summaryChipWarning: {
-    backgroundColor: "rgba(212,166,50,0.1)",
-    borderColor: palette.line,
-  },
-  summaryChipDanger: {
-    backgroundColor: "rgba(215,86,86,0.1)",
-    borderColor: palette.line,
-  },
-  summaryChipLabel: {
-    color: palette.sand,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  participantsRow: {
-    gap: spacing.md,
-    paddingRight: spacing.lg,
-    paddingBottom: spacing.xs,
-  },
-  participantItem: {
-    width: 76,
-    gap: spacing.xs,
-    alignItems: "center",
-    paddingVertical: spacing.xs,
-  },
-  participantItemPressed: {
-    opacity: 0.9,
-  },
-  participantAvatarWrap: {
-    position: "relative",
-    paddingTop: 2,
-    paddingRight: 2,
-  },
-  participantAvatarFrame: {
-    borderWidth: 3,
-    borderRadius: 34,
-    padding: 2,
-  },
-  participantBadge: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 4,
-    borderWidth: 2,
-    borderColor: palette.ink,
-  },
-  participantBadgeLabel: {
-    color: "#FFFFFF",
-    fontSize: 9,
-    fontWeight: "900",
-  },
-  participantName: {
-    color: palette.sand,
-    fontSize: 11,
-    textAlign: "center",
-    fontWeight: "600",
-  },
   creatorSection: {
     gap: spacing.sm,
     paddingLeft: 0,
   },
-  manageParticipantsWrap: {
-    gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  manageParticipantsTitle: {
-    color: palette.pine,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  manageParticipantsList: {
-    gap: 0,
-  },
-  manageParticipantRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: 0,
-    backgroundColor: "transparent",
-    overflow: "hidden",
-  },
-  manageParticipantRowWithSeparator: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: palette.line,
-  },
-  manageParticipantCopy: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: spacing.sm,
-  },
-  manageParticipantText: {
-    flex: 1,
-    minWidth: 0,
-    gap: 2,
-  },
-  manageParticipantMetaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-    marginTop: 3,
-  },
-  manageParticipantName: {
-    color: palette.sand,
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  statusPill: {
-    borderRadius: radius.pill,
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderWidth: 1,
-  },
-  statusPillLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  manageParticipantRemove: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(215,86,86,0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(215,86,86,0.34)",
-  },
-  manageParticipantRemovePressed: {
-    opacity: 0.82,
-  },
   messagesArea: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: palette.pageChrome,
   },
   messageList: {
     flex: 1,
   },
   messageListContent: {
     gap: spacing.xs,
-    paddingHorizontal: CHAT_EDGE_PADDING,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
   },
   emptyChatWrap: {
@@ -1557,9 +1194,9 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   replyPreviewBubbleMine: {
-    backgroundColor: "rgba(246,242,234,0.08)",
+    backgroundColor: "rgba(17,17,17,0.12)",
     borderLeftWidth: 3,
-    borderLeftColor: "rgba(241,143,92,0.9)",
+    borderLeftColor: "rgba(17,17,17,0.35)",
   },
   replyPreviewBubbleOther: {
     backgroundColor: "rgba(255,255,255,0.05)",
@@ -1576,10 +1213,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 16,
   },
+  replyPreviewAuthorOnMine: {
+    color: palette.ink,
+  },
+  replyPreviewTextOnMine: {
+    color: "rgba(17,17,17,0.82)",
+  },
   messageBubbleMine: {
-    backgroundColor: "rgba(241,143,92,0.12)",
+    backgroundColor: palette.ember,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(241,143,92,0.28)",
+    borderColor: "rgba(17,17,17,0.12)",
     borderBottomRightRadius: radius.sm,
   },
   messageBubbleOther: {
@@ -1593,7 +1236,7 @@ const styles = StyleSheet.create({
     lineHeight: 23,
   },
   messageTextMine: {
-    color: palette.sand,
+    color: palette.ink,
   },
   messageTextOther: {
     color: palette.sand,
@@ -1608,7 +1251,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   messageTimeMine: {
-    color: "rgba(246,242,234,0.68)",
+    color: "rgba(17,17,17,0.62)",
   },
   messageTimeOther: {
     color: palette.pine,
@@ -1616,15 +1259,54 @@ const styles = StyleSheet.create({
   messageError: {
     color: "#F6A6A6",
     fontSize: 12,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.xs,
+  },
+  ratingBarWrap: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.line,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xs,
+    gap: spacing.sm,
+  },
+  ratingTogglePill: {
+    alignSelf: "flex-start",
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  ratingTogglePillOrange: {
+    backgroundColor: palette.ember,
+    borderColor: "rgba(17,17,17,0.12)",
+  },
+  /** “Recolher” — pill transparente (glass). */
+  ratingTogglePillGlass: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderColor: palette.line,
+  },
+  ratingTogglePillPressed: {
+    opacity: 0.9,
+  },
+  /** Mesmo tamanho de linha que o subtítulo “Commander” (`chatSubtitle`). */
+  ratingTogglePillText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: "600",
+  },
+  ratingTogglePillTextOrange: {
+    color: palette.ink,
+  },
+  ratingTogglePillTextGlass: {
+    color: palette.sand,
   },
   ratingStrip: {
     gap: spacing.sm,
-    paddingHorizontal: CHAT_EDGE_PADDING,
+    paddingHorizontal: 0,
     paddingTop: spacing.sm,
     paddingBottom: spacing.xs,
-    backgroundColor: palette.ink,
+    backgroundColor: "transparent",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: palette.line,
   },
@@ -1634,9 +1316,10 @@ const styles = StyleSheet.create({
   },
   ratingCard: {
     width: 132,
-    gap: spacing.sm,
+    gap: spacing.xs,
     borderRadius: radius.md,
-    padding: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     backgroundColor: palette.mapSurface,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: palette.line,
@@ -1650,14 +1333,48 @@ const styles = StyleSheet.create({
   },
   ratingActions: {
     width: "100%",
-    gap: spacing.xs,
+    minHeight: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  ratingIconRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+  },
+  /** Mesmo diâmetro do `composerSendButton` (36). */
+  ratingThumbCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  ratingThumbUp: {
+    backgroundColor: palette.ember,
+    borderColor: "rgba(17,17,17,0.12)",
+  },
+  ratingThumbDown: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderColor: palette.line,
+  },
+  ratingThumbPressed: {
+    opacity: 0.88,
+    transform: [{ scale: 0.96 }],
   },
   composerWrap: {
-    paddingHorizontal: CHAT_EDGE_PADDING,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    backgroundColor: palette.ink,
+    backgroundColor: "transparent",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: palette.line,
+  },
+  /** When a rating strip is shown above, it already provides the top hairline; hide the duplicate line. */
+  footerNoTopHairline: {
+    borderTopWidth: 0,
   },
   replyComposerCard: {
     flexDirection: "row",
@@ -1708,6 +1425,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
     backgroundColor: palette.mapSurface,
     borderWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 0,
     borderColor: palette.line,
     paddingLeft: spacing.md,
     paddingRight: 54,
@@ -1738,9 +1456,9 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.96 }],
   },
   closedGroupNotice: {
-    paddingHorizontal: CHAT_EDGE_PADDING,
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
-    backgroundColor: palette.ink,
+    backgroundColor: "transparent",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: palette.line,
   },
