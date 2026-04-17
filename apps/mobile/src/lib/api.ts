@@ -47,6 +47,7 @@ type CatalogFormatRow = {
   id: string;
   name: string;
   game_id: string;
+  games: { slug: string } | { slug: string }[] | null;
 };
 
 type VenueRow = {
@@ -69,6 +70,7 @@ type MeetupRow = {
   title: string;
   description: string | null;
   format_name: string | null;
+  game_slug: string | null;
   starts_at: string;
   host_mode: HostMode;
   status: MeetupStatus;
@@ -330,18 +332,25 @@ export async function acceptCurrentLegalDocuments(input: {
 export async function getCatalogFormats() {
   const { data, error } = await supabase
     .from("formats")
-    .select("id, name, game_id")
+    .select("id, name, game_id, games(slug)")
     .order("name");
 
   if (error) {
     throw error;
   }
 
-  return ((data ?? []) as CatalogFormatRow[]).map((format) => ({
-    id: format.id,
-    name: format.name,
-    gameId: format.game_id,
-  })) as CatalogFormat[];
+  return ((data ?? []) as CatalogFormatRow[]).map((format) => {
+    const gameRel = format.games;
+    const gameSlug =
+      (Array.isArray(gameRel) ? gameRel[0]?.slug : gameRel?.slug)?.trim() ?? "";
+
+    return {
+      id: format.id,
+      name: format.name,
+      gameId: format.game_id,
+      gameSlug,
+    };
+  }) as CatalogFormat[];
 }
 
 export async function getCatalogGames() {
@@ -598,8 +607,9 @@ export async function getDashboardData(options?: {
     await supabase.rpc("close_expired_meetups");
   }
 
-  const [formatsResult, venuesResult, meetupsResult] = await Promise.all([
+  const [formatsResult, gamesResult, venuesResult, meetupsResult] = await Promise.all([
     getCatalogFormats(),
+    getCatalogGames(),
     supabase.rpc("list_venue_cards"),
     supabase.rpc("list_meetup_cards"),
   ]);
@@ -613,6 +623,7 @@ export async function getDashboardData(options?: {
   }
 
   return {
+    games: gamesResult,
     formats: formatsResult,
     venues: ((venuesResult.data ?? []) as VenueRow[]).map(mapVenue),
     meetups: ((meetupsResult.data ?? []) as MeetupRow[]).map(mapMeetup),
@@ -1354,6 +1365,7 @@ function mapMeetup(row: MeetupRow): MeetupPost {
     title: row.title,
     description: row.description ?? "",
     formatName: row.format_name ?? "Casual",
+    gameSlug: row.game_slug?.trim() ?? "",
     startsAt: row.starts_at,
     hostMode: row.host_mode,
     status: row.status,

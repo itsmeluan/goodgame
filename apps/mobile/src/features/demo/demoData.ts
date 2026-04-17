@@ -1,3 +1,4 @@
+import { GAME_SLUG } from "@/features/map/gameLabels";
 import type {
   ChatMessage,
   FriendProfile,
@@ -35,6 +36,7 @@ export function buildDemoBundle(profile: PlayerProfile): DemoBundle {
       title: "Partida Commander da Lapa",
       description: "Casual alto, valendo testar decks novos e trocar cartas depois.",
       formatName: "Commander",
+      gameSlug: GAME_SLUG.magic,
       startsAt: new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString(),
       hostMode: "public_place",
       status: "open",
@@ -63,6 +65,7 @@ export function buildDemoBundle(profile: PlayerProfile): DemoBundle {
       title: "Draft sexta no after",
       description: "Booster draft rápido depois do trabalho, nível casual.",
       formatName: "Draft",
+      gameSlug: GAME_SLUG.magic,
       startsAt: new Date(Date.now() + 28 * 60 * 60 * 1000).toISOString(),
       hostMode: "public_place",
       status: "open",

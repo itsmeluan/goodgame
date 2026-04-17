@@ -1,4 +1,4 @@
-import { inferGameNameFromLabels, inferGameLabelsFromVenue } from "@/features/map/gameLabels";
+import { inferGameLabelsFromVenue, inferGameNameFromMeetup } from "@/features/map/gameLabels";
 import { calculateDistanceKm } from "@/lib/formatting";
 import type { MeetupPost, VenueCard } from "@/types/domain";
 
@@ -24,7 +24,7 @@ export function filterMeetups(
 ) {
   return meetups.filter((meetup) => {
     if (options.gameTypes.length) {
-      const gameType = inferGameNameFromLabels([meetup.formatName]);
+      const gameType = inferGameNameFromMeetup(meetup);
 
       if (!options.gameTypes.includes(gameType)) {
         return false;

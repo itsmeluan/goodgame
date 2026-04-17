@@ -1,4 +1,4 @@
-import { inferGameNameFromLabels, slugifyGameLabel } from "@/features/map/gameLabels";
+import { inferGameNameFromMeetup, slugifyGameLabel } from "@/features/map/gameLabels";
 import { formatShortAddress } from "@/lib/formatting";
 import { getDeviceCoordinate, reverseGeocodeAddress } from "@/lib/location";
 import type { AddressSuggestion } from "@/lib/placeSearch";
@@ -40,7 +40,7 @@ export function buildChatGroupsByGame(chatMeetups: MeetupPost[]) {
   >();
 
   chatMeetups.forEach((meetup) => {
-    const label = inferGameNameFromLabels([meetup.formatName]);
+    const label = inferGameNameFromMeetup(meetup);
     const id = slugifyGameLabel(label);
     const existing = groups.get(id);
 

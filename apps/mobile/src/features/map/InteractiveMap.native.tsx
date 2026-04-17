@@ -37,10 +37,11 @@ import {
   getDeviceCoordinate,
   resolveHeading,
 } from "@/lib/location";
+import { inferGameNameFromLabels, meetupMarkerVisualFromMeetup } from "@/features/map/gameLabels";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { MapCoordinate } from "@/types/domain";
 
-type MeetupMarkerStyle = "magic" | "dice";
+type MeetupMarkerStyle = "magic" | "board" | "yugioh" | "pokemon";
 
 type RawOverlayPin = {
   id: string;
@@ -143,6 +144,46 @@ const MARKER_IMAGE_SOURCES = {
   meetupDiceOverdue8: require("../../../assets/map/marker-meetup-dice-overdue-8.png"),
   meetupDiceOverdue9: require("../../../assets/map/marker-meetup-dice-overdue-9.png"),
   meetupDiceOverdue9plus: require("../../../assets/map/marker-meetup-dice-overdue-9plus.png"),
+  meetupYugioh: require("../../../assets/map/marker-meetup-yugioh.png"),
+  meetupYugioh2: require("../../../assets/map/marker-meetup-yugioh-2.png"),
+  meetupYugioh3: require("../../../assets/map/marker-meetup-yugioh-3.png"),
+  meetupYugioh4: require("../../../assets/map/marker-meetup-yugioh-4.png"),
+  meetupYugioh5: require("../../../assets/map/marker-meetup-yugioh-5.png"),
+  meetupYugioh6: require("../../../assets/map/marker-meetup-yugioh-6.png"),
+  meetupYugioh7: require("../../../assets/map/marker-meetup-yugioh-7.png"),
+  meetupYugioh8: require("../../../assets/map/marker-meetup-yugioh-8.png"),
+  meetupYugioh9: require("../../../assets/map/marker-meetup-yugioh-9.png"),
+  meetupYugioh9plus: require("../../../assets/map/marker-meetup-yugioh-9plus.png"),
+  meetupYugiohOverdue: require("../../../assets/map/marker-meetup-yugioh-overdue.png"),
+  meetupYugiohOverdue2: require("../../../assets/map/marker-meetup-yugioh-overdue-2.png"),
+  meetupYugiohOverdue3: require("../../../assets/map/marker-meetup-yugioh-overdue-3.png"),
+  meetupYugiohOverdue4: require("../../../assets/map/marker-meetup-yugioh-overdue-4.png"),
+  meetupYugiohOverdue5: require("../../../assets/map/marker-meetup-yugioh-overdue-5.png"),
+  meetupYugiohOverdue6: require("../../../assets/map/marker-meetup-yugioh-overdue-6.png"),
+  meetupYugiohOverdue7: require("../../../assets/map/marker-meetup-yugioh-overdue-7.png"),
+  meetupYugiohOverdue8: require("../../../assets/map/marker-meetup-yugioh-overdue-8.png"),
+  meetupYugiohOverdue9: require("../../../assets/map/marker-meetup-yugioh-overdue-9.png"),
+  meetupYugiohOverdue9plus: require("../../../assets/map/marker-meetup-yugioh-overdue-9plus.png"),
+  meetupPokemon: require("../../../assets/map/marker-meetup-pokemon.png"),
+  meetupPokemon2: require("../../../assets/map/marker-meetup-pokemon-2.png"),
+  meetupPokemon3: require("../../../assets/map/marker-meetup-pokemon-3.png"),
+  meetupPokemon4: require("../../../assets/map/marker-meetup-pokemon-4.png"),
+  meetupPokemon5: require("../../../assets/map/marker-meetup-pokemon-5.png"),
+  meetupPokemon6: require("../../../assets/map/marker-meetup-pokemon-6.png"),
+  meetupPokemon7: require("../../../assets/map/marker-meetup-pokemon-7.png"),
+  meetupPokemon8: require("../../../assets/map/marker-meetup-pokemon-8.png"),
+  meetupPokemon9: require("../../../assets/map/marker-meetup-pokemon-9.png"),
+  meetupPokemon9plus: require("../../../assets/map/marker-meetup-pokemon-9plus.png"),
+  meetupPokemonOverdue: require("../../../assets/map/marker-meetup-pokemon-overdue.png"),
+  meetupPokemonOverdue2: require("../../../assets/map/marker-meetup-pokemon-overdue-2.png"),
+  meetupPokemonOverdue3: require("../../../assets/map/marker-meetup-pokemon-overdue-3.png"),
+  meetupPokemonOverdue4: require("../../../assets/map/marker-meetup-pokemon-overdue-4.png"),
+  meetupPokemonOverdue5: require("../../../assets/map/marker-meetup-pokemon-overdue-5.png"),
+  meetupPokemonOverdue6: require("../../../assets/map/marker-meetup-pokemon-overdue-6.png"),
+  meetupPokemonOverdue7: require("../../../assets/map/marker-meetup-pokemon-overdue-7.png"),
+  meetupPokemonOverdue8: require("../../../assets/map/marker-meetup-pokemon-overdue-8.png"),
+  meetupPokemonOverdue9: require("../../../assets/map/marker-meetup-pokemon-overdue-9.png"),
+  meetupPokemonOverdue9plus: require("../../../assets/map/marker-meetup-pokemon-overdue-9plus.png"),
   venue: require("../../../assets/map/marker-venue.png"),
   venue2: require("../../../assets/map/marker-venue-2.png"),
   venue3: require("../../../assets/map/marker-venue-3.png"),
@@ -1877,6 +1918,22 @@ function normalizeMarkerBadgeKey(count: number | null) {
 
 type MeetupBadgeKey = NonNullable<ReturnType<typeof normalizeMarkerBadgeKey>>;
 
+function meetupSpriteBase(style: MeetupMarkerStyle | undefined) {
+  if (style === "magic") {
+    return "meetupMagic" as const;
+  }
+
+  if (style === "yugioh") {
+    return "meetupYugioh" as const;
+  }
+
+  if (style === "pokemon") {
+    return "meetupPokemon" as const;
+  }
+
+  return "meetupDice" as const;
+}
+
 function resolveMeetupStyleMarkerAssetKey({
   style,
   overdue,
@@ -1886,27 +1943,26 @@ function resolveMeetupStyleMarkerAssetKey({
   overdue: boolean | undefined;
   badgeKey: MeetupBadgeKey | null;
 }): keyof typeof MARKER_IMAGE_SOURCES {
-  const useMagic = style === "magic";
-  const base = useMagic ? "meetupMagic" : "meetupDice";
+  const base = meetupSpriteBase(style);
 
   if (overdue) {
     if (!badgeKey) {
-      return useMagic ? "meetupMagicOverdue" : "meetupDiceOverdue";
+      return `${base}Overdue` as keyof typeof MARKER_IMAGE_SOURCES;
     }
 
     if (badgeKey === "9plus") {
-      return useMagic ? "meetupMagicOverdue9plus" : "meetupDiceOverdue9plus";
+      return `${base}Overdue9plus` as keyof typeof MARKER_IMAGE_SOURCES;
     }
 
     return `${base}Overdue${badgeKey}` as keyof typeof MARKER_IMAGE_SOURCES;
   }
 
   if (!badgeKey) {
-    return useMagic ? "meetupMagic" : "meetupDice";
+    return base as keyof typeof MARKER_IMAGE_SOURCES;
   }
 
   if (badgeKey === "9plus") {
-    return useMagic ? "meetupMagic9plus" : "meetupDice9plus";
+    return `${base}9plus` as keyof typeof MARKER_IMAGE_SOURCES;
   }
 
   return `${base}${badgeKey}` as keyof typeof MARKER_IMAGE_SOURCES;
@@ -1915,9 +1971,7 @@ function resolveMeetupStyleMarkerAssetKey({
 function resolveMeetupMarkerStyle(
   meetup: InteractiveMapProps["meetups"][number]
 ): MeetupMarkerStyle {
-  const gameNames = inferGameNamesFromLabels([meetup.formatName]);
-
-  return gameNames.includes("Magic: The Gathering") ? "magic" : "dice";
+  return meetupMarkerVisualFromMeetup(meetup);
 }
 
 function resolveMarkerImageAssetKey(item: VisibleOverlayPin): keyof typeof MARKER_IMAGE_SOURCES {
@@ -2105,28 +2159,7 @@ function areRegionsClose(left: Region, right: Region) {
 }
 
 function inferGameNamesFromLabels(labels: string[]) {
-  const names = labels
-    .map((label) => {
-      const normalized = label.trim().toLowerCase();
-
-      if (
-        normalized.includes("magic") ||
-        normalized.includes("commander") ||
-        normalized.includes("draft") ||
-        normalized.includes("modern") ||
-        normalized.includes("legacy") ||
-        normalized.includes("pioneer") ||
-        normalized.includes("pauper") ||
-        normalized.includes("standard")
-      ) {
-        return "Magic: The Gathering";
-      }
-
-      return label.trim();
-    })
-    .filter(Boolean);
-
-  return Array.from(new Set(names));
+  return Array.from(new Set(labels.map((label) => inferGameNameFromLabels([label.trim()])))).filter(Boolean);
 }
 
 function buildVenueHelperText(venue: InteractiveMapProps["venues"][number]) {

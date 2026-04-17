@@ -23,12 +23,13 @@ import type { MeetupSortMode } from "@/features/map/mapHelpers";
 import type { MeetupPost, MeetupStatus } from "@/types/domain";
 import { palette, radius, sheetContentGutter, spacing } from "@/theme/tokens";
 
-/** Fields required to pick Magic vs dice list icons and overdue state. */
+/** Fields required to pick game list icons and overdue state. */
 export type GamesSheetMeetupListItem = {
   id: string;
   startsAt: string;
   status: MeetupStatus;
   formatName: string;
+  gameSlug: string;
 };
 
 export type GamesSheetMeetupGroup<Item extends GamesSheetMeetupListItem = MeetupPost> = {
@@ -359,7 +360,7 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
                         variant={iconVariant}
                         size={APPLE_LIST_COMPACT_ICON_SIZE}
                         accessibilityLabel={
-                          iconVariant === "magic-overdue" || iconVariant === "dice-overdue"
+                          iconVariant.endsWith("-overdue")
                             ? `${group.label}, jogos em atraso`
                             : group.label
                         }

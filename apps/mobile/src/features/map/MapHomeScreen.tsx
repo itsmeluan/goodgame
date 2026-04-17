@@ -31,6 +31,7 @@ import { VenueSheetListRowContainer } from "@/features/map/components/VenueSheet
 import {
   inferGameLabelsFromVenue,
   inferGameNameFromLabels,
+  inferGameNameFromMeetup,
   slugifyGameLabel,
 } from "@/features/map/gameLabels";
 import type { MapSelectionGroup } from "@/features/map/InteractiveMap.types";
@@ -143,6 +144,7 @@ import type {
   AttendanceStatus,
   BlockedUserProfile,
   CatalogFormat,
+  CatalogGame,
   ChatMessage,
   FriendProfile,
   InAppNotification,
@@ -228,6 +230,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formats, setFormats] = useState<CatalogFormat[]>([]);
+  const [games, setGames] = useState<CatalogGame[]>([]);
   const [venues, setVenues] = useState<VenueCard[]>([]);
   const [meetups, setMeetups] = useState<MeetupPost[]>([]);
   const [optimisticVenues, setOptimisticVenues] = useState<VenueCard[]>([]);
@@ -562,7 +565,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     >();
 
     formats.forEach((format) => {
-      const label = inferGameNameFromLabels([format.name]);
+      const catalogName = games.find((game) => game.id === format.gameId)?.name;
+      const label = catalogName ?? inferGameNameFromLabels([format.name]);
       const id = format.gameId;
       const existing = groups.get(id);
 
@@ -579,7 +583,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     });
 
     return Array.from(groups.values()).sort((left, right) => left.label.localeCompare(right.label));
-  }, [formats]);
+  }, [formats, games]);
 
   const selectedVenueFormatIds = useMemo(
     () =>
@@ -1465,7 +1469,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     }
 
     sortedVisibleMeetupsForSheet.forEach((meetup) => {
-      ensureGroup(inferGameNameFromLabels([meetup.formatName])).meetups.push(meetup);
+      ensureGroup(inferGameNameFromMeetup(meetup)).meetups.push(meetup);
     });
 
     return Array.from(groups.values());
@@ -2172,7 +2176,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       return;
     }
 
-    const groupId = slugifyGameLabel(inferGameNameFromLabels([meetup.formatName]));
+    const groupId = slugifyGameLabel(inferGameNameFromMeetup(meetup));
     setExpandedGameGroups((current) => ({
       ...current,
       [groupId]: true,
@@ -2476,6 +2480,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
 
   async function syncMapEntities(closeExpired = false) {
     const data = await getDashboardData({ closeExpired });
+    setGames(data.games);
     setFormats(data.formats);
     setVenues(data.venues);
     setMeetups(data.meetups);
@@ -2508,6 +2513,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
         getMyNotifications(),
         getFriendOverview(),
       ]);
+      setGames(data.games);
       setFormats(data.formats);
       setVenues(data.venues);
       setMeetups(data.meetups);
@@ -2944,13 +2950,14 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
         addressLabel: venue ? venue.address ?? venue.name : composerSelectedAddress?.fullLabel ?? null,
       });
 
-      const selectedFormatName =
-        formats.find((item) => item.id === selectedFormatId)?.name ?? "Casual";
+      const selectedFormat = formats.find((item) => item.id === selectedFormatId);
+      const selectedFormatName = selectedFormat?.name ?? "Casual";
       const optimisticMeetup: MeetupPost = {
         id: createdMeetupId,
         title: meetupTitle.trim(),
         description: meetupDescription.trim(),
         formatName: selectedFormatName,
+        gameSlug: selectedFormat?.gameSlug ?? "",
         startsAt,
         hostMode: resolvedHostMode,
         status: "open",
@@ -4528,7 +4535,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     setVenueComposerOpen(false);
 
     if (meetup) {
-      const groupId = slugifyGameLabel(inferGameNameFromLabels([meetup.formatName]));
+      const groupId = slugifyGameLabel(inferGameNameFromMeetup(meetup));
       setExpandedGameGroups((current) => ({
         ...current,
         [groupId]: true,
@@ -4606,7 +4613,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       switchGamesSheetSection("meetups", { animate: false });
 
       if (meetup) {
-        const groupId = slugifyGameLabel(inferGameNameFromLabels([meetup.formatName]));
+        const groupId = slugifyGameLabel(inferGameNameFromMeetup(meetup));
         setExpandedGameGroups((current) => ({
           ...current,
           [groupId]: true,
@@ -4700,7 +4707,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     closeComposerRef.current(false);
     setDrawerOpen(false);
 
-    const groupId = slugifyGameLabel(inferGameNameFromLabels([meetup.formatName]));
+    const groupId = slugifyGameLabel(inferGameNameFromMeetup(meetup));
 
     const apply = () => {
       switchGamesSheetSectionRef.current("meetups", { animate: false });

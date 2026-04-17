@@ -42,6 +42,8 @@ export interface CatalogFormat {
   id: string;
   name: string;
   gameId: string;
+  /** Slug do jogo em `public.games` (ex.: magic-the-gathering). */
+  gameSlug: string;
 }
 
 export interface PlayerProfile {
@@ -105,6 +107,8 @@ export interface MeetupPost {
   title: string;
   description: string;
   formatName: string;
+  /** Slug do jogo (`games.slug`); vazio se o formato não tiver jogo ligado. */
+  gameSlug: string;
   startsAt: string;
   hostMode: HostMode;
   status: MeetupStatus;
@@ -166,6 +170,7 @@ export interface InAppNotification {
 }
 
 export interface DashboardData {
+  games: CatalogGame[];
   formats: CatalogFormat[];
   venues: VenueCard[];
   meetups: MeetupPost[];

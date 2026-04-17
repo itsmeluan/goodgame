@@ -3,7 +3,7 @@ import { SvgXml } from "react-native-svg";
 
 import type { MeetupStatus } from "@/types/domain";
 
-import { inferGameNameFromLabels } from "@/features/map/gameLabels";
+import { meetupMarkerVisualFromMeetup } from "@/features/map/gameLabels";
 import { isMeetupOverdue } from "@/features/map/meetupTiming";
 
 import {
@@ -11,6 +11,10 @@ import {
   ICON_GAME_TYPE_DICE_SVG_XML,
   ICON_GAME_TYPE_MAGIC_OVERDUE_SVG_XML,
   ICON_GAME_TYPE_MAGIC_SVG_XML,
+  ICON_GAME_TYPE_POKEMON_OVERDUE_SVG_XML,
+  ICON_GAME_TYPE_POKEMON_SVG_XML,
+  ICON_GAME_TYPE_YUGIOH_OVERDUE_SVG_XML,
+  ICON_GAME_TYPE_YUGIOH_SVG_XML,
   ICON_VENUE_SVG_XML,
 } from "@/components/icons/listRowIconsSvgXml";
 
@@ -19,7 +23,11 @@ export type ListRowGameListIconVariant =
   | "magic"
   | "magic-overdue"
   | "dice"
-  | "dice-overdue";
+  | "dice-overdue"
+  | "yugioh"
+  | "yugioh-overdue"
+  | "pokemon"
+  | "pokemon-overdue";
 
 const XML_BY_VARIANT: Record<ListRowGameListIconVariant, string> = {
   venue: ICON_VENUE_SVG_XML,
@@ -27,43 +35,60 @@ const XML_BY_VARIANT: Record<ListRowGameListIconVariant, string> = {
   "magic-overdue": ICON_GAME_TYPE_MAGIC_OVERDUE_SVG_XML,
   dice: ICON_GAME_TYPE_DICE_SVG_XML,
   "dice-overdue": ICON_GAME_TYPE_DICE_OVERDUE_SVG_XML,
+  yugioh: ICON_GAME_TYPE_YUGIOH_SVG_XML,
+  "yugioh-overdue": ICON_GAME_TYPE_YUGIOH_OVERDUE_SVG_XML,
+  pokemon: ICON_GAME_TYPE_POKEMON_SVG_XML,
+  "pokemon-overdue": ICON_GAME_TYPE_POKEMON_OVERDUE_SVG_XML,
 };
 
 type MeetupIconFields = {
   startsAt: string;
   status: MeetupStatus;
   formatName: string;
+  gameSlug: string;
 };
+
+function resolveVariantForVisual(
+  visual: ReturnType<typeof meetupMarkerVisualFromMeetup>,
+  overdue: boolean
+): Exclude<ListRowGameListIconVariant, "venue"> {
+  if (visual === "magic") {
+    return overdue ? "magic-overdue" : "magic";
+  }
+
+  if (visual === "board") {
+    return overdue ? "dice-overdue" : "dice";
+  }
+
+  if (visual === "yugioh") {
+    return overdue ? "yugioh-overdue" : "yugioh";
+  }
+
+  return overdue ? "pokemon-overdue" : "pokemon";
+}
 
 export function resolveGameGroupListIconVariant(
   group: { meetups: MeetupIconFields[] },
   nowTimestamp: number
 ): Exclude<ListRowGameListIconVariant, "venue"> {
   const primary = group.meetups[0];
-  const game = inferGameNameFromLabels([primary?.formatName ?? ""]);
-  const isMagic = game === "Magic: The Gathering";
+  const visual = primary
+    ? meetupMarkerVisualFromMeetup(primary)
+    : meetupMarkerVisualFromMeetup({ gameSlug: "", formatName: "" });
   const allOverdue =
     group.meetups.length > 0 && group.meetups.every((m) => isMeetupOverdue(m, nowTimestamp));
 
-  if (isMagic) {
-    return allOverdue ? "magic-overdue" : "magic";
-  }
-
-  return allOverdue ? "dice-overdue" : "dice";
+  return resolveVariantForVisual(visual, allOverdue);
 }
 
 export function resolveMeetupGameListIconVariant(
   meetup: MeetupIconFields,
   nowTimestamp: number
 ): Exclude<ListRowGameListIconVariant, "venue"> {
-  const isMagic = inferGameNameFromLabels([meetup.formatName]) === "Magic: The Gathering";
+  const visual = meetupMarkerVisualFromMeetup(meetup);
   const overdue = isMeetupOverdue(meetup, nowTimestamp);
 
-  if (isMagic) {
-    return overdue ? "magic-overdue" : "magic";
-  }
-
-  return overdue ? "dice-overdue" : "dice";
+  return resolveVariantForVisual(visual, overdue);
 }
 
 type ListRowGameListIconProps = {

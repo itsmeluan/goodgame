@@ -1,4 +1,4 @@
-import { inferGameNameFromLabels } from "@/features/map/gameLabels";
+import { inferGameNameFromMeetup } from "@/features/map/gameLabels";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
 import { formatCompactAddress, formatDateTime, formatDistanceKm, formatShortAddress } from "@/lib/formatting";
 import type { AddressSuggestion } from "@/lib/placeSearch";
@@ -103,7 +103,7 @@ export function MeetupSheetCardContainer({
       distanceLabel={distanceLabel}
       effectiveStatus={effectiveStatus}
       overdue={overdue}
-      gameName={inferGameNameFromLabels([meetup.formatName])}
+      gameName={inferGameNameFromMeetup(meetup)}
       formattedStartsAt={formatDateTime(meetup.startsAt)}
       locationLabel={
         formatShortAddress(meetup.addressLabel || meetup.locationHint) ||

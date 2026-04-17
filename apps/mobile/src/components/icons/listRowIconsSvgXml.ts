@@ -110,3 +110,25 @@ export const ICON_GAME_TYPE_DICE_OVERDUE_SVG_XML = `<!-- Created with Vectornato
 </g>
 </g>
 </svg>`;
+
+/** Placeholder até haver arte final (Yu-Gi-Oh!). */
+export const ICON_GAME_TYPE_YUGIOH_SVG_XML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="100%" height="100%">
+<circle cx="72" cy="72" r="66" fill="#6366f1"/>
+<text x="72" y="94" text-anchor="middle" font-size="56" font-weight="800" fill="#0d1625" font-family="System">Y</text>
+</svg>`;
+
+export const ICON_GAME_TYPE_YUGIOH_OVERDUE_SVG_XML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="100%" height="100%">
+<circle cx="72" cy="72" r="66" fill="#ea4c4c"/>
+<text x="72" y="94" text-anchor="middle" font-size="56" font-weight="800" fill="#ffffff" font-family="System">Y</text>
+</svg>`;
+
+/** Placeholder até haver arte final (Pokémon TCG). */
+export const ICON_GAME_TYPE_POKEMON_SVG_XML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="100%" height="100%">
+<circle cx="72" cy="72" r="66" fill="#ca8a04"/>
+<text x="72" y="94" text-anchor="middle" font-size="56" font-weight="800" fill="#0d1625" font-family="System">P</text>
+</svg>`;
+
+export const ICON_GAME_TYPE_POKEMON_OVERDUE_SVG_XML = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144" width="100%" height="100%">
+<circle cx="72" cy="72" r="66" fill="#ea4c4c"/>
+<text x="72" y="94" text-anchor="middle" font-size="56" font-weight="800" fill="#ffffff" font-family="System">P</text>
+</svg>`;
