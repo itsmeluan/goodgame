@@ -64,7 +64,8 @@ Este `README` passa a funcionar como memória operacional de alto nível do proj
 
 ### Snapshots Git (referência)
 
-- `snapshot/app-2026-04-16` — estado consolidado do app mobile no repositório: mapa (games sheet, balões e coordenadas), stack de sheets com botão de voltar dedicado, chat de meetup com balões do próprio usuário na cor de marca (`palette.ember`) e bloco de participantes/pós-jogo. Use `git checkout snapshot/app-2026-04-16` para inspecionar ou ramificar a partir desse ponto.
+- `snapshot/app-store-resubmit-2026-04-17` — preparação para nova submissão na App Store: ícones e assets de mapa (Magic/Dice, clusters, venues), ícones SVG em listas de jogos/locais, validação de título de meetup alinhada ao banco (4–80 caracteres), ajustes de auth/perfil público e documentação de revisão. Use `git checkout snapshot/app-store-resubmit-2026-04-17` para rollback ou ramificação.
+- `snapshot/app-2026-04-16` — estado consolidado anterior: mapa (games sheet, balões e coordenadas), stack de sheets com botão de voltar dedicado, chat de meetup com balões do próprio usuário na cor de marca (`palette.ember`) e bloco de participantes/pós-jogo.
 
 ## Backend
 
@@ -126,6 +127,16 @@ npm run start:tunnel
 - `cd apps/mobile && npx expo-doctor`
 - `cd apps/mobile && xcodebuild -workspace ios/GoodGame.xcworkspace -scheme GoodGame -configuration Release -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.4' build`
 
+## App Store Connect (revisão e URLs)
+
+Antes de enviar cada build, confira no App Store Connect que **Support URL**, **Privacy Policy URL** e (se usado) **Marketing URL** apontam para páginas HTTPS públicas, sem login, com conteúdo coerente com o app e com o questionário de privacidade da loja. O site estático em `site-public/` é publicado no GitHub Pages; as URLs usadas na documentação de submissão são:
+
+- Suporte: `https://itsmeluan.github.io/good-game-pages/support/`
+- Privacidade: `https://itsmeluan.github.io/good-game-pages/privacy/`
+- Segurança e moderação: `https://itsmeluan.github.io/good-game-pages/safety/`
+
+Se o repositório ou o domínio de Pages mudar, atualize estas URLs no Connect **e** em `docs/good-game-submission-package.html` para não haver divergência. O binário iOS já declara `ITSAppUsesNonExemptEncryption` como `false` e inclui textos de uso para localização e fotos em `Info.plist` (revisar se novas permissões forem adicionadas).
+
 ## Observações importantes
 
 - `react-native-maps` funciona no Expo Go durante desenvolvimento, mas decisões finais de UX/performance devem ser validadas em build nativa.
@@ -138,6 +149,5 @@ npm run start:tunnel
 ## Pontos de atenção atuais
 
 - `apps/mobile/src/features/map/MapHomeScreen.tsx` ainda concentra muita responsabilidade.
-- `apps/mobile/src/features/chat/MeetupChatPreview.tsx` é legado e pode ser removido depois de uma limpeza final.
 - A thread do chat ainda usa `ScrollView`; históricos muito longos merecem atenção.
 - Muitos markers simultâneos e algumas animações do mapa ainda pedem profiling em aparelhos mais modestos.

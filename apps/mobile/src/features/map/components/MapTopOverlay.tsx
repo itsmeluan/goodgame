@@ -120,7 +120,7 @@ export function MapTopOverlay({
         style={[styles.mapBrandWrap, { left: insets.left + spacing.lg }]}
         pointerEvents="none"
       >
-        <GoodGameLogo size="sm" monochrome />
+        <GoodGameLogo size="sm" monochrome variant="map" />
       </View>
 
       {error || refreshing ? (

@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/AppleListNavigation";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { Avatar } from "@/components/Avatar";
+import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { palette, radius, spacing } from "@/theme/tokens";
 import { formatAverageRating, formatRelativeTimestamp, summarizeAvailabilityPeriods } from "@/lib/formatting";
 import type { PublicPlayerProfile } from "@/types/domain";
-import { GlassCard } from "@/components/GlassCard";
 
 type PublicPlayerProfileScreenProps = {
   profile: PublicPlayerProfile | null;
@@ -20,6 +22,10 @@ export function PublicPlayerProfileScreen({
   error,
   actions,
 }: PublicPlayerProfileScreenProps) {
+  const [detailScene, setDetailScene] = useState<
+    { type: "formats"; gameName: string } | { type: "availability" } | null
+  >(null);
+
   if (loading) {
     return (
       <View style={styles.stateWrap}>
@@ -51,143 +57,210 @@ export function PublicPlayerProfileScreen({
   }
 
   const availabilityLabels = summarizeAvailabilityPeriods(profile.availability);
+  const formatRows = profile.formatNames.length ? profile.formatNames : ["Formatos não informados."];
+
+  const rootRoute = {
+    key: "root",
+    content: (
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.heroCard}>
+          <View style={styles.heroIdentityRow}>
+            <View style={styles.heroAvatarWrap}>
+              <AppleGlassSurface
+                pointerEvents="none"
+                variant="dark"
+                intensity="clear"
+                style={styles.heroAvatarSurface}
+              />
+              <Avatar name={profile.displayName} uri={profile.avatarUrl} size={88} />
+            </View>
+            <View style={styles.heroCopy}>
+              <View style={styles.heroNameBlock}>
+                <View style={styles.heroEyebrowRow}>
+                  <Text style={styles.heroEyebrow}>Jogador</Text>
+                  <Text style={styles.heroSeenAtInline}>
+                    {profile.isOnline
+                      ? "online agora"
+                      : profile.lastSeenAt
+                        ? `visto ${formatRelativeTimestamp(profile.lastSeenAt)}`
+                        : ""}
+                  </Text>
+                </View>
+                <Text style={styles.name}>{profile.displayName}</Text>
+                <Text style={styles.handle}>@{profile.handle}</Text>
+              </View>
+              <Text style={styles.heroNeighborhood}>
+                {profile.neighborhood || "Bairro não informado"}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.heroMetaRow}>
+            <StatusPill
+              label={profile.canHost ? "Recebe pessoas" : "Encontro externo"}
+              tone="neutral"
+            />
+            <StatusPill label={formatRelationship(profile.relationshipState)} tone="subtle" />
+          </View>
+
+          {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+        </View>
+
+        <AppleListSection title="Resumo" size="compact">
+          <AppleListGroup>
+            <AppleListRow
+              icon={{ iosName: "star.fill", fallbackName: "grade" }}
+              label="Nota média"
+              trailingValue={formatAverageRating(profile.averageRating)}
+              showChevron={false}
+              size="compact"
+            />
+            <AppleListRow
+              separator
+              icon={{ iosName: "checkmark.seal.fill", fallbackName: "verified" }}
+              label="Avaliações"
+              trailingValue={String(profile.ratingsCount)}
+              showChevron={false}
+              size="compact"
+            />
+            <AppleListRow
+              separator
+              icon={{ iosName: "person.crop.circle.badge.checkmark", fallbackName: "task-alt" }}
+              label="Presenças"
+              trailingValue={String(profile.attendedCount)}
+              showChevron={false}
+              size="compact"
+            />
+            <AppleListRow
+              separator
+              icon={{ iosName: "dice.fill", fallbackName: "casino" }}
+              label="Jogos criados"
+              trailingValue={String(profile.hostedCount)}
+              showChevron={false}
+              size="compact"
+            />
+            <AppleListRow
+              separator
+              icon={{ iosName: "calendar", fallbackName: "calendar-today" }}
+              label="Disponibilidade"
+              onPress={() => setDetailScene({ type: "availability" })}
+              size="compact"
+            />
+          </AppleListGroup>
+        </AppleListSection>
+
+        <ListRowsSection
+          title="Interesses"
+          icon={{ iosName: "gamecontroller.fill", fallbackName: "sports-esports" }}
+          values={profile.gameNames}
+          emptyValue="Interesses não informados."
+          showChevron={profile.gameNames.length > 0}
+          onPressValue={
+            profile.gameNames.length > 0
+              ? (gameName) => setDetailScene({ type: "formats", gameName })
+              : undefined
+          }
+        />
+
+        {actions ? <View style={styles.actionsWrap}>{actions}</View> : null}
+      </ScrollView>
+    ),
+  };
+
+  const routes =
+    detailScene === null
+      ? [rootRoute]
+      : [
+          rootRoute,
+          detailScene.type === "formats"
+            ? {
+                key: `formats:${detailScene.gameName}`,
+                title: detailScene.gameName,
+                subtitle: "Formatos",
+                content: (
+                  <ScrollView
+                    style={styles.scroll}
+                    contentContainerStyle={styles.content}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <ListRowsSection
+                      title="Formatos"
+                      icon={{ iosName: "square.grid.2x2.fill", fallbackName: "grid-view" }}
+                      values={formatRows}
+                      emptyValue="Formatos não informados."
+                    />
+                  </ScrollView>
+                ),
+              }
+            : {
+                key: "availability",
+                title: "Disponibilidade",
+                subtitle: "Horários do jogador",
+                content: (
+                  <ScrollView
+                    style={styles.scroll}
+                    contentContainerStyle={styles.content}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    <ListRowsSection
+                      title="Disponibilidade"
+                      icon={{ iosName: "calendar", fallbackName: "calendar-today" }}
+                      values={availabilityLabels}
+                      emptyValue="Disponibilidade não informada."
+                    />
+                  </ScrollView>
+                ),
+              },
+        ];
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
-      <GlassCard style={styles.heroCard}>
-        <View style={styles.heroIdentityRow}>
-          <View style={styles.heroAvatarWrap}>
-            <AppleGlassSurface
-              pointerEvents="none"
-              variant="dark"
-              intensity="clear"
-              style={styles.heroAvatarSurface}
-            />
-            <Avatar name={profile.displayName} uri={profile.avatarUrl} size={88} />
-          </View>
-          <View style={styles.heroCopy}>
-            <View style={styles.heroNameBlock}>
-              <Text style={styles.name}>{profile.displayName}</Text>
-              <Text style={styles.handle}>@{profile.handle}</Text>
-            </View>
-            <Text style={styles.heroNeighborhood}>
-              {profile.neighborhood || "Bairro não informado"}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.heroMetaRow}>
-          <StatusPill
-            label={
-              profile.isOnline
-                ? "Online agora"
-                : profile.lastSeenAt
-                  ? `Visto ${formatRelativeTimestamp(profile.lastSeenAt)}`
-                  : "Offline"
-            }
-            tone={profile.isOnline ? "accent" : "neutral"}
-          />
-          <StatusPill
-            label={profile.canHost ? "Recebe pessoas" : "Encontro externo"}
-            tone="neutral"
-          />
-          <StatusPill label={formatRelationship(profile.relationshipState)} tone="subtle" />
-        </View>
-
-        {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-      </GlassCard>
-
-      {actions ? <View style={styles.actionsWrap}>{actions}</View> : null}
-
-      <View style={styles.statsGrid}>
-        <MetricCard label="Nota média" value={formatAverageRating(profile.averageRating)} />
-        <MetricCard label="Avaliações" value={String(profile.ratingsCount)} />
-        <MetricCard label="Presenças" value={String(profile.attendedCount)} />
-        <MetricCard label="Jogos criados" value={String(profile.hostedCount)} />
-      </View>
-
-      <Section title="Interesses">
-        <View style={styles.chipsWrap}>
-          {profile.gameNames.length ? (
-            profile.gameNames.map((gameName) => (
-              <InfoChip key={gameName} label={gameName} />
-            ))
-          ) : (
-            <Text style={styles.emptyText}>Interesses não informados.</Text>
-          )}
-        </View>
-      </Section>
-
-      <Section title="Formatos">
-        <View style={styles.chipsWrap}>
-          {profile.formatNames.length ? (
-            profile.formatNames.map((formatName) => (
-              <InfoChip key={formatName} label={formatName} />
-            ))
-          ) : (
-            <Text style={styles.emptyText}>Formatos não informados.</Text>
-          )}
-        </View>
-      </Section>
-
-      <Section title="Disponibilidade">
-        <View style={styles.chipsWrap}>
-          {availabilityLabels.length ? (
-            availabilityLabels.map((label) => <InfoChip key={label} label={label} />)
-          ) : (
-            <Text style={styles.emptyText}>Disponibilidade não informada.</Text>
-          )}
-        </View>
-      </Section>
-    </ScrollView>
+    <SlidingSheetStack
+      routes={routes}
+      onPop={() => setDetailScene(null)}
+      headerVariant="compact"
+      scenePaddingHorizontal={spacing.lg}
+    />
   );
 }
 
-function Section({
+function ListRowsSection({
   title,
-  children,
+  icon,
+  values,
+  emptyValue,
+  showChevron = false,
+  onPressValue,
 }: {
   title: string;
-  children: React.ReactNode;
+  icon: { iosName: "gamecontroller.fill" | "square.grid.2x2.fill" | "calendar"; fallbackName: "sports-esports" | "grid-view" | "calendar-today" };
+  values: string[];
+  emptyValue: string;
+  showChevron?: boolean;
+  onPressValue?: (value: string) => void;
 }) {
-  return (
-    <GlassCard style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
-    </GlassCard>
-  );
-}
+  const rows = values.length ? values : [emptyValue];
+  const interactive = showChevron && Boolean(onPressValue) && values.length > 0;
 
-function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.metricCard}>
-      <AppleGlassSurface
-        pointerEvents="none"
-        variant="dark"
-        intensity="clear"
-        style={styles.metricCardSurface}
-      />
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text style={styles.metricValue}>{value}</Text>
-    </View>
-  );
-}
-
-function InfoChip({ label }: { label: string }) {
-  return (
-    <View style={styles.infoChip}>
-      <AppleGlassSurface
-        pointerEvents="none"
-        variant="dark"
-        intensity="clear"
-        style={styles.infoChipSurface}
-      />
-      <Text style={styles.infoChipLabel}>{label}</Text>
-    </View>
+    <AppleListSection title={title} size="compact">
+      <AppleListGroup>
+        {rows.map((value, index) => (
+          <AppleListRow
+            key={`${title}:${value}:${index}`}
+            icon={icon}
+            label={value}
+            showChevron={interactive}
+            onPress={interactive ? () => onPressValue?.(value) : undefined}
+            separator={index > 0}
+            size="compact"
+          />
+        ))}
+      </AppleListGroup>
+    </AppleListSection>
   );
 }
 
@@ -215,7 +288,14 @@ function StatusPill({
         intensity="clear"
         style={styles.statusPillSurface}
       />
-      <Text style={styles.statusPillLabel}>{label}</Text>
+      <Text
+        style={[
+          styles.statusPillLabel,
+          tone === "accent" ? styles.statusPillAccentLabel : null,
+        ]}
+      >
+        {label}
+      </Text>
     </View>
   );
 }
@@ -242,10 +322,10 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   content: {
-    paddingTop: spacing.lg,
-    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingHorizontal: 0,
     paddingBottom: spacing.xxl,
-    gap: 14,
+    gap: spacing.sm,
   },
   stateWrap: {
     flex: 1,
@@ -253,6 +333,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.xl,
+    backgroundColor: palette.loadingScreen,
   },
   stateTitle: {
     color: palette.sand,
@@ -267,22 +348,20 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   heroCard: {
-    gap: 16,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: "rgba(231,216,188,0.06)",
-    padding: 18,
+    gap: 18,
+    paddingHorizontal: 0,
+    paddingVertical: spacing.xs,
   },
   heroIdentityRow: {
     flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
+    alignItems: "flex-start",
+    gap: spacing.md,
   },
   heroAvatarWrap: {
     borderRadius: 999,
     padding: 3,
     borderWidth: 1,
-    borderColor: "rgba(231,216,188,0.06)",
+    borderColor: "rgba(233,226,215,0.16)",
     overflow: "hidden",
   },
   heroAvatarSurface: {
@@ -292,15 +371,36 @@ const styles = StyleSheet.create({
   heroCopy: {
     flex: 1,
     minWidth: 0,
-    gap: 6,
+    gap: spacing.xs,
   },
   heroNameBlock: {
-    gap: 2,
+    gap: 3,
+  },
+  heroEyebrowRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.sm,
+  },
+  heroEyebrow: {
+    color: palette.pine,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+  },
+  heroSeenAtInline: {
+    color: palette.pine,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: "400",
+    textTransform: "lowercase",
   },
   name: {
     color: palette.sand,
-    fontSize: 26,
-    lineHeight: 31,
+    fontSize: 22,
+    lineHeight: 27,
     fontWeight: "800",
     flexShrink: 1,
   },
@@ -311,8 +411,8 @@ const styles = StyleSheet.create({
   },
   heroNeighborhood: {
     color: palette.mist,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 14,
+    lineHeight: 20,
   },
   heroMetaRow: {
     flexDirection: "row",
@@ -322,32 +422,35 @@ const styles = StyleSheet.create({
   bio: {
     color: palette.mist,
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 22,
     borderTopWidth: 1,
-    borderTopColor: "rgba(231,216,188,0.07)",
+    borderTopColor: "rgba(233,226,215,0.12)",
     paddingTop: spacing.md,
   },
   actionsWrap: {
     gap: 10,
   },
   statusPill: {
-    minHeight: 30,
+    minHeight: 34,
     maxWidth: "100%",
     borderRadius: radius.pill,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
     overflow: "hidden",
   },
   statusPillAccent: {
-    borderColor: "rgba(241,143,92,0.32)",
+    backgroundColor: palette.ember,
+    borderColor: "rgba(17,17,17,0.12)",
   },
   statusPillNeutral: {
-    borderColor: palette.line,
+    backgroundColor: "rgba(7,10,18,0.7)",
+    borderColor: "rgba(233,226,215,0.14)",
   },
   statusPillSubtle: {
-    borderColor: "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(7,10,18,0.42)",
+    borderColor: "rgba(233,226,215,0.1)",
   },
   statusPillSurface: {
     ...StyleSheet.absoluteFillObject,
@@ -359,78 +462,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     textAlign: "center",
   },
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-  metricCard: {
-    width: "48.5%",
-    minHeight: 84,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: "rgba(231,216,188,0.06)",
-    padding: 14,
-    justifyContent: "space-between",
-    overflow: "hidden",
-  },
-  metricCardSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.lg,
-  },
-  metricLabel: {
-    color: palette.pine,
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.8,
-    lineHeight: 14,
-    minHeight: 28,
-  },
-  metricValue: {
-    color: palette.sand,
-    fontSize: 18,
-    fontWeight: "800",
-  },
-  section: {
-    gap: 10,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "rgba(231,216,188,0.06)",
-  },
-  sectionTitle: {
-    color: palette.sand,
-    fontSize: 16,
-    lineHeight: 20,
-    fontWeight: "800",
-  },
-  chipsWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-  },
-  infoChip: {
-    minHeight: 32,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: "rgba(231,216,188,0.07)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.md,
-    overflow: "hidden",
-  },
-  infoChipSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.pill,
-  },
-  infoChipLabel: {
-    color: palette.sand,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  emptyText: {
-    color: palette.mist,
-    fontSize: 14,
-    lineHeight: 20,
+  statusPillAccentLabel: {
+    color: palette.ink,
   },
 });

@@ -40,6 +40,8 @@ import {
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { MapCoordinate } from "@/types/domain";
 
+type MeetupMarkerStyle = "magic" | "dice";
+
 type RawOverlayPin = {
   id: string;
   kind: "meetup" | "venue" | "draft";
@@ -48,6 +50,8 @@ type RawOverlayPin = {
   /** Pins fanned out from the same coordinate — must not merge in screen-space clustering. */
   spreadFromCoincident?: boolean;
   overdue?: boolean;
+  /** Sprite set for meetup pins (Magic vs other games / future dice art). */
+  meetupMarkerStyle?: MeetupMarkerStyle;
   representedMeetupIds?: string[];
   representedVenueIds?: string[];
   calloutContent?: ReactNode;
@@ -99,26 +103,46 @@ const OVERDUE_MEETUP_AFTER_MS = 60 * 60 * 1000;
 const PROJECTED_CLUSTER_ENABLE_AT_ZOOM = 0.038;
 const PROJECTED_CLUSTER_DISABLE_AT_ZOOM = 0.03;
 const MARKER_IMAGE_SOURCES = {
-  meetup: require("../../../assets/map/marker-meetup.png"),
-  meetup2: require("../../../assets/map/marker-meetup-2.png"),
-  meetup3: require("../../../assets/map/marker-meetup-3.png"),
-  meetup4: require("../../../assets/map/marker-meetup-4.png"),
-  meetup5: require("../../../assets/map/marker-meetup-5.png"),
-  meetup6: require("../../../assets/map/marker-meetup-6.png"),
-  meetup7: require("../../../assets/map/marker-meetup-7.png"),
-  meetup8: require("../../../assets/map/marker-meetup-8.png"),
-  meetup9: require("../../../assets/map/marker-meetup-9.png"),
-  meetup9plus: require("../../../assets/map/marker-meetup-9plus.png"),
-  meetupOverdue: require("../../../assets/map/marker-meetup-overdue.png"),
-  meetupOverdue2: require("../../../assets/map/marker-meetup-overdue-2.png"),
-  meetupOverdue3: require("../../../assets/map/marker-meetup-overdue-3.png"),
-  meetupOverdue4: require("../../../assets/map/marker-meetup-overdue-4.png"),
-  meetupOverdue5: require("../../../assets/map/marker-meetup-overdue-5.png"),
-  meetupOverdue6: require("../../../assets/map/marker-meetup-overdue-6.png"),
-  meetupOverdue7: require("../../../assets/map/marker-meetup-overdue-7.png"),
-  meetupOverdue8: require("../../../assets/map/marker-meetup-overdue-8.png"),
-  meetupOverdue9: require("../../../assets/map/marker-meetup-overdue-9.png"),
-  meetupOverdue9plus: require("../../../assets/map/marker-meetup-overdue-9plus.png"),
+  meetupMagic: require("../../../assets/map/marker-meetup-magic.png"),
+  meetupMagic2: require("../../../assets/map/marker-meetup-magic-2.png"),
+  meetupMagic3: require("../../../assets/map/marker-meetup-magic-3.png"),
+  meetupMagic4: require("../../../assets/map/marker-meetup-magic-4.png"),
+  meetupMagic5: require("../../../assets/map/marker-meetup-magic-5.png"),
+  meetupMagic6: require("../../../assets/map/marker-meetup-magic-6.png"),
+  meetupMagic7: require("../../../assets/map/marker-meetup-magic-7.png"),
+  meetupMagic8: require("../../../assets/map/marker-meetup-magic-8.png"),
+  meetupMagic9: require("../../../assets/map/marker-meetup-magic-9.png"),
+  meetupMagic9plus: require("../../../assets/map/marker-meetup-magic-9plus.png"),
+  meetupMagicOverdue: require("../../../assets/map/marker-meetup-magic-overdue.png"),
+  meetupMagicOverdue2: require("../../../assets/map/marker-meetup-magic-overdue-2.png"),
+  meetupMagicOverdue3: require("../../../assets/map/marker-meetup-magic-overdue-3.png"),
+  meetupMagicOverdue4: require("../../../assets/map/marker-meetup-magic-overdue-4.png"),
+  meetupMagicOverdue5: require("../../../assets/map/marker-meetup-magic-overdue-5.png"),
+  meetupMagicOverdue6: require("../../../assets/map/marker-meetup-magic-overdue-6.png"),
+  meetupMagicOverdue7: require("../../../assets/map/marker-meetup-magic-overdue-7.png"),
+  meetupMagicOverdue8: require("../../../assets/map/marker-meetup-magic-overdue-8.png"),
+  meetupMagicOverdue9: require("../../../assets/map/marker-meetup-magic-overdue-9.png"),
+  meetupMagicOverdue9plus: require("../../../assets/map/marker-meetup-magic-overdue-9plus.png"),
+  meetupDice: require("../../../assets/map/marker-meetup-dice.png"),
+  meetupDice2: require("../../../assets/map/marker-meetup-dice-2.png"),
+  meetupDice3: require("../../../assets/map/marker-meetup-dice-3.png"),
+  meetupDice4: require("../../../assets/map/marker-meetup-dice-4.png"),
+  meetupDice5: require("../../../assets/map/marker-meetup-dice-5.png"),
+  meetupDice6: require("../../../assets/map/marker-meetup-dice-6.png"),
+  meetupDice7: require("../../../assets/map/marker-meetup-dice-7.png"),
+  meetupDice8: require("../../../assets/map/marker-meetup-dice-8.png"),
+  meetupDice9: require("../../../assets/map/marker-meetup-dice-9.png"),
+  meetupDice9plus: require("../../../assets/map/marker-meetup-dice-9plus.png"),
+  meetupDiceOverdue: require("../../../assets/map/marker-meetup-dice-overdue.png"),
+  meetupDiceOverdue2: require("../../../assets/map/marker-meetup-dice-overdue-2.png"),
+  meetupDiceOverdue3: require("../../../assets/map/marker-meetup-dice-overdue-3.png"),
+  meetupDiceOverdue4: require("../../../assets/map/marker-meetup-dice-overdue-4.png"),
+  meetupDiceOverdue5: require("../../../assets/map/marker-meetup-dice-overdue-5.png"),
+  meetupDiceOverdue6: require("../../../assets/map/marker-meetup-dice-overdue-6.png"),
+  meetupDiceOverdue7: require("../../../assets/map/marker-meetup-dice-overdue-7.png"),
+  meetupDiceOverdue8: require("../../../assets/map/marker-meetup-dice-overdue-8.png"),
+  meetupDiceOverdue9: require("../../../assets/map/marker-meetup-dice-overdue-9.png"),
+  meetupDiceOverdue9plus: require("../../../assets/map/marker-meetup-dice-overdue-9plus.png"),
   venue: require("../../../assets/map/marker-venue.png"),
   venue2: require("../../../assets/map/marker-venue-2.png"),
   venue3: require("../../../assets/map/marker-venue-3.png"),
@@ -360,6 +384,7 @@ export function InteractiveMap({
             badgeCount: null,
             spreadFromCoincident: true,
             overdue,
+            meetupMarkerStyle: resolveMeetupMarkerStyle(meetup),
             representedMeetupIds: [meetup.id],
             representedVenueIds: [],
             calloutContent: (
@@ -445,6 +470,7 @@ export function InteractiveMap({
             coordinate,
             badgeCount: group.meetupIds.length > 1 ? group.meetupIds.length : null,
             overdue: meetupGroupOverdue,
+            meetupMarkerStyle: resolveMeetupMarkerStyle(primaryMeetup),
             representedMeetupIds: group.meetupIds,
             representedVenueIds: [],
             calloutContent: isMeetupGroupSelected
@@ -554,9 +580,41 @@ export function InteractiveMap({
 
     return null;
   }, [rawOverlayPins, selectedMapGroupKey, selectedMeetupId, selectedVenueId]);
+  const selectedVenueFallbackPin = useMemo<RawOverlayPin | null>(() => {
+    if (!selectedVenueId) {
+      return null;
+    }
+
+    const selectedVenue = venues.find((item) => item.id === selectedVenueId);
+
+    if (!selectedVenue) {
+      return null;
+    }
+
+    return {
+      id: `venue-fallback:${selectedVenue.id}`,
+      kind: "venue",
+      coordinate: { latitude: selectedVenue.lat, longitude: selectedVenue.lng },
+      badgeCount: null,
+      representedMeetupIds: [],
+      representedVenueIds: [selectedVenue.id],
+      calloutContent: (
+        <PinCallout
+          kindLabel="Local"
+          title={selectedVenue.name}
+          distanceLabel={formatDistanceKm(profile.lat, profile.lng, selectedVenue.lat, selectedVenue.lng)}
+          helperText={buildVenueHelperText(selectedVenue)}
+        />
+      ),
+    };
+  }, [profile.lat, profile.lng, selectedVenueId, venues]);
   const selectedRawOverlayPin = useMemo(() => {
     if (selectedPinOverlayKey) {
       return rawOverlayPins.find((item) => item.id === selectedPinOverlayKey) ?? null;
+    }
+
+    if (selectedVenueFallbackPin) {
+      return selectedVenueFallbackPin;
     }
 
     if (pressedOverlayPinId) {
@@ -564,7 +622,7 @@ export function InteractiveMap({
     }
 
     return null;
-  }, [pressedOverlayPinId, rawOverlayPins, selectedPinOverlayKey]);
+  }, [pressedOverlayPinId, rawOverlayPins, selectedPinOverlayKey, selectedVenueFallbackPin]);
   const selectedDisplayedOverlayPin = selectedRawOverlayPin ?? pressedOverlayPinSnapshot;
 
   selectedDisplayedOverlayPinRef.current = selectedDisplayedOverlayPin
@@ -1817,6 +1875,51 @@ function normalizeMarkerBadgeKey(count: number | null) {
   return String(count) as "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
 }
 
+type MeetupBadgeKey = NonNullable<ReturnType<typeof normalizeMarkerBadgeKey>>;
+
+function resolveMeetupStyleMarkerAssetKey({
+  style,
+  overdue,
+  badgeKey,
+}: {
+  style: MeetupMarkerStyle | undefined;
+  overdue: boolean | undefined;
+  badgeKey: MeetupBadgeKey | null;
+}): keyof typeof MARKER_IMAGE_SOURCES {
+  const useMagic = style === "magic";
+  const base = useMagic ? "meetupMagic" : "meetupDice";
+
+  if (overdue) {
+    if (!badgeKey) {
+      return useMagic ? "meetupMagicOverdue" : "meetupDiceOverdue";
+    }
+
+    if (badgeKey === "9plus") {
+      return useMagic ? "meetupMagicOverdue9plus" : "meetupDiceOverdue9plus";
+    }
+
+    return `${base}Overdue${badgeKey}` as keyof typeof MARKER_IMAGE_SOURCES;
+  }
+
+  if (!badgeKey) {
+    return useMagic ? "meetupMagic" : "meetupDice";
+  }
+
+  if (badgeKey === "9plus") {
+    return useMagic ? "meetupMagic9plus" : "meetupDice9plus";
+  }
+
+  return `${base}${badgeKey}` as keyof typeof MARKER_IMAGE_SOURCES;
+}
+
+function resolveMeetupMarkerStyle(
+  meetup: InteractiveMapProps["meetups"][number]
+): MeetupMarkerStyle {
+  const gameNames = inferGameNamesFromLabels([meetup.formatName]);
+
+  return gameNames.includes("Magic: The Gathering") ? "magic" : "dice";
+}
+
 function resolveMarkerImageAssetKey(item: VisibleOverlayPin): keyof typeof MARKER_IMAGE_SOURCES {
   const badgeKey = normalizeMarkerBadgeKey(item.badgeCount);
 
@@ -1840,19 +1943,11 @@ function resolveMarkerImageAssetKey(item: VisibleOverlayPin): keyof typeof MARKE
     return "draft";
   }
 
-  if (item.overdue) {
-    if (!badgeKey) {
-      return "meetupOverdue";
-    }
-
-    return `meetupOverdue${badgeKey}`;
-  }
-
-  if (!badgeKey) {
-    return "meetup";
-  }
-
-  return `meetup${badgeKey}`;
+  return resolveMeetupStyleMarkerAssetKey({
+    style: item.meetupMarkerStyle,
+    overdue: item.overdue,
+    badgeKey,
+  });
 }
 
 function resolveMarkerImageSource(item: VisibleOverlayPin): number {
@@ -2156,6 +2251,9 @@ function areOverlayMarkersEqual(left: OverlayMarkersProps, right: OverlayMarkers
       leftPin.kind !== rightPin.kind ||
       leftPin.badgeCount !== rightPin.badgeCount ||
       Boolean(leftPin.overdue) !== Boolean(rightPin.overdue) ||
+      (leftPin.kind === "meetup" &&
+        rightPin.kind === "meetup" &&
+        leftPin.meetupMarkerStyle !== rightPin.meetupMarkerStyle) ||
       Math.abs(leftPin.coordinate.latitude - rightPin.coordinate.latitude) > 0.0000001 ||
       Math.abs(leftPin.coordinate.longitude - rightPin.coordinate.longitude) > 0.0000001
     ) {

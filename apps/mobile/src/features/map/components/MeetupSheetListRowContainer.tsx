@@ -1,6 +1,10 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { AppleListRow } from "@/components/AppleListNavigation";
+import { AppleListRow, APPLE_LIST_COMPACT_ICON_SIZE } from "@/components/AppleListNavigation";
+import {
+  ListRowGameListIcon,
+  resolveMeetupGameListIconVariant,
+} from "@/components/icons/ListRowGameListIcon";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
 import {
   formatCompactAddress,
@@ -57,12 +61,19 @@ export function MeetupSheetListRowContainer({
       ? styles.badgeLabelAccent
       : styles.badgeLabelDefault;
 
+  const listIconVariant = resolveMeetupGameListIconVariant(meetup, nowTimestamp);
+
   return (
     <AppleListRow
-      icon={{
-        iosName: overdue ? "clock.badge.exclamationmark.fill" : "dice.fill",
-        fallbackName: overdue ? "schedule" : "casino",
-      }}
+      leading={
+        <ListRowGameListIcon
+          variant={listIconVariant}
+          size={APPLE_LIST_COMPACT_ICON_SIZE}
+          accessibilityLabel={
+            overdue ? `${meetup.title}, horário passou` : `${meetup.title}, tipo de jogo`
+          }
+        />
+      }
       label={meetup.title}
       subtitle={[formatDateTime(meetup.startsAt), locationLabel, creatorLabel].filter(Boolean).join("\n")}
       trailingAccessory={

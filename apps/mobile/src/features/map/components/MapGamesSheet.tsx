@@ -7,6 +7,7 @@ import type { MeetupSortOption } from "@/features/map/components/MeetupSortMenuM
 import {
   GamesSheetMeetupsTab,
   type GamesSheetMeetupGroup,
+  type GamesSheetMeetupListItem,
 } from "@/features/map/components/GamesSheetMeetupsTab";
 import { GamesSheetVenuesTab } from "@/features/map/components/GamesSheetVenuesTab";
 import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
@@ -17,7 +18,7 @@ import { screenEdgeGlassBleed } from "@/theme/tokens";
 type ScreenSection = "meetups" | "venues";
 
 export type MapGamesSheetProps<
-  MeetupItem extends { id: string },
+  MeetupItem extends { id: string } & GamesSheetMeetupListItem,
   VenueItem extends { id: string; name: string; neighborhood?: string | null }
 > = {
   onDismissPinCallout?: () => void;
@@ -39,6 +40,8 @@ export type MapGamesSheetProps<
   sectionPanHandlers?: object;
   entityActionSuccess: string | null;
   titleNote: string;
+  /** For game-group list icons (Magic vs dice, overdue). */
+  nowTimestamp: number;
   meetupGroups: GamesSheetMeetupGroup<MeetupItem>[];
   expandedGroupIds: Record<string, boolean>;
   hidePastLabel: string;
@@ -80,7 +83,7 @@ export type MapGamesSheetProps<
 };
 
 export function MapGamesSheet<
-  MeetupItem extends { id: string },
+  MeetupItem extends { id: string } & GamesSheetMeetupListItem,
   VenueItem extends { id: string; name: string; neighborhood?: string | null }
 >({
   onDismissPinCallout,
@@ -102,6 +105,7 @@ export function MapGamesSheet<
   sectionPanHandlers,
   entityActionSuccess,
   titleNote,
+  nowTimestamp,
   meetupGroups,
   expandedGroupIds,
   hidePastLabel,
@@ -192,6 +196,7 @@ export function MapGamesSheet<
               sceneWidth={sheetWidth || undefined}
               titleNote={titleNote}
               bottomPadding={contentBottomPadding}
+              nowTimestamp={nowTimestamp}
               groups={meetupGroups}
               managedMeetupId={managedMeetupId}
               expandedGroupIds={expandedGroupIds}

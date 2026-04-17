@@ -116,6 +116,11 @@ export function AuthScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <View pointerEvents="none" style={styles.backgroundCanvas}>
+        <View style={styles.backgroundGlowOne} />
+        <View style={styles.backgroundGlowTwo} />
+        <View style={styles.backgroundGlowThree} />
+      </View>
       <KeyboardAvoidingView
         behavior={Platform.select({ ios: "padding", default: undefined })}
         style={styles.flex}
@@ -125,71 +130,107 @@ export function AuthScreen() {
           contentContainerStyle={[
             styles.scrollContent,
             compactAuthLayout ? styles.scrollContentCompact : null,
+            isChooserMode ? styles.scrollContentChooser : null,
           ]}
           showsVerticalScrollIndicator={false}
           keyboardOffset={120}
         >
-          <View style={styles.backgroundGlowOne} />
-          <View style={styles.backgroundGlowTwo} />
           <View style={styles.backgroundGrid} />
 
-          <View style={[styles.hero, compactAuthLayout ? styles.heroCompact : null]}>
-            <GoodGameLogo size={compactAuthLayout ? "md" : "lg"} monochrome />
-            <Text style={[styles.title, compactAuthLayout ? styles.titleCompact : null]}>
-              Sua próxima jogada começa aqui
-            </Text>
-            <Text style={[styles.subtitle, compactAuthLayout ? styles.subtitleCompact : null]}>
-              Encontre jogadores, organize partidas e descubra novas partidas para TCG e jogos de
-              tabuleiro.
-            </Text>
-          </View>
-
           {isChooserMode ? (
-            <View style={styles.entryStack}>
-              {env.socialAuthEnabled ? (
-                <>
-                  <EntryButton
-                    icon="language"
-                    label="Continuar com Google"
-                    onPress={() => void handleSocialAuth("google")}
-                    loading={loadingAction === "google"}
-                  />
-                  <EntryButton
-                    icon="apple"
-                    label="Continuar com Apple"
-                    onPress={() => void handleSocialAuth("apple")}
-                    loading={loadingAction === "apple"}
-                    dark
-                  />
-                </>
-              ) : null}
-              <EntryButton
-                icon="mail-outline"
-                label="Entrar com e-mail"
-                onPress={() => {
-                  setError(null);
-                  setMessage(null);
-                  setMode("sign-in");
-                }}
-              />
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setError(null);
-                  setMessage(null);
-                  setMode("sign-up");
-                }}
-                style={({ pressed }) => [
-                  styles.createAccountButton,
-                  pressed ? styles.createAccountButtonPressed : null,
+            <View style={styles.heroChooserRegion}>
+              <View
+                style={[
+                  styles.hero,
+                  compactAuthLayout ? styles.heroCompact : null,
+                  styles.heroChooser,
                 ]}
               >
-                <Text style={styles.createAccountLabel}>Criar conta</Text>
-              </Pressable>
+                <GoodGameLogo size={compactAuthLayout ? "md" : "lg"} monochrome />
+                <Text
+                  style={[styles.title, compactAuthLayout ? styles.titleCompact : null, styles.titleOneLine]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.55}
+                >
+                  Sua próxima jogada começa aqui
+                </Text>
+              </View>
             </View>
           ) : (
-            <GlassCard style={[styles.formCard, compactAuthLayout ? styles.formCardCompact : null]}>
+            <View style={[styles.hero, compactAuthLayout ? styles.heroCompact : null]}>
+              <GoodGameLogo size={compactAuthLayout ? "md" : "lg"} monochrome />
+              <Text
+                style={[styles.title, compactAuthLayout ? styles.titleCompact : null, styles.titleOneLine]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.55}
+              >
+                Sua próxima jogada começa aqui
+              </Text>
+            </View>
+          )}
+
+          {isChooserMode ? (
+            <View style={styles.chooserBottom}>
+              <View style={styles.entryStack}>
+                {env.socialAuthEnabled ? (
+                  <>
+                    <EntryButton
+                      icon="language"
+                      label="Continuar com Google"
+                      onPress={() => void handleSocialAuth("google")}
+                      loading={loadingAction === "google"}
+                    />
+                    <EntryButton
+                      icon="apple"
+                      label="Continuar com Apple"
+                      onPress={() => void handleSocialAuth("apple")}
+                      loading={loadingAction === "apple"}
+                      dark
+                    />
+                  </>
+                ) : null}
+                <EntryButton
+                  icon="mail-outline"
+                  label="Entrar com e-mail"
+                  accent
+                  onPress={() => {
+                    setError(null);
+                    setMessage(null);
+                    setMode("sign-in");
+                  }}
+                />
+
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    triggerHaptic("selection");
+                    setError(null);
+                    setMessage(null);
+                    setMode("sign-up");
+                  }}
+                  style={({ pressed }) => [
+                    styles.createAccountButton,
+                    pressed ? styles.createAccountButtonPressed : null,
+                  ]}
+                >
+                  <Text style={styles.createAccountLabel}>Criar conta</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.footerText}>
+                Localização aproximada, grupos, avisos, amizades e reputação foram pensados
+                para encontros presenciais ficarem mais seguros.
+              </Text>
+            </View>
+          ) : (
+            <GlassCard
+              style={[
+                styles.formCard,
+                compactAuthLayout ? styles.formCardCompact : null,
+                styles.formCardBelowHero,
+              ]}
+            >
               <View style={styles.formHeader}>
                 <View style={styles.formHeaderCopy}>
                   <Text style={styles.sectionTitle}>
@@ -199,13 +240,11 @@ export function AuthScreen() {
                         ? "Criar conta com e-mail"
                         : "Recuperar acesso"}
                   </Text>
-                  <Text style={styles.formSubtitle}>
-                    {mode === "sign-in"
-                      ? "Use seu e-mail e senha para entrar."
-                      : mode === "sign-up"
-                        ? "Depois do cadastro, você confirma os documentos legais na primeira entrada."
-                        : "Digite seu e-mail e enviaremos um link para redefinir sua senha no app."}
-                  </Text>
+                  {mode === "forgot-password" ? (
+                    <Text style={styles.formSubtitle}>
+                      Digite seu e-mail e enviaremos um link para redefinir sua senha no app.
+                    </Text>
+                  ) : null}
                 </View>
                 <Pressable
                   accessibilityRole="button"
@@ -304,7 +343,7 @@ export function AuthScreen() {
                 </Pressable>
               ) : (
                 <Text style={styles.footnote}>
-                  Ao continuar, você verá os{" "}
+                  Ao continuar, você concorda com os{" "}
                   <Text
                     style={styles.linkText}
                     onPress={() => setSelectedDocumentKind("terms_of_service")}
@@ -372,13 +411,6 @@ export function AuthScreen() {
               </View>
             </GlassCard>
           )}
-
-          {isChooserMode ? (
-            <Text style={styles.footerText}>
-              Localização aproximada, grupos, avisos, amizades e reputação foram pensados
-              para encontros presenciais ficarem mais seguros.
-            </Text>
-          ) : null}
         </KeyboardAwareScrollView>
       </KeyboardAvoidingView>
 
@@ -393,6 +425,7 @@ type EntryButtonProps = {
   onPress: () => void;
   loading?: boolean;
   dark?: boolean;
+  accent?: boolean;
 };
 
 function EntryButton({
@@ -401,6 +434,7 @@ function EntryButton({
   onPress,
   loading = false,
   dark = false,
+  accent = false,
 }: EntryButtonProps) {
   const iconConfig =
     icon === "language"
@@ -420,6 +454,7 @@ function EntryButton({
       style={({ pressed }) => [
         styles.entryButton,
         dark ? styles.entryButtonDark : null,
+        accent ? styles.entryButtonAccent : null,
         loading ? styles.entryButtonLoading : null,
         pressed ? styles.entryButtonPressed : null,
       ]}
@@ -430,7 +465,13 @@ function EntryButton({
         size={22}
         color={dark ? "#F8F8F8" : palette.ink}
       />
-      <Text style={[styles.entryButtonLabel, dark ? styles.entryButtonLabelDark : null]}>
+      <Text
+        style={[
+          styles.entryButtonLabel,
+          dark ? styles.entryButtonLabelDark : null,
+          accent ? styles.entryButtonLabelAccent : null,
+        ]}
+      >
         {loading ? "Abrindo..." : label}
       </Text>
     </Pressable>
@@ -448,10 +489,14 @@ function toMessage(error: unknown) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: "#040F21",
   },
   flex: {
     flex: 1,
+  },
+  backgroundCanvas: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: "visible",
   },
   scrollContent: {
     flexGrow: 1,
@@ -466,29 +511,58 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     justifyContent: "flex-start",
   },
+  /** Chooser: hero vertically centered above bottom actions; buttons stay low. */
+  scrollContentChooser: {
+    justifyContent: "flex-start",
+    paddingBottom: spacing.md,
+    gap: 0,
+  },
+  heroChooserRegion: {
+    flexGrow: 1,
+    flexShrink: 1,
+    justifyContent: "center",
+    minHeight: 0,
+    width: "100%",
+  },
+  heroChooser: {
+    paddingTop: 0,
+  },
+  chooserBottom: {
+    gap: spacing.md,
+    paddingBottom: spacing.xs,
+  },
   backgroundGlowOne: {
     position: "absolute",
-    top: -20,
-    right: -60,
-    width: 220,
-    height: 220,
-    borderRadius: 999,
-    backgroundColor: "rgba(241,143,92,0.12)",
-  },
-  backgroundGlowTwo: {
-    position: "absolute",
-    bottom: 30,
-    left: -70,
+    top: -34,
+    right: -76,
     width: 280,
     height: 280,
     borderRadius: 999,
-    backgroundColor: "rgba(54,54,54,0.18)",
+    backgroundColor: "rgba(241,143,92,0.2)",
+  },
+  backgroundGlowTwo: {
+    position: "absolute",
+    bottom: -24,
+    left: -98,
+    width: 320,
+    height: 320,
+    borderRadius: 999,
+    backgroundColor: "rgba(34,58,46,0.24)",
+  },
+  backgroundGlowThree: {
+    position: "absolute",
+    top: "36%",
+    left: "58%",
+    width: 220,
+    height: 220,
+    borderRadius: 999,
+    backgroundColor: "rgba(15,34,48,0.22)",
   },
   backgroundGrid: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.08,
+    opacity: 0.11,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.14)",
+    borderColor: "rgba(233,226,215,0.16)",
     borderRadius: radius.lg,
     transform: [{ rotate: "-3deg" }],
   },
@@ -503,26 +577,18 @@ const styles = StyleSheet.create({
   },
   title: {
     color: palette.sand,
-    fontSize: 31,
-    lineHeight: 36,
+    fontSize: 26,
+    lineHeight: 30,
     fontWeight: "800",
     textAlign: "center",
   },
   titleCompact: {
-    fontSize: 26,
-    lineHeight: 31,
+    fontSize: 22,
+    lineHeight: 26,
   },
-  subtitle: {
-    color: palette.mist,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: "center",
-    maxWidth: 440,
-  },
-  subtitleCompact: {
-    fontSize: 14,
-    lineHeight: 20,
-    maxWidth: 360,
+  titleOneLine: {
+    alignSelf: "stretch",
+    width: "100%",
   },
   entryStack: {
     gap: spacing.sm,
@@ -543,6 +609,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(18,22,28,0.82)",
     borderColor: "rgba(231,216,188,0.12)",
   },
+  entryButtonAccent: {
+    backgroundColor: palette.ember,
+    borderColor: "rgba(17,17,17,0.12)",
+  },
   entryButtonLoading: {
     opacity: 0.85,
   },
@@ -557,18 +627,28 @@ const styles = StyleSheet.create({
   entryButtonLabelDark: {
     color: "#F8F8F8",
   },
+  entryButtonLabelAccent: {
+    color: palette.ink,
+  },
   createAccountButton: {
-    alignSelf: "center",
-    paddingVertical: spacing.sm,
+    alignSelf: "stretch",
+    minHeight: 52,
+    borderRadius: radius.pill,
+    backgroundColor: "#040F21",
     paddingHorizontal: spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(148, 163, 184, 0.38)",
   },
   createAccountButtonPressed: {
-    opacity: 0.72,
+    opacity: 0.88,
+    transform: [{ scale: 0.985 }],
   },
   createAccountLabel: {
-    color: palette.pine,
-    fontSize: 14,
-    fontWeight: "700",
+    color: palette.sand,
+    fontSize: 15,
+    fontWeight: "800",
   },
   formCard: {
     borderRadius: radius.lg,
@@ -576,6 +656,10 @@ const styles = StyleSheet.create({
     borderColor: palette.line,
     padding: spacing.lg,
     gap: spacing.md,
+  },
+  /** Extra space under headline; keeps hero (logo + title) position, pushes form card down. */
+  formCardBelowHero: {
+    marginTop: spacing.xl,
   },
   formCardCompact: {
     padding: spacing.md,

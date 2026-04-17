@@ -25,6 +25,7 @@ type TextFieldProps = {
   density?: "default" | "compact";
   /** Default gray label; `light` uses sand for dark sheet forms. */
   labelTone?: "default" | "light";
+  maxLength?: number;
 };
 
 export function TextField({
@@ -39,6 +40,7 @@ export function TextField({
   onFocus,
   density = "default",
   labelTone = "default",
+  maxLength,
 }: TextFieldProps) {
   const { inputRef, handleFocus } = useKeyboardAwareInputFocus(multiline ? 148 : 110);
 
@@ -69,6 +71,7 @@ export function TextField({
           }}
           style={[styles.input, multiline && styles.multiline]}
           allowFontScaling
+          maxLength={maxLength}
           {...(Platform.OS === "android" ? { includeFontPadding: false } : null)}
         />
       </View>

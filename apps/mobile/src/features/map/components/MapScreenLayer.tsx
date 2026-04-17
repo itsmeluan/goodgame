@@ -6,13 +6,16 @@ import type { MeetupSortOption } from "@/features/map/components/MeetupSortMenuM
 import { InteractiveMap } from "@/features/map/InteractiveMap";
 import { MapTopOverlay } from "@/features/map/components/MapTopOverlay";
 import { styles } from "@/features/map/MapHomeScreen.styles";
-import { type GamesSheetMeetupGroup } from "@/features/map/components/GamesSheetMeetupsTab";
+import {
+  type GamesSheetMeetupGroup,
+  type GamesSheetMeetupListItem,
+} from "@/features/map/components/GamesSheetMeetupsTab";
 import type { MeetupSortMode } from "@/features/map/mapHelpers";
 
 type ScreenSection = "meetups" | "venues";
 
 export type MapScreenLayerProps<
-  MeetupItem extends { id: string },
+  MeetupItem extends { id: string } & GamesSheetMeetupListItem,
   VenueItem extends { id: string; name: string; neighborhood?: string | null }
 > = {
   active: boolean;
@@ -54,6 +57,7 @@ export type MapScreenLayerProps<
     sectionPanHandlers?: object;
     entityActionSuccess: string | null;
     titleNote: string;
+    nowTimestamp: number;
     meetupGroups: GamesSheetMeetupGroup<MeetupItem>[];
     expandedGroupIds: Record<string, boolean>;
     hidePastLabel: string;
@@ -93,7 +97,7 @@ export type MapScreenLayerProps<
 };
 
 export function MapScreenLayer<
-  MeetupItem extends { id: string },
+  MeetupItem extends { id: string } & GamesSheetMeetupListItem,
   VenueItem extends { id: string; name: string; neighborhood?: string | null }
 >({
   active,

@@ -32,12 +32,12 @@
 
 ## O que ainda falta antes de publicar
 
-- ícone final do app, splash, screenshots e texto das lojas;
+- ícone final do app, splash, screenshots e texto das lojas (para uma nova versão, revisar se assets ainda representam o produto);
 - rodada forte de QA em build nativa;
 - contas de review prontas e confirmadas;
-- revisão final dos campos do App Store Connect;
+- revisão final dos campos do App Store Connect (URLs de suporte e privacidade HTTPS, questionário de privacidade alinhado ao app);
 - testes com duas contas reais em iOS;
-- archive/upload final do app principal no Xcode.
+- archive/upload final do app principal no Xcode ou via EAS Submit.
 
 ## Dependências externas obrigatórias
 
@@ -125,4 +125,11 @@ Ainda não está em ponto ideal para loja pública sem:
 - validar e ligar push remoto fim a fim;
 - configurar Sentry e PostHog com chaves de produção;
 - continuar o desmembramento de `MapHomeScreen.tsx` em subfeatures menores;
-- remover ou consolidar componentes legados como `MeetupChatPreview.tsx`;
+
+## Checklist rápido Apple (revisão de binário)
+
+- **Permissões**: cada chave em `Info.plist` com texto claro em português; não pedir permissão antes do contexto de uso.
+- **Criptografia**: `ITSAppUsesNonExemptEncryption` coerente com o que o app faz (hoje `false` no projeto nativo).
+- **Conta de demonstração**: se o app exigir login, fornecer credenciais nas notas de revisão e garantir que o backend aceite o fluxo.
+- **Conteúdo gerado por usuários**: moderação e denúncia acessíveis (o app já expõe denúncia e bloqueio); URL de segurança pública alinhada ao Connect.
+- **Rastreamento**: sem ATT, não rastrear entre apps/sites de terceiros sem consentimento; se PostHog/Sentry forem configurados, refletir no questionário de privacidade da loja.

@@ -99,9 +99,6 @@ O projeto está organizado em duas frentes:
 - `apps/mobile/src/features/chat/MeetupParticipantsBlock.tsx`
   Bloco de participantes, presença e avaliação pós-partida reutilizável no chat.
 
-- `apps/mobile/src/features/chat/MeetupChatPreview.tsx`
-  Componente legado do chat antigo. Pode ser removido depois de uma rodada final de limpeza.
-
 ### Localização
 
 - `apps/mobile/src/features/location/LocationPickerMap.native.tsx`
@@ -182,5 +179,4 @@ O projeto está organizado em duas frentes:
 ## Pontos de atenção
 
 - `MapHomeScreen.tsx` ainda concentra muita lógica; um refactor futuro pode quebrar essa tela em subfeatures menores.
-- `MeetupChatPreview.tsx` é legado.
 - Os dados fictícios são apenas para preview visual; ações reais continuam vindo do Supabase.

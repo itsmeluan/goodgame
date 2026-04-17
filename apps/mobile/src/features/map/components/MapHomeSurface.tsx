@@ -7,10 +7,11 @@ import {
   MapScreenLayer,
   type MapScreenLayerProps,
 } from "@/features/map/components/MapScreenLayer";
+import type { GamesSheetMeetupListItem } from "@/features/map/components/GamesSheetMeetupsTab";
 import { styles } from "@/features/map/MapHomeScreen.styles";
 
 type MapHomeSurfaceProps<
-  MeetupItem extends { id: string },
+  MeetupItem extends { id: string } & GamesSheetMeetupListItem,
   VenueItem extends { id: string; name: string; neighborhood?: string | null },
 > = {
   screenLayerProps: MapScreenLayerProps<MeetupItem, VenueItem>;
@@ -20,7 +21,7 @@ type MapHomeSurfaceProps<
 };
 
 export function MapHomeSurface<
-  MeetupItem extends { id: string },
+  MeetupItem extends { id: string } & GamesSheetMeetupListItem,
   VenueItem extends { id: string; name: string; neighborhood?: string | null },
 >({
   screenLayerProps,

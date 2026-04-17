@@ -1,4 +1,6 @@
 export const palette = {
+  /** Full-screen loading (app boot, map prep, profile fetch, etc.). */
+  loadingScreen: "#0D162B",
   /** Opaque navy for map pages + chat (matches former pageSafeArea + blue wash, no transparency). */
   pageChrome: "#0D161F",
   /** Full-opacity chrome matching the Novo jogo sheet base (rgb 12,14,20); use under page glass so the tone matches that sheet. */

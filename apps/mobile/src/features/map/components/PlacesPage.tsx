@@ -2,11 +2,13 @@ import { useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
+  APPLE_LIST_COMPACT_ICON_SIZE,
   APPLE_LIST_COMPACT_TEXT_INSET,
   AppleListGroup,
   AppleListRow,
   AppleListSection,
 } from "@/components/AppleListNavigation";
+import { ListRowGameListIcon } from "@/components/icons/ListRowGameListIcon";
 import { GlassCard } from "@/components/GlassCard";
 import { ChoiceChip } from "@/components/ChoiceChip";
 import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
@@ -222,7 +224,13 @@ export function PlacesPage({
                     return (
                       <AppleListRow
                         key={venue.id}
-                        icon={{ iosName: "mappin.circle.fill", fallbackName: "place" }}
+                        leading={
+                          <ListRowGameListIcon
+                            variant="venue"
+                            size={APPLE_LIST_COMPACT_ICON_SIZE}
+                            accessibilityLabel={`Local: ${venue.name}`}
+                          />
+                        }
                         label={venue.name}
                         subtitle={subtitle}
                         onPress={() => pushRoute(`venue:${venue.id}`)}
@@ -363,7 +371,13 @@ export function PlacesPage({
                     {venueSuggestions.map((suggestion, index) => (
                       <AppleListRow
                         key={suggestion.id}
-                        icon={{ iosName: "building.2.crop.circle.fill", fallbackName: "place" }}
+                        leading={
+                          <ListRowGameListIcon
+                            variant="venue"
+                            size={APPLE_LIST_COMPACT_ICON_SIZE}
+                            accessibilityLabel={`Sugestão de local: ${suggestion.name}`}
+                          />
+                        }
                         label={suggestion.name}
                         subtitle={[
                           `${formatVenueKind(suggestion.kind)} · ${suggestion.neighborhood || "Sem bairro"}`,

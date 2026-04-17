@@ -6,8 +6,13 @@ import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import {
   AppleListGroup,
   AppleListRow,
+  APPLE_LIST_COMPACT_ICON_SIZE,
 } from "@/components/AppleListNavigation";
 import { AppIcon } from "@/components/AppIcon";
+import {
+  ListRowGameListIcon,
+  resolveGameGroupListIconVariant,
+} from "@/components/icons/ListRowGameListIcon";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { VirtualizedListBoundary } from "@/components/VirtualizedListBoundary";
 import {
@@ -15,19 +20,29 @@ import {
   type MeetupSortOption,
 } from "@/features/map/components/MeetupSortMenuModal";
 import type { MeetupSortMode } from "@/features/map/mapHelpers";
+import type { MeetupPost, MeetupStatus } from "@/types/domain";
 import { palette, radius, sheetContentGutter, spacing } from "@/theme/tokens";
 
-export type GamesSheetMeetupGroup<Item extends { id: string }> = {
+/** Fields required to pick Magic vs dice list icons and overdue state. */
+export type GamesSheetMeetupListItem = {
+  id: string;
+  startsAt: string;
+  status: MeetupStatus;
+  formatName: string;
+};
+
+export type GamesSheetMeetupGroup<Item extends GamesSheetMeetupListItem = MeetupPost> = {
   id: string;
   label: string;
   meetups: Item[];
 };
 
-type GamesSheetMeetupsTabProps<Item extends { id: string }> = {
+type GamesSheetMeetupsTabProps<Item extends GamesSheetMeetupListItem> = {
   onDismissPinCallout?: () => void;
   sceneWidth?: number;
   titleNote: string;
   bottomPadding: number;
+  nowTimestamp: number;
   groups: GamesSheetMeetupGroup<Item>[];
   managedMeetupId: string | null;
   expandedGroupIds: Record<string, boolean>;
@@ -86,11 +101,12 @@ type MeetupRoute =
       meetupId: string;
     };
 
-export function GamesSheetMeetupsTab<Item extends { id: string }>({
+export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
   onDismissPinCallout,
   sceneWidth,
   titleNote,
   bottomPadding,
+  nowTimestamp,
   groups,
   managedMeetupId,
   expandedGroupIds: _expandedGroupIds,
@@ -332,19 +348,33 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
           </View>
           {visibleGroups.length ? (
             <AppleListGroup>
-              {visibleGroups.map((group, index) => (
-                <AppleListRow
-                  key={group.id}
-                  icon={{ iosName: "dice.fill", fallbackName: "casino" }}
-                  label={group.label}
-                  subtitle={`${group.meetups.length} visíve${group.meetups.length === 1 ? "l" : "is"}`}
-                  trailingValue={String(group.meetups.length)}
-                  onPress={() => pushGroupRoute(group.id)}
-                  separator={index > 0}
-                  tone="accent"
-                  size="compact"
-                />
-              ))}
+              {visibleGroups.map((group, index) => {
+                const iconVariant = resolveGameGroupListIconVariant(group, nowTimestamp);
+
+                return (
+                  <AppleListRow
+                    key={group.id}
+                    leading={
+                      <ListRowGameListIcon
+                        variant={iconVariant}
+                        size={APPLE_LIST_COMPACT_ICON_SIZE}
+                        accessibilityLabel={
+                          iconVariant === "magic-overdue" || iconVariant === "dice-overdue"
+                            ? `${group.label}, jogos em atraso`
+                            : group.label
+                        }
+                      />
+                    }
+                    label={group.label}
+                    subtitle={`${group.meetups.length} visíve${group.meetups.length === 1 ? "l" : "is"}`}
+                    trailingValue={String(group.meetups.length)}
+                    onPress={() => pushGroupRoute(group.id)}
+                    separator={index > 0}
+                    tone="accent"
+                    size="compact"
+                  />
+                );
+              })}
             </AppleListGroup>
           ) : (
             emptyState

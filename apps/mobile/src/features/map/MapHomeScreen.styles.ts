@@ -9,7 +9,7 @@ export const styles = StyleSheet.create({
   },
   loadingSafeArea: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: palette.loadingScreen,
   },
   loadingState: {
     flex: 1,

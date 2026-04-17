@@ -48,6 +48,39 @@ export function PlayerProfilePage({
         actions={
           profile ? (
             <View style={styles.actions}>
+              <GlassCard style={styles.safetyCard}>
+                <AppleGlassSurface
+                  pointerEvents="none"
+                  variant="dark"
+                  intensity="clear"
+                  style={styles.safetyCardSurface}
+                />
+                <Text style={styles.safetyTitle}>Segurança</Text>
+                <Text style={styles.safetyBody}>
+                  Se algo te incomodou, você pode denunciar ou bloquear este jogador.
+                </Text>
+                <View style={styles.dualActions}>
+                  <View style={styles.rowActionCell}>
+                    <PrimaryButton
+                      label="Denunciar"
+                      onPress={() => onReportUser(profile)}
+                      tone="dangerGhost"
+                      size="compact"
+                      loading={safetyActionId === `report:${profile.userId}`}
+                    />
+                  </View>
+                  <View style={styles.rowActionCell}>
+                    <PrimaryButton
+                      label="Bloquear"
+                      onPress={() => onBlockUser(profile)}
+                      tone="ghost"
+                      size="compact"
+                      loading={safetyActionId === `block:${profile.userId}`}
+                    />
+                  </View>
+                </View>
+              </GlassCard>
+
               {profile.relationshipState === "none" ? (
                 <PrimaryButton
                   label="Adicionar amigo"
@@ -123,39 +156,6 @@ export function PlayerProfilePage({
                   loading={friendActionId === profile.userId}
                 />
               )}
-
-              <GlassCard style={styles.safetyCard}>
-                <AppleGlassSurface
-                  pointerEvents="none"
-                  variant="dark"
-                  intensity="clear"
-                  style={styles.safetyCardSurface}
-                />
-                <Text style={styles.safetyTitle}>Segurança</Text>
-                <Text style={styles.safetyBody}>
-                  Se algo te incomodou, você pode denunciar ou bloquear este jogador.
-                </Text>
-                <View style={styles.dualActions}>
-                  <View style={styles.rowActionCell}>
-                    <PrimaryButton
-                      label="Denunciar"
-                      onPress={() => onReportUser(profile)}
-                      tone="dangerGhost"
-                      size="compact"
-                      loading={safetyActionId === `report:${profile.userId}`}
-                    />
-                  </View>
-                  <View style={styles.rowActionCell}>
-                    <PrimaryButton
-                      label="Bloquear"
-                      onPress={() => onBlockUser(profile)}
-                      tone="ghost"
-                      size="compact"
-                      loading={safetyActionId === `block:${profile.userId}`}
-                    />
-                  </View>
-                </View>
-              </GlassCard>
             </View>
           ) : null
         }
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   actions: {
-    gap: 10,
+    gap: spacing.md,
   },
   dualActions: {
     flexDirection: "row",
@@ -180,25 +180,27 @@ const styles = StyleSheet.create({
   },
   safetyCard: {
     overflow: "hidden",
-    gap: 10,
-    padding: spacing.md,
-    borderRadius: 22,
+    gap: spacing.sm,
+    padding: spacing.lg,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: "rgba(231,216,188,0.06)",
+    borderColor: "rgba(233,226,215,0.1)",
   },
   safetyCardSurface: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 20,
   },
   safetyTitle: {
-    color: palette.sand,
-    fontSize: 14,
-    lineHeight: 18,
+    color: palette.pine,
+    fontSize: 12,
+    lineHeight: 15,
     fontWeight: "700",
+    letterSpacing: 1,
+    textTransform: "uppercase",
   },
   safetyBody: {
     color: palette.mist,
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

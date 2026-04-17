@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { AppleListRow } from "@/components/AppleListNavigation";
+import { AppleListRow, APPLE_LIST_COMPACT_ICON_SIZE } from "@/components/AppleListNavigation";
+import { ListRowGameListIcon } from "@/components/icons/ListRowGameListIcon";
 import {
   formatCompactAddress,
   formatDistanceKm,
@@ -41,7 +42,13 @@ export function VenueSheetListRowContainer({
 
   return (
     <AppleListRow
-      icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
+      leading={
+        <ListRowGameListIcon
+          variant="venue"
+          size={APPLE_LIST_COMPACT_ICON_SIZE}
+          accessibilityLabel={`Local: ${venue.name}`}
+        />
+      }
       label={venue.name}
       subtitle={subtitle}
       trailingAccessory={

@@ -62,6 +62,7 @@ export function MapPageHeader({
   const mapAlignedGutter =
     pageScreen === "friends" ||
     pageScreen === "account" ||
+    pageScreen === "player" ||
     pageScreen === "chats" ||
     pageScreen === "alerts" ||
     pageScreen === "history"
@@ -70,6 +71,7 @@ export function MapPageHeader({
   const showPageHeaderHandle =
     pageScreen !== "friends" &&
     pageScreen !== "account" &&
+    pageScreen !== "player" &&
     pageScreen !== "chats" &&
     pageScreen !== "alerts" &&
     pageScreen !== "history";

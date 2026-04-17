@@ -167,6 +167,9 @@ type MapHomeScreenProps = {
 // O backend ainda exige um smallint entre 2 e 12, mas a capacidade não é mais
 // exposta ao usuário nem usada para limitar entrada na partida.
 const DEFAULT_MEETUP_CAPACITY = 12;
+/** Matches `meetup_posts.title` check constraint in the database. */
+const MEETUP_TITLE_MIN_LENGTH = 4;
+const MEETUP_TITLE_MAX_LENGTH = 80;
 
 type AppScreen =
   | "map"
@@ -2918,8 +2921,18 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
         throw new Error("Selecione um local cadastrado ou pesquise um endereço para o jogo.");
       }
 
+      const trimmedMeetupTitle = meetupTitle.trim();
+      if (trimmedMeetupTitle.length < MEETUP_TITLE_MIN_LENGTH) {
+        throw new Error(
+          `O título precisa ter pelo menos ${MEETUP_TITLE_MIN_LENGTH} caracteres. Acrescente um pouco mais de contexto (ex.: "EDH casual na praça").`
+        );
+      }
+      if (trimmedMeetupTitle.length > MEETUP_TITLE_MAX_LENGTH) {
+        throw new Error(`O título pode ter no máximo ${MEETUP_TITLE_MAX_LENGTH} caracteres.`);
+      }
+
       const createdMeetupId = await createMeetup({
-        title: meetupTitle,
+        title: trimmedMeetupTitle,
         description: meetupDescription,
         formatId: selectedFormatId,
         hostMode: resolvedHostMode,
@@ -4789,6 +4802,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       sectionPanHandlers: gamesSheetSectionPanResponder.panHandlers,
       entityActionSuccess,
       titleNote: sectionDistanceReference,
+      nowTimestamp,
       meetupGroups: orderedGameGroups,
       expandedGroupIds: expandedGameGroups,
       hidePastLabel: hidePastMeetups ? "Mostrar jogos passados" : "Ocultar jogos passados",
@@ -5312,7 +5326,11 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       errorMessage: composerError,
       onClose: () => closeComposer(),
       creatingMeetup,
-      publishDisabled: !selectedComposerGameId || !meetupTitle.trim() || !selectedFormatId,
+      publishDisabled:
+        !selectedComposerGameId ||
+        !selectedFormatId ||
+        meetupTitle.trim().length < MEETUP_TITLE_MIN_LENGTH ||
+        meetupTitle.trim().length > MEETUP_TITLE_MAX_LENGTH,
       onPublish: () => void handleCreateMeetup(),
       calendarOpen,
       calendarMonthLabel: formatCalendarMonthLabel(calendarMonthCursor),

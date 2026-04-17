@@ -339,7 +339,7 @@ function isProfileIncomplete(profile: PlayerProfile | null) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: palette.loadingScreen,
   },
   loadingState: {
     flex: 1,

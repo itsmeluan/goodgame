@@ -22,7 +22,12 @@ import { triggerHaptic } from "@/lib/haptics";
 import { meetupSheetEdgePadding, palette, screenEdgeGlassBleed, spacing } from "@/theme/tokens";
 import type { CatalogFormat, VenueCard } from "@/types/domain";
 
-import { AppleListGroup, AppleListRow } from "@/components/AppleListNavigation";
+import {
+  AppleListGroup,
+  AppleListRow,
+  APPLE_LIST_COMPACT_ICON_SIZE,
+} from "@/components/AppleListNavigation";
+import { ListRowGameListIcon } from "@/components/icons/ListRowGameListIcon";
 
 type GameOption = {
   id: string;
@@ -234,7 +239,13 @@ export function NewMeetupComposerSheet({
           ) : null}
 
           <SectionBlock title="Detalhes">
-            <TextField label="Título" value={meetupTitle} onChangeText={onChangeMeetupTitle} placeholder="Nome da partida" />
+            <TextField
+              label="Título"
+              value={meetupTitle}
+              onChangeText={onChangeMeetupTitle}
+              placeholder="Nome da partida (mín. 4 caracteres)"
+              maxLength={80}
+            />
             <TextField
               label="Descrição"
               value={meetupDescription}
@@ -305,7 +316,13 @@ export function NewMeetupComposerSheet({
                   <AppleListRow
                     key={venue.id}
                     separator
-                    icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
+                    leading={
+                      <ListRowGameListIcon
+                        variant="venue"
+                        size={APPLE_LIST_COMPACT_ICON_SIZE}
+                        accessibilityLabel={`Local: ${venue.name}`}
+                      />
+                    }
                     label={venue.name}
                     subtitle={venue.neighborhood ?? undefined}
                     onPress={() => {

@@ -9,7 +9,6 @@ struct MarkerPalette {
 }
 
 enum MarkerGlyph {
-  case meetup
   case venue
   case cluster
   case draft
@@ -29,22 +28,6 @@ let badgeRect = NSRect(x: s(55), y: s(55), width: s(28), height: s(28))
 let borderColor = NSColor(calibratedWhite: 1, alpha: 0.2)
 let innerRingColor = NSColor(calibratedWhite: 1, alpha: 0.08)
 let shadowColor = NSColor(calibratedWhite: 0, alpha: 0.18)
-
-let meetupPalette = MarkerPalette(
-  fill: NSColor(calibratedRed: 244 / 255, green: 161 / 255, blue: 112 / 255, alpha: 1),
-  glyph: NSColor(calibratedWhite: 0.11, alpha: 1),
-  badgeFill: NSColor(calibratedWhite: 0.09, alpha: 1),
-  badgeStroke: NSColor(calibratedWhite: 0.94, alpha: 0.18),
-  badgeText: NSColor(calibratedWhite: 0.98, alpha: 1)
-)
-
-let overduePalette = MarkerPalette(
-  fill: NSColor(calibratedRed: 0.87, green: 0.5, blue: 0.53, alpha: 1),
-  glyph: NSColor(calibratedWhite: 0.98, alpha: 1),
-  badgeFill: NSColor(calibratedWhite: 0.18, alpha: 1),
-  badgeStroke: NSColor(calibratedWhite: 0.94, alpha: 0.18),
-  badgeText: NSColor(calibratedWhite: 0.98, alpha: 1)
-)
 
 let venuePalette = MarkerPalette(
   fill: NSColor(calibratedRed: 0.31, green: 0.35, blue: 0.38, alpha: 1),
@@ -93,38 +76,6 @@ func drawBaseCircle(_ palette: MarkerPalette) {
   let innerRingPath = NSBezierPath(ovalIn: circleRect.insetBy(dx: s(3.5), dy: s(3.5)))
   innerRingPath.lineWidth = s(1.2)
   innerRingPath.stroke()
-}
-
-func drawMeetupGlyph(color: NSColor) {
-  color.setStroke()
-  color.setFill()
-
-  let dieRect = NSRect(x: s(35), y: s(35), width: s(26), height: s(26))
-  let diePath = NSBezierPath(roundedRect: dieRect, xRadius: s(5), yRadius: s(5))
-  diePath.lineWidth = s(2.6)
-  diePath.stroke()
-
-  let dotSize: CGFloat = s(5)
-  let offset: CGFloat = s(6.5)
-  let center = NSPoint(x: dieRect.midX, y: dieRect.midY)
-  let centers = [
-    NSPoint(x: center.x - offset, y: center.y + offset),
-    NSPoint(x: center.x + offset, y: center.y + offset),
-    center,
-    NSPoint(x: center.x - offset, y: center.y - offset),
-    NSPoint(x: center.x + offset, y: center.y - offset),
-  ]
-
-  centers.forEach { center in
-    NSBezierPath(
-      ovalIn: NSRect(
-        x: center.x - dotSize / 2,
-        y: center.y - dotSize / 2,
-        width: dotSize,
-        height: dotSize
-      )
-    ).fill()
-  }
 }
 
 func drawVenueGlyph(color: NSColor) {
@@ -276,8 +227,6 @@ func buildMarkerImage(
   drawBaseCircle(palette)
 
   switch glyph {
-  case .meetup:
-    drawMeetupGlyph(color: palette.glyph)
   case .venue:
     drawVenueGlyph(color: palette.glyph)
   case .cluster:
@@ -341,8 +290,7 @@ func generateMarkerSet(prefix: String, glyph: MarkerGlyph, palette: MarkerPalett
 }
 
 try FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
-try generateMarkerSet(prefix: "marker-meetup", glyph: .meetup, palette: meetupPalette)
-try generateMarkerSet(prefix: "marker-meetup-overdue", glyph: .meetup, palette: overduePalette)
+// Meetup pins on the map use exported PNGs (marker-meetup-magic*, marker-meetup-dice*), not this procedural set.
 try generateMarkerSet(prefix: "marker-venue", glyph: .venue, palette: venuePalette)
 try generateMarkerSet(prefix: "marker-cluster", glyph: .cluster, palette: clusterPalette)
 try save(buildMarkerImage(glyph: .draft, palette: draftPalette, badgeLabel: nil), to: "marker-draft.png")
