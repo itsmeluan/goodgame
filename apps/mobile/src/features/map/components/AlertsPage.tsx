@@ -7,7 +7,7 @@ import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { MapClosePageButton } from "@/features/map/components/MapClosePageButton";
 import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import { formatNotificationKind, formatRelativeTimestamp } from "@/lib/formatting";
-import { palette, sheetContentGutter, spacing } from "@/theme/tokens";
+import { palette, spacing } from "@/theme/tokens";
 import type { InAppNotification } from "@/types/domain";
 
 
@@ -136,7 +136,7 @@ export function AlertsPage({
       routes={routes}
       onPop={popRoute}
       headerVariant="compact"
-      scenePaddingHorizontal={sheetContentGutter}
+      scenePaddingHorizontal={spacing.lg}
     />
   );
 }

@@ -21,6 +21,8 @@ type BlockedUsersPageProps = {
   bottomInset: number;
   onUnblockUser: (user: BlockedUserProfile) => void;
   onClose: () => void;
+  /** Renders as a scene inside Minha conta (no “Voltar ao mapa”; stack back only). */
+  embeddedInAccount?: boolean;
 };
 
 export function BlockedUsersPage({
@@ -32,10 +34,15 @@ export function BlockedUsersPage({
   bottomInset,
   onUnblockUser,
   onClose,
+  embeddedInAccount = false,
 }: BlockedUsersPageProps) {
+  const scrollContentStyle = embeddedInAccount
+    ? [styles.embeddedContent, { paddingBottom: bottomInset + spacing.xxl }]
+    : [styles.content, { paddingBottom: bottomInset + spacing.xxl }];
+
   return (
     <ScrollView
-      contentContainerStyle={[styles.content, { paddingBottom: bottomInset + spacing.xxl }]}
+      contentContainerStyle={scrollContentStyle}
       showsVerticalScrollIndicator={false}
     >
       {blockedUsersError ? <MapInlineNotice tone="error" message={blockedUsersError} /> : null}
@@ -43,12 +50,21 @@ export function BlockedUsersPage({
         <MapInlineNotice tone="success" message={blockedUsersSuccess} />
       ) : null}
 
-      <View style={styles.introCard}>
-        <Text style={styles.introTitle}>Usuários bloqueados</Text>
-        <Text style={styles.introBody}>
-          Quem estiver aqui deixa de aparecer normalmente nas interações do GG.
-        </Text>
-      </View>
+      {embeddedInAccount ? (
+        <View style={styles.sceneLead}>
+          <Text style={styles.sceneLeadTitle}>Usuários bloqueados</Text>
+          <Text style={styles.sceneLeadSubtitle}>
+            Quem estiver aqui deixa de aparecer normalmente nas interações do GG.
+          </Text>
+        </View>
+      ) : (
+        <View style={styles.introCard}>
+          <Text style={styles.introTitle}>Usuários bloqueados</Text>
+          <Text style={styles.introBody}>
+            Quem estiver aqui deixa de aparecer normalmente nas interações do GG.
+          </Text>
+        </View>
+      )}
 
       {loadingBlockedUsers ? (
         <MapEmptyCard
@@ -64,7 +80,11 @@ export function BlockedUsersPage({
             {blockedUsers.map((user, index) => (
               <View
                 key={user.userId}
-                style={[styles.card, index > 0 ? styles.cardSeparator : null]}
+                style={[
+                  styles.card,
+                  embeddedInAccount ? styles.cardEmbedded : null,
+                  index > 0 ? styles.cardSeparator : null,
+                ]}
               >
                 <View style={styles.identityRow}>
                   <Avatar name={user.displayName} uri={user.avatarUrl} size={44} />
@@ -103,7 +123,7 @@ export function BlockedUsersPage({
         />
       )}
 
-      <MapClosePageButton onPress={onClose} />
+      {embeddedInAccount ? null : <MapClosePageButton onPress={onClose} />}
     </ScrollView>
   );
 }
@@ -113,6 +133,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     gap: spacing.md,
+  },
+  embeddedContent: {
+    alignItems: "stretch",
+    paddingTop: 8,
+    gap: 12,
+  },
+  sceneLead: {
+    alignSelf: "stretch",
+    gap: 4,
+    paddingTop: 2,
+  },
+  sceneLeadTitle: {
+    color: palette.sand,
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: "800",
+    textAlign: "left",
+  },
+  sceneLeadSubtitle: {
+    color: palette.pine,
+    fontSize: 11,
+    lineHeight: 15,
+    textAlign: "left",
   },
   introCard: {
     gap: 4,
@@ -135,6 +178,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+  },
+  cardEmbedded: {
+    paddingHorizontal: 0,
   },
   cardSeparator: {
     borderTopWidth: 1,

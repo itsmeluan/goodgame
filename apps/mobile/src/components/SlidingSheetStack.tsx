@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
   Easing,
@@ -8,6 +8,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
@@ -23,6 +24,12 @@ export type SlidingSheetRoute = {
   content: ReactNode;
   title?: string;
   subtitle?: string;
+  /**
+   * When `false`, the scene back row is omitted (no layout space) — use when nested UI
+   * renders its own Voltar (e.g. edição dentro do cartão de local).
+   * Default: shown for every scene after the root.
+   */
+  showBackHeader?: boolean;
 };
 
 type SlidingSheetStackProps = {
@@ -36,9 +43,94 @@ type SlidingSheetStackProps = {
   padSceneWithSafeArea?: boolean;
   fillHeight?: boolean;
   headerVariant?: "default" | "compact";
+  /** Less padding above/below the back row (nested sheets with their own title block). Default: default. */
+  headerSpacing?: "default" | "tight";
 };
 
 const EDGE_SWIPE_WIDTH = 24;
+
+function SlidingSheetSceneHeader({
+  headerVariant,
+  headerSpacing,
+  route,
+  onHeaderBackPress,
+}: {
+  headerVariant: "default" | "compact";
+  headerSpacing: "default" | "tight";
+  route: SlidingSheetRoute;
+  onHeaderBackPress: () => void;
+}) {
+  return (
+    <View
+      style={[
+        styles.sceneHeader,
+        headerVariant === "compact"
+          ? headerSpacing === "tight"
+            ? [styles.sceneHeaderCompact, styles.sceneHeaderCompactTight]
+            : styles.sceneHeaderCompact
+          : null,
+      ]}
+    >
+      <View
+        style={{
+          gap: spacing.sm,
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+          onPress={() => {
+            triggerHaptic("selection");
+            onHeaderBackPress();
+          }}
+          style={({ pressed }) => [
+            styles.backButton,
+            headerVariant === "compact" ? styles.backButtonCompact : null,
+            pressed ? styles.backButtonPressed : null,
+          ]}
+        >
+          <AppleGlassSurface
+            pointerEvents="none"
+            variant="dark"
+            intensity="clear"
+            style={styles.backButtonSurface}
+          />
+          <AppIcon
+            iosName="chevron.left"
+            fallbackName="arrow-back"
+            size={17}
+            color={palette.sand}
+          />
+          <Text style={styles.backButtonLabel}>Voltar</Text>
+        </Pressable>
+        {route.title || route.subtitle ? (
+          <View style={styles.sceneTitleWrap}>
+            {route.title ? (
+              <Text
+                style={[
+                  styles.sceneTitle,
+                  headerVariant === "compact" ? styles.sceneTitleCompact : null,
+                ]}
+              >
+                {route.title}
+              </Text>
+            ) : null}
+            {route.subtitle ? (
+              <Text
+                style={[
+                  styles.sceneSubtitle,
+                  headerVariant === "compact" ? styles.sceneSubtitleCompact : null,
+                ]}
+              >
+                {route.subtitle}
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+    </View>
+  );
+}
 
 export function SlidingSheetStack({
   routes,
@@ -50,10 +142,20 @@ export function SlidingSheetStack({
   padSceneWithSafeArea = true,
   fillHeight = true,
   headerVariant = "default",
+  headerSpacing = "default",
 }: SlidingSheetStackProps) {
   const { width: windowWidth } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const width = sceneWidth ?? windowWidth;
+  const [viewportWidth, setViewportWidth] = useState(0);
+  const width =
+    sceneWidth ?? (viewportWidth > 0 ? viewportWidth : windowWidth);
+
+  const onViewportLayout = useCallback((event: LayoutChangeEvent) => {
+    const next = event.nativeEvent.layout.width;
+    if (next > 0 && Math.abs(next - viewportWidth) > 0.5) {
+      setViewportWidth(next);
+    }
+  }, [viewportWidth]);
   const scenePadLeft = padSceneWithSafeArea ? insets.left + scenePaddingHorizontal : scenePaddingHorizontal;
   const scenePadRight = padSceneWithSafeArea
     ? insets.right + scenePaddingHorizontal
@@ -63,6 +165,24 @@ export function SlidingSheetStack({
   const isPoppingRef = useRef(false);
 
   const targetTranslate = -Math.max(routes.length - 1, 0) * width;
+
+  const runPopAnimationThenOnPop = useCallback(() => {
+    if (routes.length <= 1) {
+      return;
+    }
+
+    isPoppingRef.current = true;
+    translateX.stopAnimation();
+
+    Animated.timing(translateX, {
+      toValue: targetTranslate + width,
+      duration: 190,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+      useNativeDriver: true,
+    }).start(() => {
+      onPop();
+    });
+  }, [onPop, routes.length, targetTranslate, translateX, width]);
 
   useEffect(() => {
     if (isPoppingRef.current) {
@@ -138,7 +258,10 @@ export function SlidingSheetStack({
   );
 
   return (
-    <View style={[fillHeight ? styles.viewportFill : styles.viewportAuto, style]}>
+    <View
+      onLayout={sceneWidth != null ? undefined : onViewportLayout}
+      style={[fillHeight ? styles.viewportFill : styles.viewportAuto, style]}
+    >
       <Animated.View
         style={[
           fillHeight ? styles.trackFill : styles.trackAuto,
@@ -161,68 +284,20 @@ export function SlidingSheetStack({
               },
             ]}
           >
-            {index > 0 ? (
-              <View
-                style={[
-                  styles.sceneHeader,
-                  headerVariant === "compact" ? styles.sceneHeaderCompact : null,
-                ]}
-              >
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Voltar"
-                  onPress={() => {
-                    triggerHaptic("selection");
-                    onPop();
-                  }}
-                  style={({ pressed }) => [
-                    styles.backButton,
-                    headerVariant === "compact" ? styles.backButtonCompact : null,
-                    pressed ? styles.backButtonPressed : null,
-                  ]}
-                >
-                  <AppleGlassSurface
-                    pointerEvents="none"
-                    variant="dark"
-                    intensity="clear"
-                    style={styles.backButtonSurface}
-                  />
-                  <AppIcon
-                    iosName="chevron.left"
-                    fallbackName="arrow-back"
-                    size={17}
-                    color={palette.sand}
-                  />
-                  <Text style={styles.backButtonLabel}>Voltar</Text>
-                </Pressable>
-                {route.title || route.subtitle ? (
-                  <View style={styles.sceneTitleWrap}>
-                    {route.title ? (
-                      <Text
-                        style={[
-                          styles.sceneTitle,
-                          headerVariant === "compact" ? styles.sceneTitleCompact : null,
-                        ]}
-                      >
-                        {route.title}
-                      </Text>
-                    ) : null}
-                    {route.subtitle ? (
-                      <Text
-                        style={[
-                          styles.sceneSubtitle,
-                          headerVariant === "compact" ? styles.sceneSubtitleCompact : null,
-                        ]}
-                      >
-                        {route.subtitle}
-                      </Text>
-                    ) : null}
-                  </View>
-                ) : null}
-              </View>
+            {index > 0 && route.showBackHeader !== false ? (
+              <SlidingSheetSceneHeader
+                headerVariant={headerVariant}
+                headerSpacing={headerSpacing}
+                route={route}
+                onHeaderBackPress={runPopAnimationThenOnPop}
+              />
             ) : null}
 
-            <View style={styles.sceneBody}>{route.content}</View>
+            <View
+              style={[styles.sceneBody, fillHeight ? null : styles.sceneBodyNatural]}
+            >
+              {route.content}
+            </View>
           </View>
         ))}
       </Animated.View>
@@ -268,6 +343,11 @@ const styles = StyleSheet.create({
   },
   sceneHeaderCompact: {
     paddingTop: spacing.xl,
+    paddingBottom: spacing.xs,
+  },
+  /** Nested sheets (e.g. edit inside games card): minimal pad so Voltar sits under tabs, not a second “header band”. */
+  sceneHeaderCompactTight: {
+    paddingTop: 0,
     paddingBottom: spacing.xs,
   },
   backButton: {
@@ -325,6 +405,13 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
     backgroundColor: "transparent",
+  },
+  /** When `fillHeight` is false, avoid stretching content below the back row (removes dead vertical gap). */
+  sceneBodyNatural: {
+    flex: 0,
+    flexGrow: 0,
+    flexShrink: 0,
+    alignSelf: "stretch",
   },
   edgeSwipeZone: {
     position: "absolute",

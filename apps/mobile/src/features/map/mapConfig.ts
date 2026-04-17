@@ -2,9 +2,10 @@ import type { DistanceFilter, MapEntityFilter, PeriodFilter } from "@/features/m
 import type { MeetupSortMode } from "@/features/map/mapHelpers";
 
 export const hostModeOptions = [
+  ["search_address", "Pesquisar endereço"],
   ["public_place", "Local público"],
   ["specialty_store", "Loja especializada"],
-  ["can_host", "Meu local"],
+  ["can_host", "Minha região"],
   ["looking_for_host", "A definir"],
 ] as const;
 

@@ -42,6 +42,7 @@ export type MapGamesSheetProps<
   expandedGroupIds: Record<string, boolean>;
   hidePastLabel: string;
   venues: VenueItem[];
+  expandedVenueManageId: string | null;
   venuesComposer: ReactElement | null;
   onToggleSortMenu: () => void;
   onSelectSort: (value: MeetupSortMode) => void;
@@ -51,6 +52,8 @@ export type MapGamesSheetProps<
   onToggleGroup: (groupId: string) => void;
   onOpenManageMeetup: (item: MeetupItem) => void;
   onCloseManageMeetup: (item: MeetupItem) => void;
+  onOpenManageVenue: (item: VenueItem) => void;
+  onCloseManageVenue: (item: VenueItem) => void;
   renderMeetupListItem: (
     item: MeetupItem,
     openDetail: () => void,
@@ -63,7 +66,8 @@ export type MapGamesSheetProps<
     openDetail: () => void,
     separator: boolean
   ) => ReactElement;
-  renderVenueDetail: (item: VenueItem) => ReactElement;
+  renderVenueDetail: (item: VenueItem, openManage: () => void) => ReactElement;
+  renderVenueManage: (item: VenueItem) => ReactElement;
 };
 
 export function MapGamesSheet<
@@ -92,6 +96,7 @@ export function MapGamesSheet<
   expandedGroupIds,
   hidePastLabel,
   venues,
+  expandedVenueManageId,
   venuesComposer,
   onToggleSortMenu,
   onSelectSort,
@@ -101,11 +106,14 @@ export function MapGamesSheet<
   onToggleGroup,
   onOpenManageMeetup,
   onCloseManageMeetup,
+  onOpenManageVenue,
+  onCloseManageVenue,
   renderMeetupListItem,
   renderMeetupDetail,
   renderMeetupManage,
   renderVenueListItem,
   renderVenueDetail,
+  renderVenueManage,
 }: MapGamesSheetProps<MeetupItem, VenueItem>) {
   const [sheetWidth, setSheetWidth] = useState(0);
 
@@ -196,9 +204,13 @@ export function MapGamesSheet<
               titleNote={titleNote}
               bottomPadding={contentBottomPadding}
               venues={venues}
+              expandedVenueManageId={expandedVenueManageId}
               composer={venuesComposer}
+              onOpenManageVenue={onOpenManageVenue}
+              onCloseManageVenue={onCloseManageVenue}
               renderVenueListItem={renderVenueListItem}
               renderVenueDetail={renderVenueDetail}
+              renderVenueManage={renderVenueManage}
               emptyState={
                 <MapEmptyCard
                   title="Nenhum local encontrado"

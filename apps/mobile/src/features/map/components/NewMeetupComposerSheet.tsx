@@ -4,11 +4,11 @@ import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
 import { ChoiceChip } from "@/components/ChoiceChip";
-import { GlassCard } from "@/components/GlassCard";
 import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { TextField } from "@/components/TextField";
 import { AddressAutocompleteField } from "@/features/map/components/AddressAutocompleteField";
+import { HorizontalChipRail } from "@/features/map/components/HorizontalChipRail";
 
 import {
   NewMeetupComposerInlineNotice,
@@ -19,12 +19,10 @@ import { NewMeetupTimeOverlay } from "@/features/map/components/NewMeetupTimeOve
 import type { HostModeOption } from "@/features/map/mapConfig";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 import { triggerHaptic } from "@/lib/haptics";
-import { palette, screenEdgeGlassBleed, spacing } from "@/theme/tokens";
+import { meetupSheetEdgePadding, palette, screenEdgeGlassBleed, spacing } from "@/theme/tokens";
 import type { CatalogFormat, VenueCard } from "@/types/domain";
 
 import { AppleListGroup, AppleListRow } from "@/components/AppleListNavigation";
-
-const SHEET_EDGE_PADDING = spacing.lg;
 
 type GameOption = {
   id: string;
@@ -64,7 +62,6 @@ export type NewMeetupComposerSheetProps = {
   onSelectHostMode: (value: string) => void;
   selectedVenueId: string | null;
   availableVenues: VenueCard[];
-  onSelectOtherAddress: () => void;
   onSelectVenue: (venue: VenueCard) => void;
   addressQuery: string;
   addressFocused: boolean;
@@ -75,8 +72,6 @@ export type NewMeetupComposerSheetProps = {
   onUseCurrentLocation: () => void;
   onUseTypedAddress: () => void;
   onSelectAddressSuggestion: (suggestion: AddressSuggestion) => void;
-  helperTitle: string;
-  helperBody: string;
   errorMessage: string | null;
   onClose: () => void;
   creatingMeetup: boolean;
@@ -124,7 +119,6 @@ export function NewMeetupComposerSheet({
   onSelectHostMode,
   selectedVenueId,
   availableVenues,
-  onSelectOtherAddress,
   onSelectVenue,
   addressQuery,
   addressFocused,
@@ -135,8 +129,6 @@ export function NewMeetupComposerSheet({
   onUseCurrentLocation,
   onUseTypedAddress,
   onSelectAddressSuggestion,
-  helperTitle,
-  helperBody,
   errorMessage,
   onClose,
   creatingMeetup,
@@ -164,7 +156,6 @@ export function NewMeetupComposerSheet({
           styles.sheet,
           {
             height: sheetHeight,
-            paddingBottom: spacing.lg + bottomInset,
             transform: [{ translateY }],
           },
         ]}
@@ -176,45 +167,46 @@ export function NewMeetupComposerSheet({
           style={styles.sheetGlassSurface}
         />
 
-        <View style={styles.sheetHeaderSection}>
-          <View style={styles.sheetDragZone}>
-            <View style={styles.overlayHeader}>
-              <View style={styles.overlayTitleWrap}>
-                <Text style={styles.overlayTitle}>Novo jogo</Text>
+        <View style={styles.sheetBody}>
+          <View style={styles.sheetHeaderSection}>
+            <View style={styles.sheetDragZone}>
+              <View style={styles.overlayHeader}>
+                <View style={styles.overlayTitleWrap}>
+                  <Text style={styles.overlayTitle}>Novo jogo</Text>
+                </View>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Fechar criação de jogo"
+                  onPress={onClose}
+                  style={({ pressed }) => [styles.overlayCloseButton, pressed ? styles.pressed : null]}
+                >
+                  <AppleGlassSurface
+                    pointerEvents="none"
+                    variant="dark"
+                    intensity="clear"
+                    style={styles.overlayCloseButtonSurface}
+                  />
+                  <AppIcon iosName="xmark" fallbackName="close" size={20} color={palette.sand} />
+                </Pressable>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Fechar criação de jogo"
-                onPress={onClose}
-                style={({ pressed }) => [styles.overlayCloseButton, pressed ? styles.pressed : null]}
-              >
-                <AppleGlassSurface
-                  pointerEvents="none"
-                  variant="dark"
-                  intensity="clear"
-                  style={styles.overlayCloseButtonSurface}
-                />
-                <AppIcon iosName="xmark" fallbackName="close" size={20} color={palette.sand} />
-              </Pressable>
             </View>
+            <SheetGlassHairline />
           </View>
-          <SheetGlassHairline />
-        </View>
 
-        <KeyboardAwareScrollView
-          style={styles.sheetScroll}
-          keyboardShouldPersistTaps="handled"
-          keyboardOffset={keyboardPadding}
-          contentContainerStyle={[
-            styles.sceneContent,
-            {
-              paddingBottom: spacing.md + keyboardPadding,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
+          <KeyboardAwareScrollView
+            style={styles.sheetScroll}
+            keyboardShouldPersistTaps="handled"
+            keyboardOffset={keyboardPadding}
+            contentContainerStyle={[
+              styles.sceneContent,
+              {
+                paddingBottom: spacing.sm + keyboardPadding,
+              },
+            ]}
+            showsVerticalScrollIndicator={false}
+          >
           <NewMeetupComposerSectionBlock title="Tipo de jogo">
-            <View style={styles.chipWrap}>
+            <HorizontalChipRail>
               {gameOptions.map((game) => (
                 <ChoiceChip
                   key={`composer-game-${game.id}`}
@@ -223,8 +215,23 @@ export function NewMeetupComposerSheet({
                   onPress={() => onSelectGame(game.id)}
                 />
               ))}
-            </View>
+            </HorizontalChipRail>
           </NewMeetupComposerSectionBlock>
+
+          {showFormatSection ? (
+            <NewMeetupComposerSectionBlock title="Formato">
+              <HorizontalChipRail>
+                {formatOptions.map((format) => (
+                  <ChoiceChip
+                    key={format.id}
+                    label={format.name}
+                    selected={selectedFormatId === format.id}
+                    onPress={() => onSelectFormat(format.id)}
+                  />
+                ))}
+              </HorizontalChipRail>
+            </NewMeetupComposerSectionBlock>
+          ) : null}
 
           <SectionBlock title="Detalhes">
             <TextField label="Título" value={meetupTitle} onChangeText={onChangeMeetupTitle} placeholder="Nome da partida" />
@@ -280,23 +287,8 @@ export function NewMeetupComposerSheet({
             </View>
           </NewMeetupComposerSectionBlock>
 
-          {showFormatSection ? (
-            <NewMeetupComposerSectionBlock title="Formato">
-              <View style={styles.chipWrap}>
-                {formatOptions.map((format) => (
-                  <ChoiceChip
-                    key={format.id}
-                    label={format.name}
-                    selected={selectedFormatId === format.id}
-                    onPress={() => onSelectFormat(format.id)}
-                  />
-                ))}
-              </View>
-            </NewMeetupComposerSectionBlock>
-          ) : null}
-
-          <NewMeetupComposerSectionBlock title="Tipo de local">
-            <View style={styles.chipWrap}>
+          <NewMeetupComposerSectionBlock title="Onde">
+            <HorizontalChipRail>
               {hostModeOptions.map(([value, label]) => (
                 <ChoiceChip
                   key={value}
@@ -305,40 +297,29 @@ export function NewMeetupComposerSheet({
                   onPress={() => onSelectHostMode(value)}
                 />
               ))}
-            </View>
-          </NewMeetupComposerSectionBlock>
+            </HorizontalChipRail>
 
-          <SectionBlock title="Local">
-            <AppleListGroup>
-              <AppleListRow
-                icon={{ iosName: "mappin.and.ellipse", fallbackName: "place" }}
-                label="Outro endereço"
-                subtitle="Pesquisar no mapa"
-                onPress={() => {
-                  triggerHaptic("selection");
-                  onSelectOtherAddress();
-                }}
-                tone={selectedVenueId === null ? "accent" : "default"}
-                size="compact"
-              />
-              {availableVenues.map((venue, index) => (
-                <AppleListRow
-                  key={venue.id}
-                  separator
-                  icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
-                  label={venue.name}
-                  subtitle={venue.neighborhood ?? undefined}
-                  onPress={() => {
-                    triggerHaptic("selection");
-                    onSelectVenue(venue);
-                  }}
-                  tone={selectedVenueId === venue.id ? "accent" : "default"}
-                  size="compact"
-                />
-              ))}
-            </AppleListGroup>
+            {hostMode === "public_place" || hostMode === "specialty_store" ? (
+              <AppleListGroup>
+                {availableVenues.map((venue) => (
+                  <AppleListRow
+                    key={venue.id}
+                    separator
+                    icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
+                    label={venue.name}
+                    subtitle={venue.neighborhood ?? undefined}
+                    onPress={() => {
+                      triggerHaptic("selection");
+                      onSelectVenue(venue);
+                    }}
+                    tone={selectedVenueId === venue.id ? "accent" : "default"}
+                    size="compact"
+                  />
+                ))}
+              </AppleListGroup>
+            ) : null}
 
-            {selectedVenueId === null ? (
+            {hostMode === "search_address" || hostMode === "looking_for_host" ? (
               <AddressAutocompleteField
                 label="Endereço"
                 value={addressQuery}
@@ -353,30 +334,41 @@ export function NewMeetupComposerSheet({
                 placeholder="Rua, número, bairro"
               />
             ) : null}
-          </SectionBlock>
 
-          <GlassCard style={styles.helperCard} intensity="clear">
-            <Text style={styles.helperTitle}>{helperTitle}</Text>
-            <Text style={styles.helperBody}>{helperBody}</Text>
-          </GlassCard>
+            {hostMode === "can_host" ? (
+              <AddressAutocompleteField
+                label="Bairro"
+                value={addressQuery}
+                focused={addressFocused}
+                onFocusChange={onAddressFocusChange}
+                onChangeText={onAddressChange}
+                suggestions={addressSuggestions}
+                loading={addressLoading}
+                onUseCurrentLocation={onUseCurrentLocation}
+                onUseTypedAddress={onUseTypedAddress}
+                onSelectSuggestion={onSelectAddressSuggestion}
+                placeholder={addressQuery ? undefined : "Bairro"}
+              />
+            ) : null}
+          </NewMeetupComposerSectionBlock>
 
           {errorMessage ? <NewMeetupComposerInlineNotice message={errorMessage} /> : null}
+        </KeyboardAwareScrollView>
 
-          <View style={styles.footerBar}>
-            <AppleGlassSurface pointerEvents="none" variant="dark" intensity="clear" style={styles.footerBarSurface} />
+          <View style={[styles.footerBar, { paddingBottom: spacing.lg + bottomInset }]}>
             <View style={styles.footerButtonCell}>
               <PrimaryButton label="Cancelar" onPress={onClose} tone="ghost" />
             </View>
             <View style={styles.footerButtonCell}>
               <PrimaryButton
-                label="Publicar jogo"
+                label="Publicar"
                 onPress={onPublish}
                 loading={creatingMeetup}
                 disabled={publishDisabled}
               />
             </View>
           </View>
-        </KeyboardAwareScrollView>
+        </View>
       </Animated.View>
 
       {calendarOpen ? (
@@ -429,16 +421,20 @@ function SectionBlock({ title, children }: { title: string; children: ReactNode 
 const styles = StyleSheet.create({
   sheet: {
     position: "absolute",
-    left: 0,
-    right: 0,
+    left: spacing.sm,
+    right: spacing.sm,
     bottom: 0,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     backgroundColor: "rgba(12,14,20,0.82)",
     overflow: "visible",
-    paddingHorizontal: SHEET_EDGE_PADDING,
+    paddingHorizontal: meetupSheetEdgePadding,
     paddingTop: spacing.sm,
-    gap: spacing.md,
+  },
+  sheetBody: {
+    flex: 1,
+    minHeight: 0,
+    flexDirection: "column",
   },
   sheetGlassSurface: {
     position: "absolute",
@@ -452,6 +448,7 @@ const styles = StyleSheet.create({
   },
   sheetHeaderSection: {
     flexShrink: 0,
+    marginBottom: spacing.md,
   },
   sheetScroll: {
     flex: 1,
@@ -459,7 +456,7 @@ const styles = StyleSheet.create({
     minHeight: 0,
   },
   sheetHairline: {
-    marginHorizontal: -SHEET_EDGE_PADDING,
+    marginHorizontal: -meetupSheetEdgePadding,
     overflow: "hidden",
   },
   sheetHairlineHighlight: {
@@ -507,9 +504,9 @@ const styles = StyleSheet.create({
     opacity: 0.92,
   },
   sceneContent: {
-    gap: spacing.md,
+    gap: spacing.sm,
     paddingTop: 2,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.sm,
     overflow: "visible",
   },
   sectionCard: {
@@ -581,36 +578,13 @@ const styles = StyleSheet.create({
   scheduleStripPressed: {
     backgroundColor: "rgba(255,255,255,0.04)",
   },
-  helperCard: {
-    padding: spacing.md,
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: "rgba(231,216,188,0.06)",
-  },
-  helperTitle: {
-    color: palette.parchment,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.6,
-    textTransform: "uppercase",
-  },
-  helperBody: {
-    color: palette.mist,
-    fontSize: 14,
-    lineHeight: 20,
-  },
   footerBar: {
-    position: "relative",
+    flexShrink: 0,
     flexDirection: "row",
-    alignItems: "center",
     gap: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: 26,
-    overflow: "hidden",
-  },
-  footerBarSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 26,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(231,216,188,0.1)",
   },
   footerButtonCell: {
     flex: 1,

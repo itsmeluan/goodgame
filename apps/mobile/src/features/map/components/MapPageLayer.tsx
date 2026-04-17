@@ -15,8 +15,7 @@ type PageScreen =
   | "account"
   | "friends"
   | "history"
-  | "player"
-  | "blocked";
+  | "player";
 type ChatViewMode = "list" | "room";
 type AnimatedScalar = Animated.Value | Animated.AnimatedInterpolation<number | string>;
 

@@ -114,9 +114,11 @@ export function useGamesSheetSectionPanResponder({
         onMoveShouldSetPanResponder: (_event, gestureState) =>
           Math.abs(gestureState.dx) > 12 &&
           Math.abs(gestureState.dx) > Math.abs(gestureState.dy) + 6,
-        onMoveShouldSetPanResponderCapture: (_event, gestureState) =>
-          Math.abs(gestureState.dx) > 14 &&
-          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) + 8,
+        /**
+         * No `onMoveShouldSetPanResponderCapture`: capture would run before children and
+         * steal horizontal drags from nested horizontal ScrollViews (e.g. trilho de jogos
+         * no editor de local), switching tabs when the user only meant to scroll chips.
+         */
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: () => {
           gamesSectionTranslateX.stopAnimation();

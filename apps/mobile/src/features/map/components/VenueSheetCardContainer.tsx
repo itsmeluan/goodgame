@@ -11,17 +11,15 @@ type VenueGameOption = {
 };
 
 type VenueSheetCardContainerProps = {
+  mode: "detail" | "manage";
   venue: VenueCard;
   profileLat: number | null;
   profileLng: number | null;
   profileUserId: string | null;
   selectedVenueId: string | null;
-  expandedVenueInfoId: string | null;
-  expandedVenueManageId: string | null;
   updatingVenueId: string | null;
   deletingEntityId: string | null;
   manageVenueName: string;
-  manageVenueNeighborhood: string;
   manageVenueAddressQuery: string;
   manageVenueAddressFocused: boolean;
   manageVenueAddressSuggestions: AddressSuggestion[];
@@ -33,10 +31,8 @@ type VenueSheetCardContainerProps = {
   venueGameOptions: VenueGameOption[];
   onFocusVenueOnMap: () => void;
   onCreateMeetupAtVenue: () => void;
-  onToggleManage: () => void;
-  onToggleInfo: () => void;
+  onToggleManage?: () => void;
   onManageVenueNameChange: (value: string) => void;
-  onManageVenueNeighborhoodChange: (value: string) => void;
   onManageVenueAddressFocusChange: (focused: boolean) => void;
   onManageVenueAddressChange: (value: string) => void;
   onManageVenueAddressUseCurrentLocation: () => void;
@@ -50,17 +46,15 @@ type VenueSheetCardContainerProps = {
 };
 
 export function VenueSheetCardContainer({
+  mode,
   venue,
   profileLat,
   profileLng,
   profileUserId,
   selectedVenueId,
-  expandedVenueInfoId,
-  expandedVenueManageId,
   updatingVenueId,
   deletingEntityId,
   manageVenueName,
-  manageVenueNeighborhood,
   manageVenueAddressQuery,
   manageVenueAddressFocused,
   manageVenueAddressSuggestions,
@@ -73,9 +67,7 @@ export function VenueSheetCardContainer({
   onFocusVenueOnMap,
   onCreateMeetupAtVenue,
   onToggleManage,
-  onToggleInfo,
   onManageVenueNameChange,
-  onManageVenueNeighborhoodChange,
   onManageVenueAddressFocusChange,
   onManageVenueAddressChange,
   onManageVenueAddressUseCurrentLocation,
@@ -92,6 +84,7 @@ export function VenueSheetCardContainer({
 
   return (
     <VenueSheetCard
+      mode={mode}
       venue={venue}
       canManage={venue.creatorUserId === profileUserId}
       selected={venue.id === selectedVenueId}
@@ -100,12 +93,9 @@ export function VenueSheetCardContainer({
       locationLabel={
         formatCompactAddress(venue.address) || venue.neighborhood || "Sem endereço informado"
       }
-      infoOpen={expandedVenueInfoId === venue.id}
-      manageOpen={expandedVenueManageId === venue.id}
       updatingVenue={updatingVenueId === venue.id}
       deletingVenue={deletingEntityId === venue.id}
       manageVenueName={manageVenueName}
-      manageVenueNeighborhood={manageVenueNeighborhood}
       manageVenueAddressQuery={manageVenueAddressQuery}
       manageVenueAddressFocused={manageVenueAddressFocused}
       manageVenueAddressSuggestions={manageVenueAddressSuggestions}
@@ -118,9 +108,7 @@ export function VenueSheetCardContainer({
       onFocusVenueOnMap={onFocusVenueOnMap}
       onCreateMeetupAtVenue={onCreateMeetupAtVenue}
       onToggleManage={onToggleManage}
-      onToggleInfo={onToggleInfo}
       onManageVenueNameChange={onManageVenueNameChange}
-      onManageVenueNeighborhoodChange={onManageVenueNeighborhoodChange}
       onManageVenueAddressFocusChange={onManageVenueAddressFocusChange}
       onManageVenueAddressChange={onManageVenueAddressChange}
       onManageVenueAddressUseCurrentLocation={onManageVenueAddressUseCurrentLocation}

@@ -56,6 +56,7 @@ export type MapScreenLayerProps<
     expandedGroupIds: Record<string, boolean>;
     hidePastLabel: string;
     venues: VenueItem[];
+    expandedVenueManageId: string | null;
     venuesComposer: ReactElement | null;
     onToggleSortMenu: () => void;
     onSelectSort: (value: MeetupSortMode) => void;
@@ -65,6 +66,8 @@ export type MapScreenLayerProps<
     onToggleGroup: (groupId: string) => void;
     onOpenManageMeetup: (item: MeetupItem) => void;
     onCloseManageMeetup: (item: MeetupItem) => void;
+    onOpenManageVenue: (item: VenueItem) => void;
+    onCloseManageVenue: (item: VenueItem) => void;
     renderMeetupListItem: (
       item: MeetupItem,
       openDetail: () => void,
@@ -77,7 +80,8 @@ export type MapScreenLayerProps<
       openDetail: () => void,
       separator: boolean
     ) => ReactElement;
-    renderVenueDetail: (item: VenueItem) => ReactElement;
+    renderVenueDetail: (item: VenueItem, openManage: () => void) => ReactElement;
+    renderVenueManage: (item: VenueItem) => ReactElement;
   };
 };
 

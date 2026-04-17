@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -183,8 +183,7 @@ type PageScreen =
   | "account"
   | "friends"
   | "history"
-  | "player"
-  | "blocked";
+  | "player";
 type ChatViewMode = "list" | "room";
 type PlayerReturnContext = {
   activeScreen: Exclude<AppScreen, "player">;
@@ -297,7 +296,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [calendarMonthCursor, setCalendarMonthCursor] = useState(() =>
     startOfCalendarMonth(new Date(Date.now() + 2 * 60 * 60 * 1000))
   );
-  const [composerAddressQuery, setComposerAddressQuery] = useState("");
+  const [composerAddressQuery, setComposerAddressQuery] = useState(profile.neighborhood ?? "");
   const [composerAddressSuggestions, setComposerAddressSuggestions] = useState<AddressSuggestion[]>([]);
   const [composerAddressLoading, setComposerAddressLoading] = useState(false);
   const [composerSelectedAddress, setComposerSelectedAddress] = useState<AddressSuggestion | null>(
@@ -581,36 +580,6 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
 
     return allVenues;
   }, [allVenues, hostMode]);
-
-  const composerLocationHelper = useMemo(() => {
-    switch (hostMode) {
-      case "public_place":
-        return {
-          title: "Local público",
-          body: "Escolha um ponto acessível para o grupo.",
-        };
-      case "specialty_store":
-        return {
-          title: "Loja especializada",
-          body: "Selecione uma loja parceira ou informe outro endereço.",
-        };
-      case "can_host":
-        return {
-          title: "Seu local",
-          body: "O endereço será visível para quem confirmar presença.",
-        };
-      case "looking_for_host":
-        return {
-          title: "Local a definir",
-          body: "Combinem o endereço depois no chat do grupo.",
-        };
-      default:
-        return {
-          title: "Local",
-          body: "Defina onde o jogo acontece.",
-        };
-    }
-  }, [hostMode]);
 
   const managedVenueFormatIds = useMemo(
     () =>
@@ -1641,19 +1610,17 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     />
   );
 
-  const renderVenueSheetDetail = (venue: VenueCard) => (
+  const renderVenueSheetDetail = (venue: VenueCard, openManage: () => void) => (
     <VenueSheetCardContainer
+      mode="detail"
       venue={venue}
       profileLat={profile.lat}
       profileLng={profile.lng}
       profileUserId={profile.userId}
       selectedVenueId={selectedVenueId}
-      expandedVenueInfoId={expandedVenueInfoId}
-      expandedVenueManageId={expandedVenueManageId}
       updatingVenueId={updatingVenueId}
       deletingEntityId={deletingEntityId}
       manageVenueName={manageVenueName}
-      manageVenueNeighborhood={manageVenueNeighborhood}
       manageVenueAddressQuery={manageVenueAddressQuery}
       manageVenueAddressFocused={manageVenueAddressFocused}
       manageVenueAddressSuggestions={manageVenueAddressSuggestions}
@@ -1670,47 +1637,99 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       }}
       onToggleManage={() => {
         setSelectedVenueId(venue.id);
-        setExpandedVenueManageId((current) => (current === venue.id ? null : venue.id));
-        setExpandedVenueInfoId((current) => (current === venue.id ? null : current));
+        openManage();
       }}
-      onToggleInfo={() => {
-        setSelectedVenueId(venue.id);
-        setExpandedVenueInfoId((current) => (current === venue.id ? null : venue.id));
-        setExpandedVenueManageId((current) => (current === venue.id ? null : current));
+      onManageVenueNameChange={setManageVenueName}
+      onManageVenueAddressFocusChange={setManageVenueAddressFocused}
+      onManageVenueAddressChange={(value) => {
+        setManageVenueAddressQuery(value);
+        setManageVenueSelectedAddress(null);
       }}
-        onManageVenueNameChange={setManageVenueName}
-        onManageVenueNeighborhoodChange={setManageVenueNeighborhood}
-        onManageVenueAddressFocusChange={setManageVenueAddressFocused}
-        onManageVenueAddressChange={(value) => {
-          setManageVenueAddressQuery(value);
-          setManageVenueSelectedAddress(null);
-        }}
-        onManageVenueAddressUseCurrentLocation={() => {
-          void handleUseCurrentLocationForManageVenue();
-        }}
-        onManageVenueAddressUseTyped={() => {
-          void handleResolveTypedManageVenueAddress();
-        }}
-        onManageVenueAddressSelect={(suggestion) => {
-          setManageVenueSelectedAddress(suggestion);
-          setManageVenueAddressQuery(suggestion.fullLabel);
-          setManageVenueAddressSuggestions([]);
-          if (suggestion.subtitle) {
-            setManageVenueNeighborhood(suggestion.subtitle);
-          }
-        }}
-        onManageVenueDetailsChange={setManageVenueDetails}
-        onSelectManageVenueKind={setManageVenueKind}
-        onToggleManageVenueGame={(gameId) =>
-          setManageVenueGameIds((current) =>
-            current.includes(gameId)
-              ? current.filter((item) => item !== gameId)
-              : [...current, gameId]
-          )
+      onManageVenueAddressUseCurrentLocation={() => {
+        void handleUseCurrentLocationForManageVenue();
+      }}
+      onManageVenueAddressUseTyped={() => {
+        void handleResolveTypedManageVenueAddress();
+      }}
+      onManageVenueAddressSelect={(suggestion) => {
+        setManageVenueSelectedAddress(suggestion);
+        setManageVenueAddressQuery(suggestion.fullLabel);
+        setManageVenueAddressSuggestions([]);
+        if (suggestion.subtitle) {
+          setManageVenueNeighborhood(suggestion.subtitle);
         }
-        onSaveVenueEdits={() => void handleSaveVenueEdits(venue)}
-        onPromptDeleteVenue={() => promptDeleteVenue(venue)}
-      />
+      }}
+      onManageVenueDetailsChange={setManageVenueDetails}
+      onSelectManageVenueKind={setManageVenueKind}
+      onToggleManageVenueGame={(gameId) =>
+        setManageVenueGameIds((current) =>
+          current.includes(gameId)
+            ? current.filter((item) => item !== gameId)
+            : [...current, gameId]
+        )
+      }
+      onSaveVenueEdits={() => void handleSaveVenueEdits(venue)}
+      onPromptDeleteVenue={() => promptDeleteVenue(venue)}
+    />
+  );
+
+  const renderVenueSheetManage = (venue: VenueCard) => (
+    <VenueSheetCardContainer
+      mode="manage"
+      venue={venue}
+      profileLat={profile.lat}
+      profileLng={profile.lng}
+      profileUserId={profile.userId}
+      selectedVenueId={selectedVenueId}
+      updatingVenueId={updatingVenueId}
+      deletingEntityId={deletingEntityId}
+      manageVenueName={manageVenueName}
+      manageVenueAddressQuery={manageVenueAddressQuery}
+      manageVenueAddressFocused={manageVenueAddressFocused}
+      manageVenueAddressSuggestions={manageVenueAddressSuggestions}
+      manageVenueAddressLoading={manageVenueAddressLoading}
+      manageVenueDetails={manageVenueDetails}
+      manageVenueKind={manageVenueKind}
+      manageVenueGameIds={manageVenueGameIds}
+      venueKindOptions={venueKindOptions}
+      venueGameOptions={venueGameOptions}
+      onFocusVenueOnMap={() => focusVenueOnMap(venue.id)}
+      onCreateMeetupAtVenue={() => {
+        setSelectedVenueId(venue.id);
+        openComposerSheet();
+      }}
+      onManageVenueNameChange={setManageVenueName}
+      onManageVenueAddressFocusChange={setManageVenueAddressFocused}
+      onManageVenueAddressChange={(value) => {
+        setManageVenueAddressQuery(value);
+        setManageVenueSelectedAddress(null);
+      }}
+      onManageVenueAddressUseCurrentLocation={() => {
+        void handleUseCurrentLocationForManageVenue();
+      }}
+      onManageVenueAddressUseTyped={() => {
+        void handleResolveTypedManageVenueAddress();
+      }}
+      onManageVenueAddressSelect={(suggestion) => {
+        setManageVenueSelectedAddress(suggestion);
+        setManageVenueAddressQuery(suggestion.fullLabel);
+        setManageVenueAddressSuggestions([]);
+        if (suggestion.subtitle) {
+          setManageVenueNeighborhood(suggestion.subtitle);
+        }
+      }}
+      onManageVenueDetailsChange={setManageVenueDetails}
+      onSelectManageVenueKind={setManageVenueKind}
+      onToggleManageVenueGame={(gameId) =>
+        setManageVenueGameIds((current) =>
+          current.includes(gameId)
+            ? current.filter((item) => item !== gameId)
+            : [...current, gameId]
+        )
+      }
+      onSaveVenueEdits={() => void handleSaveVenueEdits(venue)}
+      onPromptDeleteVenue={() => promptDeleteVenue(venue)}
+    />
   );
 
   const venuesSheetComposer = (
@@ -1865,19 +1884,20 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     []
   );
 
-  useEffect(() => {
-    if (composerOpen) {
-      composerSheetTranslateY.setValue(COMPOSER_OPEN_OFFSET);
-      currentComposerSheetValueRef.current = COMPOSER_OPEN_OFFSET;
-      Animated.spring(composerSheetTranslateY, {
-        toValue: 0,
-        damping: 24,
-        stiffness: 260,
-        mass: 0.95,
-        useNativeDriver: true,
-      }).start();
+  useLayoutEffect(() => {
+    if (!composerOpen && !venueComposerOpen) {
+      return;
     }
-  }, [composerOpen, composerSheetTranslateY]);
+    composerSheetTranslateY.setValue(COMPOSER_OPEN_OFFSET);
+    currentComposerSheetValueRef.current = COMPOSER_OPEN_OFFSET;
+    Animated.spring(composerSheetTranslateY, {
+      toValue: 0,
+      damping: 24,
+      stiffness: 260,
+      mass: 0.95,
+      useNativeDriver: true,
+    }).start();
+  }, [composerOpen, venueComposerOpen, composerSheetTranslateY]);
 
   useEffect(() => {
     if (!composerOpen) {
@@ -3915,12 +3935,6 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     setChatOpenedFromList(false);
     setGamesSheetPreviewMode(false);
 
-    if (pageScreen === "blocked") {
-      setPageScreen("account");
-      setActiveScreen("account");
-      return;
-    }
-
     if (activeScreen !== "map") {
       animatePageOutToMap();
       return;
@@ -4044,7 +4058,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     runAfterDrawerTransition(action);
   }
 
-  function openPageScreenFromMap(screen: Exclude<PageScreen, "player" | "blocked">, initialOffset = 24) {
+  function openPageScreenFromMap(screen: Exclude<PageScreen, "player">, initialOffset = 24) {
     setPageScreen(screen);
     pageTranslateY.setValue(initialOffset);
     currentPageTranslateYRef.current = initialOffset;
@@ -4194,7 +4208,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     }
   }
 
-  function openScreen(screen: Exclude<PageScreen, "player" | "blocked">) {
+  function openScreen(screen: Exclude<PageScreen, "player">) {
     if (screen === "places") {
       openLocationsSheet();
       return;
@@ -4222,17 +4236,6 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     pageTranslateY.setValue(0);
     currentPageTranslateYRef.current = 0;
     setActiveScreen("account");
-  }
-
-  function openBlockedUsers() {
-    Keyboard.dismiss();
-    closeComposer(false);
-    setDrawerOpen(false);
-    setPageScreen("blocked");
-    pageTranslateY.setValue(0);
-    currentPageTranslateYRef.current = 0;
-    setActiveScreen("account");
-    void loadAccountDataRef.current();
   }
 
   function openFriends() {
@@ -4566,6 +4569,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       expandedGroupIds: expandedGameGroups,
       hidePastLabel: hidePastMeetups ? "Mostrar jogos passados" : "Ocultar jogos passados",
       venues: orderedVenues,
+      expandedVenueManageId,
       venuesComposer: venuesSheetComposer,
       onToggleSortMenu: () => setMeetupSortMenuOpen((current) => !current),
       onSelectSort: (value: MeetupSortMode) => {
@@ -4602,11 +4606,19 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       onCloseManageMeetup: (meetup: MeetupPost) => {
         setExpandedMeetupManageId((current) => (current === meetup.id ? null : current));
       },
+      onOpenManageVenue: (venue: VenueCard) => {
+        setSelectedVenueId(venue.id);
+        setExpandedVenueManageId(venue.id);
+      },
+      onCloseManageVenue: (venue: VenueCard) => {
+        setExpandedVenueManageId((current) => (current === venue.id ? null : current));
+      },
       renderMeetupListItem: renderMeetupSheetListItem,
       renderMeetupDetail: renderMeetupSheetDetail,
       renderMeetupManage: renderMeetupSheetManage,
       renderVenueListItem: renderVenueSheetListItem,
       renderVenueDetail: renderVenueSheetDetail,
+      renderVenueManage: renderVenueSheetManage,
     },
   };
 
@@ -4700,8 +4712,6 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       venueSuggestions,
       venueSuggestionName,
       onChangeVenueSuggestionName: setVenueSuggestionName,
-      venueSuggestionNeighborhood,
-      onChangeVenueSuggestionNeighborhood: setVenueSuggestionNeighborhood,
       venueAddressQuery,
       venueAddressFocused,
       onChangeVenueAddressFocused: setVenueAddressFocused,
@@ -4796,7 +4806,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       blockedUsersSuccess,
       loadingBlockedUsers,
       unblockingUserId,
-      onOpenBlockedUsers: openBlockedUsers,
+      onEnterBlockedUsersScene: () => void loadAccountDataRef.current(),
       onUnblockUser: (user: BlockedUserProfile) => {
         handleUnblockPlayer(user);
       },
@@ -5018,16 +5028,15 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       onSelectFormat: setSelectedFormatId,
       hostModeOptions,
       hostMode,
-      onSelectHostMode: (value: string) => setHostMode(value as ComposerMeetupMode),
+      onSelectHostMode: (value: string) => {
+        const next = value as ComposerMeetupMode;
+        setHostMode(next);
+        if (next !== "public_place" && next !== "specialty_store") {
+          setSelectedVenueId(null);
+        }
+      },
       selectedVenueId,
       availableVenues: availableComposerVenues,
-      onSelectOtherAddress: () => {
-        setSelectedVenueId(null);
-        setComposerSelectedAddress(null);
-        setComposerAddressQuery("");
-        setComposerAddressSuggestions([]);
-        setDraftCoordinate(null);
-      },
       onSelectVenue: (venue: VenueCard) => {
         setSelectedVenueId(venue.id);
         setHostMode(venue.kind === "specialty_store" ? "specialty_store" : "public_place");
@@ -5063,8 +5072,6 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
           longitude: suggestion.longitude,
         });
       },
-      helperTitle: composerLocationHelper.title,
-      helperBody: composerLocationHelper.body,
       errorMessage: composerError,
       onClose: () => closeComposer(),
       creatingMeetup,
@@ -5091,10 +5098,11 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       timeMinutes: TIME_MINUTES,
     },
     venueComposerSheetProps: {
+      sheetHeight: composerSheetHeight,
+      translateY: composerSheetTranslateY,
       bottomInset: insets.bottom,
       keyboardPadding: composerFooterReserve + composerKeyboardHeight,
       name: venueSuggestionName,
-      neighborhood: venueSuggestionNeighborhood,
       addressQuery: venueAddressQuery,
       addressFocused: venueAddressFocused,
       addressSuggestions: venueAddressSuggestions,
@@ -5111,7 +5119,6 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       submitting: creatingMeetup,
       onClose: cancelVenueComposer,
       onChangeName: setVenueSuggestionName,
-      onChangeNeighborhood: setVenueSuggestionNeighborhood,
       onChangeAddressFocused: setVenueAddressFocused,
       onChangeAddressQuery: (value: string) => {
         setVenueAddressQuery(value);

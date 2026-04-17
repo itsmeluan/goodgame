@@ -24,10 +24,9 @@ import type {
   FriendActionCandidate,
   RecentPlayerCard,
 } from "@/features/map/friendTypes";
-import { formatRelativeTimestamp, formatSyncLabel } from "@/lib/formatting";
-import { palette, sheetContentGutter, spacing } from "@/theme/tokens";
+import { formatRelativeTimestamp } from "@/lib/formatting";
+import { palette, spacing } from "@/theme/tokens";
 import type { FriendProfile, PlayerSearchResult } from "@/types/domain";
-const FRIEND_TEXT_INSET = 62;
 
 type FriendsPageProps = {
   bottomInset: number;
@@ -70,7 +69,7 @@ export function FriendsPage({
   acceptedFriends,
   outgoingFriendRequests,
   onlineFriendsCount,
-  lastFriendSyncAt,
+  lastFriendSyncAt: _lastFriendSyncAt,
   playerSearchQuery,
   onChangePlayerSearchQuery,
   onSearchPlayers,
@@ -110,16 +109,6 @@ export function FriendsPage({
             { paddingBottom: bottomInset + spacing.xxl },
           ]}
         >
-          <GlassCard style={styles.summaryCard}>
-            <View style={styles.summaryCopy}>
-              <Text style={styles.summaryEyebrow}>Amigos</Text>
-              <Text style={styles.summaryMeta}>
-                {acceptedFriends.length} amigo(s) · {onlineFriendsCount} online ·{" "}
-                {formatSyncLabel(lastFriendSyncAt)}
-              </Text>
-            </View>
-          </GlassCard>
-
           {friendError ? <MapInlineNotice tone="error" message={friendError} /> : null}
           {friendSuccess ? <MapInlineNotice tone="success" message={friendSuccess} /> : null}
 
@@ -505,7 +494,7 @@ export function FriendsPage({
       routes={routes}
       onPop={popRoute}
       headerVariant="compact"
-      scenePaddingHorizontal={sheetContentGutter}
+      scenePaddingHorizontal={spacing.lg}
     />
   );
 }
@@ -601,6 +590,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sceneContent: {
+    alignItems: "stretch",
     paddingTop: 8,
     paddingBottom: spacing.xxl,
     gap: 12,
@@ -615,20 +605,22 @@ const styles = StyleSheet.create({
     borderColor: "rgba(231,216,188,0.06)",
   },
   sceneLead: {
+    alignSelf: "stretch",
     gap: 4,
     paddingTop: 2,
-    paddingLeft: FRIEND_TEXT_INSET,
   },
   sceneLeadTitle: {
     color: palette.sand,
     fontSize: 16,
     lineHeight: 21,
     fontWeight: "800",
+    textAlign: "left",
   },
   sceneLeadSubtitle: {
     color: palette.pine,
     fontSize: 11,
     lineHeight: 15,
+    textAlign: "left",
   },
   friendCard: {
     gap: spacing.sm,
@@ -667,26 +659,6 @@ const styles = StyleSheet.create({
   },
   friendActionsWrap: {
     paddingTop: spacing.xs,
-  },
-  summaryCard: {
-    padding: spacing.md,
-    gap: spacing.xs,
-    borderWidth: 1,
-    borderColor: "rgba(231,216,188,0.06)",
-  },
-  summaryCopy: {
-    gap: 2,
-  },
-  summaryEyebrow: {
-    color: palette.ember,
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: "700",
-  },
-  summaryMeta: {
-    color: palette.mist,
-    fontSize: 13,
-    lineHeight: 18,
   },
   friendIconActions: {
     flexDirection: "row",

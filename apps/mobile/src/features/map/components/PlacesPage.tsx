@@ -48,8 +48,6 @@ type PlacesPageProps = {
   profileLng: number | null;
   venueSuggestionName: string;
   onChangeVenueSuggestionName: (value: string) => void;
-  venueSuggestionNeighborhood: string;
-  onChangeVenueSuggestionNeighborhood: (value: string) => void;
   venueAddressQuery: string;
   venueAddressFocused: boolean;
   onChangeVenueAddressFocused: (focused: boolean) => void;
@@ -88,8 +86,6 @@ export function PlacesPage({
   profileLng,
   venueSuggestionName,
   onChangeVenueSuggestionName,
-  venueSuggestionNeighborhood,
-  onChangeVenueSuggestionNeighborhood,
   venueAddressQuery,
   venueAddressFocused,
   onChangeVenueAddressFocused,
@@ -267,12 +263,6 @@ export function PlacesPage({
                     value={venueSuggestionName}
                     onChangeText={onChangeVenueSuggestionName}
                     placeholder="Ex.: Loja da Galera"
-                  />
-                  <TextField
-                    label="Bairro"
-                    value={venueSuggestionNeighborhood}
-                    onChangeText={onChangeVenueSuggestionNeighborhood}
-                    placeholder="Ex.: Pinheiros"
                   />
                   <AddressAutocompleteField
                     label="Endereço"

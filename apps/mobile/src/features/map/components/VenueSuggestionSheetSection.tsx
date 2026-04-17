@@ -27,8 +27,6 @@ type VenueSuggestionSheetSectionProps = {
   onToggleOpen: () => void;
   name: string;
   onChangeName: (value: string) => void;
-  neighborhood: string;
-  onChangeNeighborhood: (value: string) => void;
   addressQuery: string;
   addressFocused: boolean;
   onChangeAddressFocused: (focused: boolean) => void;
@@ -58,8 +56,6 @@ export function VenueSuggestionSheetSection({
   onToggleOpen,
   name,
   onChangeName,
-  neighborhood,
-  onChangeNeighborhood,
   addressQuery,
   addressFocused,
   onChangeAddressFocused,
@@ -120,12 +116,6 @@ export function VenueSuggestionSheetSection({
                       value={name}
                       onChangeText={onChangeName}
                       placeholder="Ex.: Loja da Galera"
-                    />
-                    <TextField
-                      label="Bairro"
-                      value={neighborhood}
-                      onChangeText={onChangeNeighborhood}
-                      placeholder="Ex.: Pinheiros"
                     />
                     <AddressAutocompleteField
                       label="Endereço"
@@ -205,13 +195,11 @@ export function VenueSuggestionSheetSection({
       addressSuggestions,
       details,
       name,
-      neighborhood,
       onCancel,
       onChangeAddressFocused,
       onChangeAddressQuery,
       onChangeDetails,
       onChangeName,
-      onChangeNeighborhood,
       onSelectAddressSuggestion,
       onSelectVenueKind,
       onSubmit,

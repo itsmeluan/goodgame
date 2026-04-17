@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { palette, radius, spacing } from "@/theme/tokens";
@@ -34,6 +34,10 @@ const weekdays = [
   { id: 6, label: "Sáb" },
   { id: 0, label: "Dom" },
 ] as const;
+
+/** Same width for every weekday pill; short height + pill radius = full capsule. */
+const DAY_PILL_WIDTH = 40;
+const DAY_PILL_HEIGHT = 30;
 
 type AvailabilityMatrixProps = {
   value: AvailabilitySlot[];
@@ -128,7 +132,13 @@ export function AvailabilityMatrix({ value, onChange }: AvailabilityMatrixProps)
             style={styles.periodCardSurface}
           />
           <Text style={styles.periodTitle}>{period.label}</Text>
-          <View style={styles.daysRow}>
+          <ScrollView
+            horizontal
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={styles.daysRowScrollContent}
+          >
             {weekdays.map((weekday) => {
               const selected = hasSelection(weekday.id, period.id);
 
@@ -158,14 +168,9 @@ export function AvailabilityMatrix({ value, onChange }: AvailabilityMatrixProps)
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
       ))}
-
-      <Text style={styles.footerNote}>
-        Selecione os períodos em que você costuma topar jogar. Os horários ficam implícitos como
-        manhã, tarde e noite.
-      </Text>
     </View>
   );
 }
@@ -244,20 +249,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "800",
   },
-  daysRow: {
+  daysRowScrollContent: {
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
     gap: spacing.sm,
+    paddingVertical: 2,
+    paddingRight: spacing.xs,
   },
   dayChip: {
-    minWidth: 44,
-    minHeight: 40,
-    borderRadius: radius.md,
+    width: DAY_PILL_WIDTH,
+    height: DAY_PILL_HEIGHT,
+    borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: palette.line,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: spacing.sm,
     overflow: "hidden",
   },
   dayChipSelected: {
@@ -266,22 +272,18 @@ const styles = StyleSheet.create({
   },
   dayChipSurface: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.md,
+    borderRadius: radius.pill,
   },
   dayChipPressed: {
     transform: [{ scale: 0.97 }],
   },
   dayChipLabel: {
     color: palette.parchment,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "700",
+    letterSpacing: -0.2,
   },
   dayChipLabelSelected: {
     color: palette.ink,
-  },
-  footerNote: {
-    color: palette.mist,
-    fontSize: 13,
-    lineHeight: 19,
   },
 });

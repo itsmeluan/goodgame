@@ -203,25 +203,29 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
                   onPress={onToggleSortMenu}
                   style={({ pressed }) => [
                     styles.sortButton,
-                    sortMenuOpen ? styles.sortButtonActive : null,
                     pressed ? styles.inlinePressed : null,
                   ]}
                 >
-                  {!sortMenuOpen ? (
-                    <AppleGlassSurface
-                      pointerEvents="none"
-                      variant="dark"
-                      intensity="clear"
-                      style={styles.sortButtonSurface}
-                    />
-                  ) : null}
-                  <AppIcon
-                    iosName="arrow.up.arrow.down.circle"
-                    fallbackName="swap-vert"
-                    size={16}
-                    color={sortMenuOpen ? palette.ink : palette.ember}
+                  <AppleGlassSurface
+                    pointerEvents="none"
+                    variant="dark"
+                    intensity="clear"
+                    style={styles.sortButtonSurface}
                   />
-                  <Text style={[styles.sortButtonLabel, sortMenuOpen ? styles.sortButtonLabelActive : null]}>
+                  <View style={styles.sortIconBubble}>
+                    <AppIcon
+                      iosName="arrow.up.arrow.down"
+                      fallbackName="swap-vert"
+                      size={12}
+                      color={palette.ink}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.sortButtonLabel,
+                      sortMenuOpen ? styles.sortButtonLabelActive : null,
+                    ]}
+                  >
                     {currentSortLabel}
                   </Text>
                   <AppIcon
@@ -421,13 +425,17 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     alignSelf: "flex-end",
   },
-  sortButtonActive: {
-    backgroundColor: palette.ember,
-    borderColor: "rgba(241,143,92,0.24)",
-  },
   sortButtonSurface: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: radius.pill,
+  },
+  sortIconBubble: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: palette.ember,
   },
   sortButtonLabel: {
     flexShrink: 1,

@@ -4,6 +4,10 @@ import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { triggerHaptic, type AppHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 
+/** Flat watermelon / dusty coral — solid fill (no glass overlay). */
+const DANGER_SOLID_BG = "#D97075";
+const DANGER_LABEL_COLOR = "#1A1A1A";
+
 type PrimaryButtonProps = {
   label: string;
   onPress: () => void;
@@ -44,6 +48,7 @@ export function PrimaryButton({
           ? "accent"
           : "dark";
   const surfaceIntensity = tone === "primary" ? "regular" : "clear";
+  const useGlassSurface = tone !== "danger";
 
   return (
     <Pressable
@@ -69,33 +74,43 @@ export function PrimaryButton({
         tone === "primary"
           ? styles.primaryShadow
           : tone === "danger"
-            ? styles.dangerShadow
+            ? styles.dangerFlat
             : styles.ghostShadow,
         pressed ? styles.pressed : null,
         (disabled || loading) && styles.disabled,
         style,
       ]}
     >
-      <AppleGlassSurface
-        pointerEvents="none"
-        variant={surfaceVariant}
-        intensity={surfaceIntensity}
-        style={styles.surface}
-      />
+      {useGlassSurface ? (
+        <AppleGlassSurface
+          pointerEvents="none"
+          variant={surfaceVariant}
+          intensity={surfaceIntensity}
+          style={styles.surface}
+        />
+      ) : null}
       {loading ? (
         <ActivityIndicator
-          color={tone === "primary" || tone === "danger" ? palette.ink : palette.sand}
+          color={
+            tone === "danger"
+              ? DANGER_LABEL_COLOR
+              : tone === "primary"
+                ? palette.ink
+                : palette.sand
+          }
         />
       ) : (
         <Text
           style={[
             styles.label,
             size === "compact" ? styles.labelCompact : null,
-            tone === "primary" || tone === "danger"
+            tone === "primary"
               ? styles.primaryLabel
-              : tone === "dangerGhost"
-                ? styles.dangerGhostLabel
-                : styles.ghostLabel,
+              : tone === "danger"
+                ? styles.dangerLabel
+                : tone === "dangerGhost"
+                  ? styles.dangerGhostLabel
+                  : styles.ghostLabel,
           ]}
         >
           {label}
@@ -128,8 +143,8 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.14)",
   },
   danger: {
-    backgroundColor: "#E77A84",
-    borderColor: "rgba(255,255,255,0.12)",
+    backgroundColor: DANGER_SOLID_BG,
+    borderColor: "transparent",
   },
   ghost: {
     backgroundColor: "rgba(255,255,255,0.012)",
@@ -146,12 +161,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
   },
-  dangerShadow: {
-    shadowColor: "#E77A84",
-    shadowOpacity: 0.16,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 7 },
-    elevation: 5,
+  dangerFlat: {
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
   },
   ghostShadow: {
     shadowColor: "#020303",
@@ -181,6 +195,9 @@ const styles = StyleSheet.create({
   },
   primaryLabel: {
     color: palette.ink,
+  },
+  dangerLabel: {
+    color: DANGER_LABEL_COLOR,
   },
   ghostLabel: {
     color: palette.sand,

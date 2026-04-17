@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 
@@ -10,8 +10,8 @@ import { Avatar } from "@/components/Avatar";
 import { ChoiceChip } from "@/components/ChoiceChip";
 import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { SectionCard } from "@/components/SectionCard";
 import { TextField } from "@/components/TextField";
+import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import { AvailabilityMatrix } from "@/features/profile/AvailabilityMatrix";
 import { summarizeAvailabilityPeriods } from "@/lib/formatting";
 import { saveMyProfile, signOut, uploadMyAvatar } from "@/lib/api";
@@ -40,6 +40,7 @@ export function ProfileSetupScreen({
   onCancel,
   onSaved,
 }: ProfileSetupScreenProps) {
+  const insets = useSafeAreaInsets();
   const [displayName, setDisplayName] = useState(profile?.displayName ?? "");
   const [handle, setHandle] = useState(profile?.handle ?? "");
   const [bio, setBio] = useState(profile?.bio ?? "");
@@ -60,10 +61,8 @@ export function ProfileSetupScreen({
   const [error, setError] = useState<string | null>(null);
   const avatarPreviewUri = pendingAvatarUri ?? savedAvatarUrl ?? profile?.avatarUrl ?? null;
   const availabilityPreview = summarizeAvailabilityPeriods(availability);
-  const selectedGameNames = games
-    .filter((game) => selectedGameIds.includes(game.id))
-    .map((game) => game.name);
   const selectedGames = games.filter((game) => selectedGameIds.includes(game.id));
+  const heroInterestsSummary = summarizeInterestsForHero(selectedGames, formats, selectedFormatIds);
 
   useEffect(() => {
     setSavedAvatarUrl(profile?.avatarUrl ?? null);
@@ -157,97 +156,116 @@ export function ProfileSetupScreen({
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
       <KeyboardAwareScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: insets.bottom + spacing.xxl },
+        ]}
         keyboardOffset={124}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.eyebrow}>Perfil inicial</Text>
-        <Text style={styles.title}>Vamos preparar como você aparece no Good Game</Text>
-        <Text style={styles.subtitle}>
-          Ajuste sua identidade, interesses e disponibilidade para facilitar combinações
-          com outros jogadores.
-        </Text>
+        <View style={styles.pageIntro}>
+          <Text style={styles.title}>Vamos preparar como você aparece no Good Game</Text>
+        </View>
 
-        <SectionCard>
-          <View style={styles.profileHero}>
-            <View style={styles.profileHeroMedia}>
-              <Avatar
-                name={displayName || handle || "Good Game"}
-                uri={avatarPreviewUri}
-                size={92}
-              />
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => void handlePickAvatar()}
-                style={({ pressed }) => [
-                  styles.photoActionButton,
-                  pressed ? styles.photoActionButtonPressed : null,
-                ]}
-              >
-                <AppleGlassSurface
-                  pointerEvents="none"
-                  variant="dark"
-                  intensity="clear"
-                  style={styles.photoActionButtonSurface}
+        <View style={styles.section}>
+          <View style={styles.identityHero}>
+            <View style={styles.identityHeroRow}>
+              <View style={styles.avatarBlock}>
+                <Avatar
+                  name={displayName || handle || "Good Game"}
+                  uri={avatarPreviewUri}
+                  size={PROFILE_PHOTO_SIZE}
                 />
-                <AppIcon
-                  iosName="camera.fill"
-                  fallbackName="photo-camera"
-                  size={16}
-                  color={palette.ember}
-                />
-                <Text style={styles.photoActionLabel}>Trocar foto</Text>
-              </Pressable>
-            </View>
-            <View style={styles.profileHeroCopy}>
-              <Text style={styles.sectionTitle}>Sua identidade no app</Text>
-              <Text style={styles.helpText}>
-                A foto e o nome ajudam outros jogadores a reconhecer você nos grupos e no mapa.
-              </Text>
-              <View style={styles.previewPills}>
-                <PreviewPill label={displayName || "Seu nome"} />
-                <PreviewPill label={`@${handle || "seuhandle"}`} />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Trocar foto do perfil"
+                  onPress={() => void handlePickAvatar()}
+                  style={({ pressed }) => [
+                    styles.photoActionButton,
+                    pressed ? styles.photoActionButtonPressed : null,
+                  ]}
+                >
+                  <AppleGlassSurface
+                    pointerEvents="none"
+                    variant="accent"
+                    intensity="clear"
+                    style={styles.photoActionButtonSurface}
+                  />
+                  <AppIcon
+                    iosName="camera.fill"
+                    fallbackName="photo-camera"
+                    size={12}
+                    color={palette.ink}
+                  />
+                  <Text style={styles.photoActionLabel} numberOfLines={1}>
+                    Trocar foto
+                  </Text>
+                </Pressable>
+              </View>
+              <View style={styles.heroNameColumn}>
+                <Text
+                  style={styles.heroDisplayName}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.42}
+                >
+                  {displayName || "Seu nome"}
+                </Text>
+                <Text
+                  style={styles.heroHandleText}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.55}
+                >
+                  @{handle || "seuhandle"}
+                </Text>
+                {heroInterestsSummary ? (
+                  <Text style={styles.heroInterestsText}>{heroInterestsSummary}</Text>
+                ) : null}
               </View>
             </View>
           </View>
-        </SectionCard>
+        </View>
 
-        <SectionCard>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Informações públicas</Text>
-          <Text style={styles.helpText}>
-            Esse é o perfil que outras pessoas veem quando tocam no seu avatar.
-          </Text>
-          <TextField
-            label="Nome de exibicao"
-            value={displayName}
-            onChangeText={setDisplayName}
-            placeholder="Ex.: Luan Martins"
-          />
-          <TextField
-            label="Handle"
-            value={handle}
-            onChangeText={setHandle}
-            placeholder="Ex.: luanstack"
-            autoCapitalize="none"
-          />
-          <TextField
-            label="Bio"
-            value={bio}
-            onChangeText={setBio}
-            placeholder="Fale sobre formatos, power level e estilo de jogo"
-            multiline
-          />
-          <TextField
-            label="Bairro"
-            value={neighborhood}
-            onChangeText={setNeighborhood}
-            placeholder="Ex.: Pinheiros"
-          />
-        </SectionCard>
+          <View style={styles.fieldStack}>
+            <TextField
+              label="Nome de exibição"
+              value={displayName}
+              onChangeText={setDisplayName}
+              placeholder="Ex.: Luan Martins"
+              density="compact"
+            />
+            <TextField
+              label="Handle"
+              value={handle}
+              onChangeText={setHandle}
+              placeholder="Ex.: luanstack"
+              autoCapitalize="none"
+              density="compact"
+            />
+            <TextField
+              label="Bio"
+              value={bio}
+              onChangeText={setBio}
+              placeholder="Fale sobre formatos, power level e estilo de jogo"
+              multiline
+              density="compact"
+            />
+            <TextField
+              label="Bairro"
+              value={neighborhood}
+              onChangeText={setNeighborhood}
+              placeholder="Ex.: Pinheiros"
+              density="compact"
+            />
+          </View>
+        </View>
 
-        <SectionCard>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Interesses</Text>
           <Text style={styles.helpText}>
             Escolha os tipos de jogo que você curte. Os formatos aparecem só depois que
@@ -284,19 +302,9 @@ export function ProfileSetupScreen({
               );
             })}
           </View>
-          <View style={styles.selectionWrap}>
-            {selectedGameNames.length ? (
-              selectedGameNames.map((gameName) => <PreviewPill key={gameName} label={gameName} />)
-            ) : (
-              <Text style={styles.helpText}>Você pode deixar sem interesses por enquanto.</Text>
-            )}
-          </View>
 
           {selectedGames.map((game) => {
             const gameFormats = formats.filter((format) => format.gameId === game.id);
-            const gameSelectedFormatNames = gameFormats
-              .filter((format) => selectedFormatIds.includes(format.id))
-              .map((format) => format.name);
 
             if (!gameFormats.length) {
               return null;
@@ -321,52 +329,35 @@ export function ProfileSetupScreen({
                     />
                   ))}
                 </View>
-                <View style={styles.selectionWrap}>
-                  {gameSelectedFormatNames.length ? (
-                    gameSelectedFormatNames.map((formatName) => (
-                      <PreviewPill key={`${game.id}-${formatName}`} label={formatName} />
-                    ))
-                  ) : (
-                    <Text style={styles.helpText}>
-                      Você pode deixar sem formato, ou detalhar se quiser.
-                    </Text>
-                  )}
-                </View>
               </View>
             );
           })}
-        </SectionCard>
+        </View>
 
-        <SectionCard>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Preferências de encontro</Text>
-          <View style={styles.switchRow}>
+          <View style={styles.switchBlock}>
             <View style={styles.switchCopy}>
               <Text style={styles.switchTitle}>Pode receber pessoas?</Text>
               <Text style={styles.helpText}>
                 Isso aparece no seu perfil e ajuda a indicar se você topa hospedar partidas.
               </Text>
             </View>
-          <View style={styles.switchControlRow}>
-            <AppleGlassSurface
-              pointerEvents="none"
-              variant="dark"
-              intensity="clear"
-              style={styles.switchControlSurface}
-            />
-            <Text style={styles.helpText}>
-              {canHost ? "Sim, posso receber" : "Não, prefiro local externo"}
-            </Text>
+            <View style={styles.hostToggleRow}>
+              <Text style={styles.hostStateLabel}>
+                {canHost ? "Sim, posso receber" : "Não, prefiro local externo"}
+              </Text>
               <Switch
                 value={canHost}
                 onValueChange={setCanHost}
                 thumbColor={canHost ? palette.ember : palette.parchment}
-                trackColor={{ true: palette.moss, false: palette.line }}
+                trackColor={{ true: "rgba(241,143,92,0.35)", false: palette.line }}
               />
             </View>
           </View>
-        </SectionCard>
+        </View>
 
-        <SectionCard>
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Disponibilidade</Text>
           <Text style={styles.helpText}>
             Marque os dias e períodos em que você costuma topar jogar. Isso ajuda
@@ -375,14 +366,14 @@ export function ProfileSetupScreen({
           <AvailabilityMatrix value={availability} onChange={setAvailability} />
           <View style={styles.selectionWrap}>
             {availabilityPreview.length ? (
-              availabilityPreview.map((label) => <PreviewPill key={label} label={label} />)
+              availabilityPreview.map((label) => <IdentityChip key={label} label={label} />)
             ) : (
               <Text style={styles.helpText}>Nenhum período selecionado ainda.</Text>
             )}
           </View>
-        </SectionCard>
+        </View>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <MapInlineNotice tone="error" message={error} /> : null}
 
         <View style={styles.footerActions}>
           <View style={styles.footerPrimaryRow}>
@@ -410,52 +401,107 @@ function toMessage(error: unknown) {
   return "Não foi possível salvar o perfil.";
 }
 
+function summarizeInterestsForHero(
+  selectedGames: CatalogGame[],
+  allFormats: CatalogFormat[],
+  selectedFormatIds: string[]
+): string {
+  if (!selectedGames.length) {
+    return "";
+  }
+
+  return selectedGames
+    .map((game) => {
+      const formatNames = allFormats
+        .filter((format) => format.gameId === game.id && selectedFormatIds.includes(format.id))
+        .map((format) => format.name);
+
+      if (!formatNames.length) {
+        return game.name;
+      }
+
+      return `${game.name} (${formatNames.join(", ")})`;
+    })
+    .join(" · ");
+}
+
+/** Matches `Avatar` size so the change-photo control aligns to the same width. */
+const PROFILE_PHOTO_SIZE = 96;
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: "rgba(7,12,18,0.98)",
   },
   content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    gap: spacing.xl,
   },
-  eyebrow: {
-    color: palette.ember,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 1.1,
-    textTransform: "uppercase",
+  pageIntro: {
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  section: {
+    gap: spacing.sm,
+  },
+  fieldStack: {
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   title: {
     color: palette.sand,
-    fontSize: 32,
-    lineHeight: 38,
+    fontSize: 26,
+    lineHeight: 32,
     fontWeight: "800",
-    maxWidth: 320,
-  },
-  subtitle: {
-    color: palette.mist,
-    fontSize: 15,
-    lineHeight: 22,
+    letterSpacing: -0.35,
   },
   sectionTitle: {
     color: palette.sand,
-    fontSize: 18,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: "800",
   },
-  profileHero: {
+  identityHero: {
+    gap: spacing.md,
+  },
+  identityHeroRow: {
     flexDirection: "row",
     alignItems: "flex-start",
     gap: spacing.md,
   },
-  profileHeroMedia: {
-    alignItems: "center",
+  avatarBlock: {
+    alignItems: "flex-start",
+    width: PROFILE_PHOTO_SIZE,
     gap: spacing.sm,
   },
-  profileHeroCopy: {
+  heroNameColumn: {
     flex: 1,
-    gap: spacing.sm,
+    minWidth: 0,
+    alignItems: "flex-start",
+    gap: 4,
+  },
+  heroDisplayName: {
+    color: palette.sand,
+    fontSize: 22,
+    fontWeight: "800",
+    letterSpacing: -0.35,
+    alignSelf: "stretch",
+  },
+  heroHandleText: {
+    color: palette.pine,
+    fontSize: 15,
+    fontWeight: "600",
+    letterSpacing: -0.15,
+    alignSelf: "stretch",
+  },
+  heroInterestsText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: "400",
+    letterSpacing: -0.1,
+    alignSelf: "stretch",
   },
   helpText: {
     color: palette.mist,
@@ -463,14 +509,17 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   photoActionButton: {
+    width: PROFILE_PHOTO_SIZE,
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    minHeight: 34,
+    justifyContent: "center",
+    gap: 3,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    minHeight: 32,
     borderRadius: radius.pill,
     borderWidth: 1,
-    borderColor: palette.line,
-    paddingHorizontal: spacing.md,
+    borderColor: "rgba(241,143,92,0.35)",
     overflow: "hidden",
   },
   photoActionButtonSurface: {
@@ -478,39 +527,27 @@ const styles = StyleSheet.create({
     borderRadius: radius.pill,
   },
   photoActionButtonPressed: {
-    opacity: 0.7,
+    opacity: 0.88,
+    transform: [{ scale: 0.98 }],
   },
   photoActionLabel: {
+    color: palette.ink,
+    fontSize: 10,
+    lineHeight: 12,
+    fontWeight: "800",
+    letterSpacing: -0.2,
+  },
+  identityChip: {
+    paddingVertical: 2,
+  },
+  identityChipLabel: {
     color: palette.parchment,
     fontSize: 13,
     fontWeight: "700",
   },
-  previewPills: {
-    flexDirection: "row",
-    flexWrap: "wrap",
+  switchBlock: {
     gap: spacing.sm,
-  },
-  previewPill: {
-    minHeight: 34,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: palette.line,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: spacing.md,
-    overflow: "hidden",
-  },
-  previewPillSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.pill,
-  },
-  previewPillLabel: {
-    color: palette.sand,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  switchRow: {
-    gap: spacing.md,
+    marginTop: spacing.xs,
   },
   switchCopy: {
     gap: 4,
@@ -520,21 +557,19 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
   },
-  switchControlRow: {
+  hostToggleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: palette.line,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    overflow: "hidden",
+    paddingVertical: spacing.xs,
   },
-  switchControlSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.lg,
+  hostStateLabel: {
+    flex: 1,
+    color: palette.parchment,
+    fontSize: 14,
+    fontWeight: "600",
+    lineHeight: 20,
   },
   chips: {
     flexDirection: "row",
@@ -545,17 +580,19 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   gameFormatTitle: {
-    color: palette.parchment,
-    fontSize: 14,
+    color: palette.pine,
+    fontSize: 13,
     fontWeight: "700",
   },
   selectionWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   footerActions: {
     gap: spacing.sm,
+    paddingTop: spacing.md,
   },
   footerPrimaryRow: {
     flexDirection: "row",
@@ -568,23 +605,12 @@ const styles = StyleSheet.create({
   footerSecondaryAction: {
     minWidth: 128,
   },
-  error: {
-    color: palette.ember,
-    fontSize: 14,
-    lineHeight: 20,
-  },
 });
 
-function PreviewPill({ label }: { label: string }) {
+function IdentityChip({ label }: { label: string }) {
   return (
-    <View style={styles.previewPill}>
-      <AppleGlassSurface
-        pointerEvents="none"
-        variant="dark"
-        intensity="clear"
-        style={styles.previewPillSurface}
-      />
-      <Text style={styles.previewPillLabel}>{label}</Text>
+    <View style={styles.identityChip}>
+      <Text style={styles.identityChipLabel}>{label}</Text>
     </View>
   );
 }

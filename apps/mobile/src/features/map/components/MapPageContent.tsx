@@ -1,6 +1,5 @@
 import { AccountPage } from "@/features/map/components/AccountPage";
 import { AlertsPage } from "@/features/map/components/AlertsPage";
-import { BlockedUsersPage } from "@/features/map/components/BlockedUsersPage";
 import { ChatsPage, type ChatListSection } from "@/features/map/components/ChatsPage";
 import { FriendsPage } from "@/features/map/components/FriendsPage";
 import { HistoryPage } from "@/features/map/components/HistoryPage";
@@ -32,8 +31,7 @@ type PageScreen =
   | "account"
   | "friends"
   | "history"
-  | "player"
-  | "blocked";
+  | "player";
 
 type MapPageContentProps = {
   pageScreen: PageScreen;
@@ -54,8 +52,6 @@ type MapPageContentProps = {
   venueSuggestions: VenueSuggestion[];
   venueSuggestionName: string;
   onChangeVenueSuggestionName: (value: string) => void;
-  venueSuggestionNeighborhood: string;
-  onChangeVenueSuggestionNeighborhood: (value: string) => void;
   venueAddressQuery: string;
   venueAddressFocused: boolean;
   onChangeVenueAddressFocused: (focused: boolean) => void;
@@ -113,7 +109,7 @@ type MapPageContentProps = {
   blockedUsersSuccess: string | null;
   loadingBlockedUsers: boolean;
   unblockingUserId: string | null;
-  onOpenBlockedUsers: () => void;
+  onEnterBlockedUsersScene: () => void;
   onUnblockUser: (user: BlockedUserProfile) => void;
   onProfileEdit: () => void;
   onSignOut: () => void;
@@ -147,8 +143,6 @@ export function MapPageContent({
   venueSuggestions,
   venueSuggestionName,
   onChangeVenueSuggestionName,
-  venueSuggestionNeighborhood,
-  onChangeVenueSuggestionNeighborhood,
   venueAddressQuery,
   venueAddressFocused,
   onChangeVenueAddressFocused,
@@ -202,7 +196,7 @@ export function MapPageContent({
   blockedUsersSuccess,
   loadingBlockedUsers,
   unblockingUserId,
-  onOpenBlockedUsers,
+  onEnterBlockedUsersScene,
   onUnblockUser,
   onProfileEdit,
   onSignOut,
@@ -256,8 +250,6 @@ export function MapPageContent({
         profileLng={profile.lng}
         venueSuggestionName={venueSuggestionName}
         onChangeVenueSuggestionName={onChangeVenueSuggestionName}
-        venueSuggestionNeighborhood={venueSuggestionNeighborhood}
-        onChangeVenueSuggestionNeighborhood={onChangeVenueSuggestionNeighborhood}
         venueAddressQuery={venueAddressQuery}
         venueAddressFocused={venueAddressFocused}
         onChangeVenueAddressFocused={onChangeVenueAddressFocused}
@@ -335,26 +327,17 @@ export function MapPageContent({
         reputationSummary={reputationSummary}
         lastAccountSyncAt={lastAccountSyncAt}
         blockedUsersCount={blockedUsers.length}
-        bottomInset={bottomInset}
-        onProfileEdit={onProfileEdit}
-        onOpenBlockedUsers={onOpenBlockedUsers}
-        onSignOut={onSignOut}
-        onDeleteAccount={onDeleteAccount}
-        onClose={onClose}
-      />
-    );
-  }
-
-  if (pageScreen === "blocked") {
-    return (
-      <BlockedUsersPage
         blockedUsers={blockedUsers}
         blockedUsersError={blockedUsersError}
         blockedUsersSuccess={blockedUsersSuccess}
         loadingBlockedUsers={loadingBlockedUsers}
         unblockingUserId={unblockingUserId}
         bottomInset={bottomInset}
+        onProfileEdit={onProfileEdit}
+        onEnterBlockedUsersScene={onEnterBlockedUsersScene}
         onUnblockUser={onUnblockUser}
+        onSignOut={onSignOut}
+        onDeleteAccount={onDeleteAccount}
         onClose={onClose}
       />
     );

@@ -1,15 +1,15 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef } from "react";
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleListGroup, AppleListRow } from "@/components/AppleListNavigation";
+import { AppIcon } from "@/components/AppIcon";
 import { ChoiceChip } from "@/components/ChoiceChip";
 import { PrimaryButton } from "@/components/PrimaryButton";
-import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { TextField } from "@/components/TextField";
 import { AddressAutocompleteField } from "@/features/map/components/AddressAutocompleteField";
-import { MetaTag } from "@/features/map/components/MapSheetPrimitives";
 import { formatVenueKind } from "@/lib/formatting";
-import { palette, sheetContentGutter, spacing } from "@/theme/tokens";
+import { triggerHaptic } from "@/lib/haptics";
+import { palette, spacing } from "@/theme/tokens";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 import type { VenueCard, VenueKind } from "@/types/domain";
 
@@ -19,18 +19,16 @@ type VenueGameOption = {
 };
 
 type VenueSheetCardProps = {
+  mode: "detail" | "manage";
   venue: VenueCard;
   canManage: boolean;
   selected: boolean;
   distanceLabel: string | null;
   venueGameLabels: string[];
   locationLabel: string;
-  infoOpen: boolean;
-  manageOpen: boolean;
   updatingVenue: boolean;
   deletingVenue: boolean;
   manageVenueName: string;
-  manageVenueNeighborhood: string;
   manageVenueAddressQuery: string;
   manageVenueAddressFocused: boolean;
   manageVenueAddressSuggestions: AddressSuggestion[];
@@ -42,10 +40,9 @@ type VenueSheetCardProps = {
   venueGameOptions: VenueGameOption[];
   onFocusVenueOnMap: () => void;
   onCreateMeetupAtVenue: () => void;
-  onToggleManage: () => void;
-  onToggleInfo: () => void;
+  /** Detail only — abre a rota de edição na pilha do menu de jogos. */
+  onToggleManage?: () => void;
   onManageVenueNameChange: (value: string) => void;
-  onManageVenueNeighborhoodChange: (value: string) => void;
   onManageVenueAddressFocusChange: (focused: boolean) => void;
   onManageVenueAddressChange: (value: string) => void;
   onManageVenueAddressUseCurrentLocation: () => void;
@@ -59,18 +56,16 @@ type VenueSheetCardProps = {
 };
 
 export function VenueSheetCard({
+  mode,
   venue,
   canManage,
   selected,
   distanceLabel,
   venueGameLabels,
   locationLabel,
-  infoOpen,
-  manageOpen,
   updatingVenue,
   deletingVenue,
   manageVenueName,
-  manageVenueNeighborhood,
   manageVenueAddressQuery,
   manageVenueAddressFocused,
   manageVenueAddressSuggestions,
@@ -83,9 +78,7 @@ export function VenueSheetCard({
   onFocusVenueOnMap,
   onCreateMeetupAtVenue,
   onToggleManage,
-  onToggleInfo,
   onManageVenueNameChange,
-  onManageVenueNeighborhoodChange,
   onManageVenueAddressFocusChange,
   onManageVenueAddressChange,
   onManageVenueAddressUseCurrentLocation,
@@ -97,276 +90,243 @@ export function VenueSheetCard({
   onSaveVenueEdits,
   onPromptDeleteVenue,
 }: VenueSheetCardProps) {
-  const [cardWidth, setCardWidth] = useState(0);
   const ownerLine = `${venue.ownerDisplayName}${distanceLabel ? ` · ${distanceLabel}` : ""}`;
+  const pageIntro = useRef(new Animated.Value(1)).current;
 
-  const routes = useMemo(() => {
-    const items: {
-      key: string;
-      title?: string;
-      subtitle?: string;
-      content: ReactNode;
-    }[] = [
-      {
-        key: "root",
-        content: (
-          <View style={styles.page}>
-            <Pressable onPress={onFocusVenueOnMap} style={({ pressed }) => [pressed ? styles.inlinePressed : null]}>
-              <View style={styles.lead}>
-                <Text style={styles.eyebrow}>{formatVenueKind(venue.kind)}</Text>
-                <Text style={styles.title}>{venue.name}</Text>
-                <Text style={styles.meta}>{venue.neighborhood}</Text>
-                {venueGameLabels.length ? (
-                  <View style={styles.inlineTagRow}>
-                    {venueGameLabels.map((label) => (
-                      <MetaTag key={`${venue.id}-${label}`} label={label} />
-                    ))}
-                  </View>
-                ) : null}
-                <Text style={styles.address}>{locationLabel}</Text>
-                <Text style={styles.secondary}>{ownerLine}</Text>
-              </View>
-            </Pressable>
+  useEffect(() => {
+    pageIntro.setValue(0);
+    Animated.timing(pageIntro, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.bezier(0.22, 1, 0.36, 1),
+      useNativeDriver: true,
+    }).start();
+  }, [mode, venue.id, pageIntro]);
 
-            <View style={styles.actionRow}>
-              <View style={styles.actionSecondaryCell}>
-                <PrimaryButton label="Mapa" onPress={onFocusVenueOnMap} tone="ghost" />
-              </View>
-              <View style={styles.actionPrimaryCell}>
-                <PrimaryButton label="Criar jogo" onPress={onCreateMeetupAtVenue} />
-              </View>
-            </View>
+  const pageMotionStyle = useMemo(
+    () =>
+      ({
+        opacity: pageIntro,
+        transform: [
+          {
+            translateY: pageIntro.interpolate({
+              inputRange: [0, 1],
+              outputRange: [10, 0],
+            }),
+          },
+        ],
+      }) as const,
+    [pageIntro]
+  );
 
-            <View style={styles.secondaryActionStack}>
-              <PrimaryButton label="Informações" onPress={onToggleInfo} tone="ghost" />
-              {canManage ? (
-                <PrimaryButton label="Editar local" onPress={onToggleManage} tone="ghost" />
-              ) : null}
+  if (mode === "manage") {
+    return (
+      <View style={[styles.listCard, selected ? styles.listCardSelected : null]}>
+        <Animated.View style={[styles.page, pageMotionStyle]}>
+          <View style={styles.leadCompact}>
+            <Text style={styles.eyebrow}>Editar local</Text>
+            <Text style={styles.titleCompact}>{venue.name}</Text>
+            <Text style={styles.supportText}>Atualize nome, endereço e categorias do local.</Text>
+          </View>
+
+          <View style={styles.formBlock}>
+            <TextField
+              label="Nome do local"
+              labelTone="light"
+              value={manageVenueName}
+              onChangeText={onManageVenueNameChange}
+              placeholder="Ex.: Loja da Galera"
+            />
+            <AddressAutocompleteField
+              label="Endereço"
+              labelTone="light"
+              value={manageVenueAddressQuery}
+              focused={manageVenueAddressFocused}
+              onFocusChange={onManageVenueAddressFocusChange}
+              onChangeText={onManageVenueAddressChange}
+              suggestions={manageVenueAddressSuggestions}
+              loading={manageVenueAddressLoading}
+              onUseCurrentLocation={onManageVenueAddressUseCurrentLocation}
+              onUseTypedAddress={onManageVenueAddressUseTyped}
+              onSelectSuggestion={onManageVenueAddressSelect}
+              placeholder="Digite rua, avenida ou nome do lugar"
+            />
+            <TextField
+              label="Detalhes"
+              labelTone="light"
+              value={manageVenueDetails}
+              onChangeText={onManageVenueDetailsChange}
+              placeholder="Partidas, horários, consumo mínimo"
+              multiline
+            />
+          </View>
+
+          <View style={styles.block}>
+            <Text style={styles.blockLabel}>Tipo de local</Text>
+            <View style={styles.chipWrap}>
+              {venueKindOptions.map(([kind, label]) => (
+                <ChoiceChip
+                  key={`manage-venue-kind-${kind}`}
+                  label={label}
+                  selected={manageVenueKind === kind}
+                  onPress={() => onSelectManageVenueKind(kind)}
+                />
+              ))}
             </View>
           </View>
-        ),
-      },
-    ];
 
-    if (infoOpen) {
-      items.push({
-        key: "info",
-        content: (
-          <View style={styles.page}>
-            <View style={styles.leadCompact}>
-              <Text style={styles.eyebrow}>Local</Text>
-              <Text style={styles.titleCompact}>{venue.name}</Text>
-              <Text style={styles.supportText}>Endereço, tipo e jogos mais associados.</Text>
-            </View>
-
-            <AppleListGroup>
-              <AppleListRow
-                icon={{ iosName: "mappin.and.ellipse", fallbackName: "location-on" }}
-                label="Endereço"
-                subtitle={locationLabel}
-                showChevron={false}
-                size="compact"
-              />
-              <AppleListRow
-                separator
-                icon={{ iosName: "figure.stand", fallbackName: "person" }}
-                label="Indicado por"
-                subtitle={ownerLine}
-                showChevron={false}
-                size="compact"
-              />
-              <AppleListRow
-                separator
-                icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
-                label="Tipo de local"
-                subtitle={formatVenueKind(venue.kind)}
-                showChevron={false}
-                size="compact"
-              />
-              <AppleListRow
-                separator
-                icon={{ iosName: "square.grid.2x2.fill", fallbackName: "grid-view" }}
-                label="Jogos"
-                subtitle={venueGameLabels.join(" · ") || "Comunidade"}
-                showChevron={false}
-                size="compact"
-              />
-            </AppleListGroup>
-
-            {venue.details ? (
-              <View style={styles.noteBlock}>
-                <Text style={styles.noteLabel}>Detalhes</Text>
-                <Text style={styles.bodyText}>{venue.details}</Text>
-              </View>
-            ) : null}
+          <View style={styles.block}>
+            <Text style={styles.blockLabel}>Jogos</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipScrollContent}
+            >
+              {venueGameOptions.map((game) => (
+                <ChoiceChip
+                  key={`manage-venue-game-${game.id}`}
+                  label={game.label}
+                  selected={manageVenueGameIds.includes(game.id)}
+                  onPress={() => onToggleManageVenueGame(game.id)}
+                />
+              ))}
+            </ScrollView>
           </View>
-        ),
-      });
-    }
 
-    if (manageOpen) {
-      items.push({
-        key: "manage",
-        content: (
-          <View style={styles.page}>
-            <View style={styles.leadCompact}>
-              <Text style={styles.eyebrow}>Editar local</Text>
-              <Text style={styles.titleCompact}>{venue.name}</Text>
-              <Text style={styles.supportText}>Atualize nome, endereço e categorias do local.</Text>
-            </View>
-
-            <View style={styles.formBlock}>
-              <TextField
-                label="Nome do local"
-                value={manageVenueName}
-                onChangeText={onManageVenueNameChange}
-                placeholder="Ex.: Loja da Galera"
-              />
-              <TextField
-                label="Bairro"
-                value={manageVenueNeighborhood}
-                onChangeText={onManageVenueNeighborhoodChange}
-                placeholder="Ex.: Pinheiros"
-              />
-              <AddressAutocompleteField
-                label="Endereço"
-                value={manageVenueAddressQuery}
-                focused={manageVenueAddressFocused}
-                onFocusChange={onManageVenueAddressFocusChange}
-                onChangeText={onManageVenueAddressChange}
-                suggestions={manageVenueAddressSuggestions}
-                loading={manageVenueAddressLoading}
-                onUseCurrentLocation={onManageVenueAddressUseCurrentLocation}
-                onUseTypedAddress={onManageVenueAddressUseTyped}
-                onSelectSuggestion={onManageVenueAddressSelect}
-                placeholder="Digite rua, avenida ou nome do lugar"
-              />
-              <TextField
-                label="Detalhes"
-                value={manageVenueDetails}
-                onChangeText={onManageVenueDetailsChange}
-                placeholder="Partidas, horários, consumo mínimo"
-                multiline
-              />
-            </View>
-
-            <View style={styles.block}>
-              <Text style={styles.blockLabel}>Tipo de local</Text>
-              <View style={styles.chipWrap}>
-                {venueKindOptions.map(([kind, label]) => (
-                  <ChoiceChip
-                    key={`manage-venue-kind-${kind}`}
-                    label={label}
-                    selected={manageVenueKind === kind}
-                    onPress={() => onSelectManageVenueKind(kind)}
-                  />
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.block}>
-              <Text style={styles.blockLabel}>Jogos</Text>
-              <View style={styles.chipWrap}>
-                {venueGameOptions.map((game) => (
-                  <ChoiceChip
-                    key={`manage-venue-game-${game.id}`}
-                    label={game.label}
-                    selected={manageVenueGameIds.includes(game.id)}
-                    onPress={() => onToggleManageVenueGame(game.id)}
-                  />
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.actionBlock}>
+          <View style={styles.manageActionsRow}>
+            <View style={styles.manageActionCell}>
               <PrimaryButton
-                label="Salvar alterações"
+                label="Excluir"
+                tone="danger"
+                onPress={onPromptDeleteVenue}
+                loading={deletingVenue}
+                disabled={updatingVenue}
+                fullWidth
+              />
+            </View>
+            <View style={styles.manageActionCell}>
+              <PrimaryButton
+                label="Salvar"
                 onPress={onSaveVenueEdits}
                 loading={updatingVenue}
-              />
-            </View>
-
-            <View style={styles.block}>
-              <Text style={styles.blockLabel}>Remoção</Text>
-              <PrimaryButton
-                label="Excluir local"
-                onPress={onPromptDeleteVenue}
-                tone="dangerGhost"
-                loading={deletingVenue}
+                disabled={deletingVenue}
+                fullWidth
               />
             </View>
           </View>
-        ),
-      });
-    }
-
-    return items;
-  }, [
-    canManage,
-    deletingVenue,
-    infoOpen,
-    locationLabel,
-    manageOpen,
-    manageVenueAddressFocused,
-    manageVenueAddressLoading,
-    manageVenueAddressQuery,
-    manageVenueAddressSuggestions,
-    manageVenueDetails,
-    manageVenueGameIds,
-    manageVenueKind,
-    manageVenueName,
-    manageVenueNeighborhood,
-    onCreateMeetupAtVenue,
-    onFocusVenueOnMap,
-    onManageVenueAddressChange,
-    onManageVenueAddressFocusChange,
-    onManageVenueAddressSelect,
-    onManageVenueAddressUseCurrentLocation,
-    onManageVenueAddressUseTyped,
-    onManageVenueDetailsChange,
-    onManageVenueNameChange,
-    onManageVenueNeighborhoodChange,
-    onPromptDeleteVenue,
-    onSaveVenueEdits,
-    onSelectManageVenueKind,
-    onToggleInfo,
-    onToggleManage,
-    onToggleManageVenueGame,
-    ownerLine,
-    updatingVenue,
-    venue,
-    venueGameLabels,
-    venueGameOptions,
-    venueKindOptions,
-  ]);
+        </Animated.View>
+      </View>
+    );
+  }
 
   return (
-    <View
-      onLayout={(event) => {
-        const nextWidth = event.nativeEvent.layout.width;
-        if (Math.abs(nextWidth - cardWidth) > 1) {
-          setCardWidth(nextWidth);
-        }
-      }}
-      style={[styles.listCard, selected ? styles.listCardSelected : null]}
-    >
-      <SlidingSheetStack
-        routes={routes}
-        onPop={() => {
-          if (manageOpen) {
-            onToggleManage();
-            return;
-          }
+    <View style={[styles.listCard, selected ? styles.listCardSelected : null]}>
+      <Animated.View style={[styles.page, pageMotionStyle]}>
+        <View style={styles.detailLead}>
+          <View style={styles.headerMetaRow}>
+            <Text style={styles.eyebrow}>{formatVenueKind(venue.kind)}</Text>
+          </View>
+          <Text style={styles.detailTitle}>{venue.name}</Text>
+          {venue.neighborhood ? <Text style={styles.detailMeta}>{venue.neighborhood}</Text> : null}
+          <Text style={styles.detailAddress}>{locationLabel}</Text>
+          <Text style={styles.detailSecondary}>{ownerLine}</Text>
+        </View>
 
-          if (infoOpen) {
-            onToggleInfo();
-          }
-        }}
-        sceneWidth={cardWidth || undefined}
-        scenePaddingHorizontal={sheetContentGutter}
-        fillHeight={false}
-        headerVariant="compact"
-      />
+        <View style={styles.actionRow}>
+          <View style={styles.actionCluster}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Ver no mapa"
+              onPress={() => {
+                triggerHaptic("selection");
+                onFocusVenueOnMap();
+              }}
+              style={({ pressed }) => [
+                styles.circleActionButton,
+                styles.circleActionButtonGlass,
+                pressed ? styles.circleActionButtonPressed : null,
+              ]}
+            >
+              <AppIcon iosName="map.fill" fallbackName="map" size={20} color={palette.sand} />
+            </Pressable>
+
+            {canManage ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Editar local"
+                onPress={() => {
+                  triggerHaptic("selection");
+                  onToggleManage?.();
+                }}
+                style={({ pressed }) => [
+                  styles.circleActionButton,
+                  styles.circleActionButtonGlass,
+                  pressed ? styles.circleActionButtonPressed : null,
+                ]}
+              >
+                <AppIcon iosName="slider.horizontal.3" fallbackName="tune" size={20} color={palette.sand} />
+              </Pressable>
+            ) : null}
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Criar partida neste local"
+              onPress={() => {
+                triggerHaptic("soft");
+                onCreateMeetupAtVenue();
+              }}
+              style={({ pressed }) => [
+                styles.circleActionButton,
+                styles.circleActionButtonEmber,
+                pressed ? styles.circleActionButtonPressed : null,
+              ]}
+            >
+              <AppIcon iosName="plus" fallbackName="add" size={22} color={palette.ink} type="monochrome" />
+            </Pressable>
+          </View>
+        </View>
+
+        <AppleListGroup>
+          <AppleListRow
+            icon={{ iosName: "mappin.and.ellipse", fallbackName: "location-on" }}
+            label="Endereço"
+            subtitle={locationLabel}
+            showChevron={false}
+            size="compact"
+          />
+          <AppleListRow
+            separator
+            icon={{ iosName: "figure.stand", fallbackName: "person" }}
+            label="Indicado por"
+            subtitle={ownerLine}
+            showChevron={false}
+            size="compact"
+          />
+          <AppleListRow
+            separator
+            icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
+            label="Tipo de local"
+            subtitle={formatVenueKind(venue.kind)}
+            showChevron={false}
+            size="compact"
+          />
+          <AppleListRow
+            separator
+            icon={{ iosName: "square.grid.2x2.fill", fallbackName: "grid-view" }}
+            label="Jogos"
+            subtitle={venueGameLabels.join(" · ") || "Comunidade"}
+            showChevron={false}
+            size="compact"
+          />
+        </AppleListGroup>
+
+        {venue.details?.trim() ? (
+          <View style={styles.noteBlock}>
+            <Text style={styles.noteLabel}>Detalhes</Text>
+            <Text style={styles.description}>{venue.details.trim()}</Text>
+          </View>
+        ) : null}
+      </Animated.View>
     </View>
   );
 }
@@ -375,7 +335,7 @@ const styles = StyleSheet.create({
   listCard: {
     backgroundColor: "transparent",
     overflow: "hidden",
-    marginHorizontal: -sheetContentGutter,
+    alignSelf: "stretch",
   },
   listCardSelected: {
     backgroundColor: "rgba(241,143,92,0.06)",
@@ -385,12 +345,20 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: spacing.lg,
   },
-  lead: {
-    gap: 4,
+  detailLead: {
+    gap: spacing.xs,
+    paddingTop: 2,
+    paddingLeft: 0,
+  },
+  headerMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
   },
   leadCompact: {
-    gap: 4,
-    paddingTop: 2,
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
     paddingLeft: 0,
   },
   eyebrow: {
@@ -399,9 +367,9 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     fontWeight: "700",
   },
-  title: {
+  detailTitle: {
     color: palette.sand,
-    fontSize: 24,
+    fontSize: 23,
     lineHeight: 29,
     fontWeight: "800",
   },
@@ -416,23 +384,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
   },
-  meta: {
-    color: palette.pine,
-    fontSize: 13,
-    lineHeight: 17,
+  detailMeta: {
+    color: palette.mist,
+    fontSize: 15,
+    lineHeight: 20,
   },
-  address: {
+  detailAddress: {
     color: palette.sand,
     fontSize: 17,
     lineHeight: 22,
     fontWeight: "700",
   },
-  secondary: {
+  detailSecondary: {
     color: palette.pine,
     fontSize: 12,
     lineHeight: 16,
   },
-  bodyText: {
+  description: {
     color: palette.mist,
     fontSize: 13,
     lineHeight: 19,
@@ -443,14 +411,27 @@ const styles = StyleSheet.create({
   formBlock: {
     gap: spacing.md,
   },
-  actionBlock: {
+  chipScrollContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingRight: spacing.xs,
+  },
+  manageActionsRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
     gap: spacing.sm,
   },
+  manageActionCell: {
+    flex: 1,
+    minWidth: 0,
+  },
   blockLabel: {
-    color: palette.parchment,
-    fontSize: 11,
-    lineHeight: 15,
-    fontWeight: "700",
+    color: palette.sand,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "600",
+    letterSpacing: 0.1,
   },
   noteBlock: {
     gap: 6,
@@ -462,26 +443,43 @@ const styles = StyleSheet.create({
     lineHeight: 15,
     fontWeight: "700",
   },
-  inlineTagRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.xs,
-    paddingTop: 2,
-  },
   actionRow: {
     flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
     gap: 10,
   },
-  actionPrimaryCell: {
-    flex: 1.2,
-    minWidth: 0,
-  },
-  actionSecondaryCell: {
-    flex: 0.9,
-    minWidth: 0,
-  },
-  secondaryActionStack: {
+  actionCluster: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "flex-end",
     gap: 10,
+  },
+  circleActionButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 18,
+    elevation: 4,
+  },
+  circleActionButtonGlass: {
+    backgroundColor: "rgba(255,255,255,0.015)",
+    borderColor: "rgba(231,216,188,0.08)",
+  },
+  circleActionButtonEmber: {
+    backgroundColor: palette.ember,
+    borderColor: "rgba(17,17,17,0.12)",
+  },
+  circleActionButtonPressed: {
+    opacity: 0.92,
+    transform: [{ scale: 0.97 }],
   },
   chipWrap: {
     flexDirection: "row",

@@ -17,12 +17,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
-import { env } from "@/lib/env";
-import { palette, spacing } from "@/theme/tokens";
+import { meetupSheetEdgePadding, palette, spacing } from "@/theme/tokens";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 
 type AddressAutocompleteFieldProps = {
   label: string;
+  /** Default gray; `light` uses sand labels on dark sheets. */
+  labelTone?: "default" | "light";
   value: string;
   focused: boolean;
   onFocusChange: (focused: boolean) => void;
@@ -37,6 +38,7 @@ type AddressAutocompleteFieldProps = {
 
 export function AddressAutocompleteField({
   label,
+  labelTone = "default",
   value,
   focused,
   onFocusChange,
@@ -111,7 +113,7 @@ export function AddressAutocompleteField({
 
   return (
     <View style={[styles.addressFieldWrap, focused ? styles.addressFieldWrapFocused : null]}>
-      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={[styles.fieldLabel, labelTone === "light" ? styles.fieldLabelLight : null]}>{label}</Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label}: abrir busca de endereço`}
@@ -177,57 +179,55 @@ export function AddressAutocompleteField({
                 intensity="regular"
                 style={styles.addressSearchSheetSurface}
               />
-              <View style={styles.overlayHeader}>
-                <View style={styles.overlayHeaderCopy}>
-                  <Text style={styles.overlayTitle}>{label}</Text>
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel="Fechar busca de endereço"
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    onFocusChange(false);
-                  }}
-                  style={({ pressed }) => [
-                    styles.overlayCloseButton,
-                    pressed ? styles.circleButtonPressed : null,
-                  ]}
-                >
-                  <AppIcon iosName="xmark" fallbackName="close" size={18} color={palette.sand} />
-                </Pressable>
-              </View>
-
-              <View style={styles.addressSearchInputWrap}>
-                <AppleGlassSurface
-                  pointerEvents="none"
-                  variant="dark"
-                  intensity="clear"
-                  style={styles.addressSearchInputSurface}
-                />
-                <TextInput
-                  ref={modalInputRef}
-                  value={value}
-                  onChangeText={onChangeText}
-                  placeholder={placeholder}
-                  placeholderTextColor={palette.pine}
-                  keyboardAppearance="dark"
-                  autoCapitalize="words"
-                  style={styles.addressSearchInput}
-                  returnKeyType="search"
-                />
-              </View>
-
               <ScrollView
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
                 bounces={false}
                 overScrollMode="never"
-                contentContainerStyle={[
-                  styles.addressSuggestionList,
-                  { paddingBottom: spacing.sm + Math.min(keyboardHeight * 0.2, spacing.lg) },
-                ]}
+                style={{ maxHeight: modalMaxHeight }}
+                contentContainerStyle={styles.addressSearchScrollContent}
               >
-                <View>
+                <View style={styles.overlayHeader}>
+                  <View style={styles.overlayHeaderCopy}>
+                    <Text style={styles.overlayTitle}>Pesquisar endereço</Text>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Fechar busca de endereço"
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      onFocusChange(false);
+                    }}
+                    style={({ pressed }) => [
+                      styles.overlayCloseButton,
+                      pressed ? styles.circleButtonPressed : null,
+                    ]}
+                  >
+                    <AppIcon iosName="xmark" fallbackName="close" size={18} color={palette.sand} />
+                  </Pressable>
+                </View>
+
+                <View style={styles.addressSearchInputWrap}>
+                  <AppleGlassSurface
+                    pointerEvents="none"
+                    variant="dark"
+                    intensity="clear"
+                    style={styles.addressSearchInputSurface}
+                  />
+                  <TextInput
+                    ref={modalInputRef}
+                    value={value}
+                    onChangeText={onChangeText}
+                    placeholder={placeholder}
+                    placeholderTextColor={palette.pine}
+                    keyboardAppearance="dark"
+                    autoCapitalize="words"
+                    style={styles.addressSearchInput}
+                    returnKeyType="search"
+                  />
+                </View>
+
+                <View style={styles.addressSuggestionList}>
                   {canUseTypedAddress ? (
                     <Pressable
                       accessibilityRole="button"
@@ -235,6 +235,7 @@ export function AddressAutocompleteField({
                       onPress={handleUseTypedAddress}
                       style={({ pressed }) => [
                         styles.addressSuggestionRow,
+                        styles.addressSuggestionRowSingleLine,
                         pressed ? styles.drawerButtonPressed : null,
                       ]}
                     >
@@ -244,10 +245,9 @@ export function AddressAutocompleteField({
                         size={17}
                         color={palette.ember}
                       />
-                      <View style={styles.addressSuggestionCopy}>
-                        <Text style={styles.addressSuggestionTitle}>Usar endereço digitado</Text>
-                        <Text style={styles.addressSuggestionSubtitle}>Melhor aproximação disponível.</Text>
-                      </View>
+                      <Text style={[styles.addressSuggestionTitle, styles.addressSuggestionTitleInline]}>
+                        Usar endereço digitado
+                      </Text>
                     </Pressable>
                   ) : null}
                   {onUseCurrentLocation ? (
@@ -259,6 +259,7 @@ export function AddressAutocompleteField({
                       }}
                       style={({ pressed }) => [
                         styles.addressSuggestionRow,
+                        styles.addressSuggestionRowSingleLine,
                         pressed ? styles.drawerButtonPressed : null,
                       ]}
                     >
@@ -268,10 +269,9 @@ export function AddressAutocompleteField({
                         size={17}
                         color={palette.ember}
                       />
-                      <View style={styles.addressSuggestionCopy}>
-                        <Text style={styles.addressSuggestionTitle}>Usar minha localização atual</Text>
-                        <Text style={styles.addressSuggestionSubtitle}>Preencher com o aparelho.</Text>
-                      </View>
+                      <Text style={[styles.addressSuggestionTitle, styles.addressSuggestionTitleInline]}>
+                        Usar minha localização atual
+                      </Text>
                     </Pressable>
                   ) : null}
                   {loading ? (
@@ -307,21 +307,7 @@ export function AddressAutocompleteField({
                         </View>
                       </Pressable>
                     ))
-                  ) : (
-                    <View style={styles.addressSuggestionLoading}>
-                      <AppIcon
-                        iosName="magnifyingglass"
-                        fallbackName="search"
-                        size={15}
-                        color={palette.pine}
-                      />
-                      <Text style={styles.addressSuggestionLoadingText}>
-                        {env.addressAutocompleteEnabled
-                          ? "Digite para ver sugestões."
-                          : "Digite o endereço completo e use o texto digitado."}
-                      </Text>
-                    </View>
-                  )}
+                  ) : null}
                 </View>
               </ScrollView>
             </View>
@@ -339,6 +325,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     letterSpacing: 0.1,
   },
+  fieldLabelLight: {
+    color: palette.sand,
+  },
   addressFieldWrap: {
     gap: 7,
   },
@@ -350,7 +339,7 @@ const styles = StyleSheet.create({
     borderColor: "rgba(231,216,188,0.04)",
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.012)",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: meetupSheetEdgePadding,
     paddingVertical: 13,
     color: palette.sand,
     fontSize: 15,
@@ -387,15 +376,20 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(6, 6, 8, 0.56)",
   },
   addressSearchSheetWrap: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingTop: spacing.sm,
   },
   addressSearchSheet: {
     borderRadius: 30,
     backgroundColor: "rgba(14, 13, 16, 0.92)",
-    padding: spacing.md,
-    gap: spacing.md,
     overflow: "hidden",
+  },
+  addressSearchScrollContent: {
+    paddingTop: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.lg,
+    gap: spacing.lg,
+    flexGrow: 0,
   },
   addressSearchSheetSurface: {
     ...StyleSheet.absoluteFillObject,
@@ -404,7 +398,7 @@ const styles = StyleSheet.create({
   overlayHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: spacing.md,
   },
   overlayHeaderCopy: {
@@ -435,7 +429,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     backgroundColor: "rgba(255,255,255,0.012)",
     paddingHorizontal: spacing.md,
-    paddingVertical: 13,
+    paddingVertical: 14,
     overflow: "hidden",
   },
   addressSearchInputSurface: {
@@ -448,6 +442,7 @@ const styles = StyleSheet.create({
   },
   addressSuggestionList: {
     gap: 0,
+    width: "100%",
   },
   addressSuggestionRow: {
     flexDirection: "row",
@@ -458,6 +453,9 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: "rgba(255,255,255,0.08)",
   },
+  addressSuggestionRowSingleLine: {
+    alignItems: "center",
+  },
   addressSuggestionCopy: {
     flex: 1,
     gap: 2,
@@ -466,6 +464,9 @@ const styles = StyleSheet.create({
     color: palette.sand,
     fontSize: 15,
     fontWeight: "700",
+  },
+  addressSuggestionTitleInline: {
+    flex: 1,
   },
   addressSuggestionSubtitle: {
     color: palette.pine,
