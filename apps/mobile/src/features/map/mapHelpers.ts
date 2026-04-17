@@ -65,9 +65,9 @@ export function buildChatGroupsByGame(chatMeetups: MeetupPost[]) {
 }
 
 export function mapComposerMeetupModeToHostMode(
-  value: "public_place" | "specialty_store" | "can_host" | "looking_for_host"
+  value: "public_place" | "specialty_store" | "can_host" | "looking_for_host" | "search_address"
 ): HostMode {
-  if (value === "specialty_store") {
+  if (value === "specialty_store" || value === "search_address") {
     return "public_place";
   }
 

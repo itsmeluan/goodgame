@@ -1,26 +1,32 @@
 import type { ReactElement } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
-import {
-  AppleListGroup,
-} from "@/components/AppleListNavigation";
+import { AppleListGroup } from "@/components/AppleListNavigation";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { VirtualizedListBoundary } from "@/components/VirtualizedListBoundary";
 import { sheetContentGutter, spacing } from "@/theme/tokens";
+
+type VenueStackRoute =
+  | { key: string; venueId: string; surface: "detail" }
+  | { key: string; venueId: string; surface: "manage" };
 
 type GamesSheetVenuesTabProps<Item extends { id: string; name: string; neighborhood?: string | null }> = {
   sceneWidth?: number;
   titleNote: string;
   bottomPadding: number;
   venues: Item[];
+  expandedVenueManageId: string | null;
   composer: ReactElement | null;
+  onOpenManageVenue: (item: Item) => void;
+  onCloseManageVenue: (item: Item) => void;
   renderVenueListItem: (
     item: Item,
     openDetail: () => void,
     separator: boolean
   ) => ReactElement;
-  renderVenueDetail: (item: Item) => ReactElement;
+  renderVenueDetail: (item: Item, openManage: () => void) => ReactElement;
+  renderVenueManage: (item: Item) => ReactElement;
   emptyState: ReactElement | null;
 };
 
@@ -29,20 +35,77 @@ export function GamesSheetVenuesTab<Item extends { id: string; name: string; nei
   titleNote,
   bottomPadding,
   venues,
+  expandedVenueManageId,
   composer,
+  onOpenManageVenue,
+  onCloseManageVenue,
   renderVenueListItem,
   renderVenueDetail,
+  renderVenueManage,
   emptyState,
 }: GamesSheetVenuesTabProps<Item>) {
-  const [routeKeys, setRouteKeys] = useState<string[]>([]);
+  const [routeStack, setRouteStack] = useState<VenueStackRoute[]>([]);
 
-  const pushRoute = (key: string) => {
-    setRouteKeys((current) => (current[current.length - 1] === key ? current : [...current, key]));
+  const pushDetailRoute = (venueId: string) => {
+    setRouteStack((current) => {
+      const next: VenueStackRoute = {
+        key: `venue-detail:${venueId}`,
+        venueId,
+        surface: "detail",
+      };
+      const last = current[current.length - 1];
+      if (last?.venueId === venueId && last?.surface === "detail") {
+        return current;
+      }
+      return [...current, next];
+    });
+  };
+
+  const pushManageRoute = (item: Item) => {
+    onOpenManageVenue(item);
+    setRouteStack((current) => {
+      const next: VenueStackRoute = {
+        key: `venue-manage:${item.id}`,
+        venueId: item.id,
+        surface: "manage",
+      };
+      const last = current[current.length - 1];
+      if (last?.surface === "manage" && last?.venueId === item.id) {
+        return current;
+      }
+      return [...current, next];
+    });
   };
 
   const popRoute = () => {
-    setRouteKeys((current) => current.slice(0, -1));
+    setRouteStack((current) => {
+      const last = current[current.length - 1];
+      if (last?.surface === "manage") {
+        const venue = venues.find((v) => v.id === last.venueId);
+        if (venue) {
+          onCloseManageVenue(venue);
+        }
+      }
+      return current.slice(0, -1);
+    });
   };
+
+  useEffect(() => {
+    const active = routeStack[routeStack.length - 1];
+    if (!active || active.surface !== "manage") {
+      return;
+    }
+    if (expandedVenueManageId === active.venueId) {
+      return;
+    }
+    setRouteStack((current) => {
+      const currentTop = current[current.length - 1];
+      if (!currentTop || currentTop.surface !== "manage") {
+        return current;
+      }
+      return current.slice(0, -1);
+    });
+  }, [expandedVenueManageId, routeStack]);
 
   const routes = [
     {
@@ -61,7 +124,7 @@ export function GamesSheetVenuesTab<Item extends { id: string; name: string; nei
           {venues.length ? (
             <AppleListGroup>
               {venues.map((venue, index) =>
-                renderVenueListItem(venue, () => pushRoute(venue.id), index > 0)
+                renderVenueListItem(venue, () => pushDetailRoute(venue.id), index > 0)
               )}
             </AppleListGroup>
           ) : (
@@ -70,17 +133,20 @@ export function GamesSheetVenuesTab<Item extends { id: string; name: string; nei
         </ScrollView>
       ),
     },
-    ...routeKeys.map((routeKey) => {
-      const venue = venues.find((item) => item.id === routeKey);
-
+    ...routeStack.map((entry) => {
+      const venue = venues.find((v) => v.id === entry.venueId);
       return {
-        key: routeKey,
+        key: entry.key,
         content: (
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[styles.sceneContent, { paddingBottom: bottomPadding }]}
           >
-            {venue ? renderVenueDetail(venue) : emptyState}
+            {venue
+              ? entry.surface === "manage"
+                ? renderVenueManage(venue)
+                : renderVenueDetail(venue, () => pushManageRoute(venue))
+              : emptyState}
           </ScrollView>
         ),
       };

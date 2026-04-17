@@ -3,7 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Avatar } from "@/components/Avatar";
 import { MapCircleActionButton } from "@/features/map/components/MapCircleActionButton";
-import { palette, radius } from "@/theme/tokens";
+import { palette, radius, spacing } from "@/theme/tokens";
 
 type PageScreen =
   | "chats"
@@ -12,8 +12,7 @@ type PageScreen =
   | "account"
   | "friends"
   | "history"
-  | "player"
-  | "blocked";
+  | "player";
 
 type MapPageHeaderProps = {
   pageScreen: PageScreen;
@@ -41,8 +40,6 @@ function getPageTitle(pageScreen: PageScreen) {
       return "Amigos";
     case "player":
       return "Perfil";
-    case "blocked":
-      return "Bloqueados";
     default:
       return "Minha conta";
   }
@@ -60,14 +57,31 @@ export function MapPageHeader({
   panHandlers,
 }: MapPageHeaderProps) {
   const insets = useSafeAreaInsets();
-  const showingCloseButton =
-    pageScreen === "account" || pageScreen === "player" || pageScreen === "blocked";
+  const showingCloseButton = pageScreen === "player";
+  /** Same horizontal inset as `SlidingSheetStack` scene content (e.g. Amigos uses `spacing.lg`). */
+  const mapAlignedGutter =
+    pageScreen === "friends" ||
+    pageScreen === "account" ||
+    pageScreen === "chats" ||
+    pageScreen === "alerts" ||
+    pageScreen === "history"
+      ? spacing.lg
+      : 0;
+  const showPageHeaderHandle =
+    pageScreen !== "friends" &&
+    pageScreen !== "account" &&
+    pageScreen !== "chats" &&
+    pageScreen !== "alerts" &&
+    pageScreen !== "history";
 
   return (
     <View
       style={[
         styles.pageHeader,
-        { paddingLeft: insets.left, paddingRight: insets.right },
+        {
+          paddingLeft: insets.left + mapAlignedGutter,
+          paddingRight: insets.right + mapAlignedGutter,
+        },
       ]}
       {...panHandlers}
     >
@@ -80,20 +94,16 @@ export function MapPageHeader({
         />
       </View>
       <View style={styles.pageHeaderCenter}>
-        <View style={styles.pageHeaderHandle} />
+        {showPageHeaderHandle ? <View style={styles.pageHeaderHandle} /> : null}
         <Text style={styles.pageTitle}>{getPageTitle(pageScreen)}</Text>
       </View>
-      {showingCloseButton ? (
+      {pageScreen === "account" ? (
+        <View style={styles.pageHeaderTrailingSpacer} />
+      ) : showingCloseButton ? (
         <MapCircleActionButton
           icon="close"
-          accessibilityLabel={
-            pageScreen === "player"
-              ? "Fechar perfil e voltar para a tela anterior"
-              : pageScreen === "blocked"
-                ? "Fechar bloqueados e voltar para minha conta"
-              : "Fechar página e voltar ao mapa"
-          }
-          onPress={pageScreen === "player" ? onClosePlayerProfile : onCloseCurrentPage}
+          accessibilityLabel="Fechar perfil e voltar para a tela anterior"
+          onPress={onClosePlayerProfile}
         />
       ) : (
         <Pressable
@@ -121,6 +131,9 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   pageHeaderMenuStack: {
+    width: 56,
+  },
+  pageHeaderTrailingSpacer: {
     width: 56,
   },
   pageHeaderCenter: {

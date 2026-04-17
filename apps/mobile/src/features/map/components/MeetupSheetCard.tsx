@@ -1,21 +1,23 @@
 import { useEffect, useRef } from "react";
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   AppleListGroup,
   AppleListRow,
   AppleListSection,
 } from "@/components/AppleListNavigation";
-import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { AddressAutocompleteField } from "@/features/map/components/AddressAutocompleteField";
 import { StatusChip } from "@/features/map/components/MapSheetPrimitives";
 import { formatHostMode } from "@/lib/formatting";
 import { triggerHaptic } from "@/lib/haptics";
-import { palette, spacing } from "@/theme/tokens";
+import { palette, radius, spacing } from "@/theme/tokens";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 import type { MeetupStatus, MeetupPost } from "@/types/domain";
+
+/** Watermelon red — aligned with list danger accents (AppleListNavigation). */
+const WATERMELON_RED = "#E14D5C";
 
 type MeetupSheetCardProps = {
   mode: "detail" | "manage";
@@ -188,28 +190,63 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
           </View>
 
           <AppleListSection title="Encerramento" size="compact">
-            <View style={styles.destructiveStack}>
-              <PrimaryButton
-                label="Encerrar partida"
-                onPress={onPromptClose}
-                tone="ghost"
-                loading={closing}
-                disabled={actionsBusy && !closing}
-              />
-              <PrimaryButton
-                label="Cancelar partida"
-                onPress={onPromptCancel}
-                tone="dangerGhost"
-                loading={cancelling}
-                disabled={actionsBusy && !cancelling}
-              />
-              <PrimaryButton
-                label="Excluir jogo"
-                onPress={onPromptDelete}
-                tone="dangerGhost"
-                loading={deleting}
-                disabled={actionsBusy && !deleting}
-              />
+            <View style={styles.destructiveRow}>
+              <View style={styles.destructiveRowCell}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancelar partida"
+                  disabled={(actionsBusy && !cancelling) || cancelling}
+                  onPress={() => {
+                    triggerHaptic("warning");
+                    onPromptCancel();
+                  }}
+                  style={({ pressed }) => [
+                    styles.destructiveMiniButton,
+                    styles.watermelonOutlineButton,
+                    pressed ? styles.inlinePressed : null,
+                    (actionsBusy && !cancelling) || cancelling ? styles.destructiveDisabled : null,
+                  ]}
+                >
+                  {cancelling ? (
+                    <ActivityIndicator color={WATERMELON_RED} />
+                  ) : (
+                    <Text style={styles.watermelonOutlineLabel}>Cancelar</Text>
+                  )}
+                </Pressable>
+              </View>
+              <View style={styles.destructiveRowCell}>
+                <PrimaryButton
+                  label="Encerrar"
+                  onPress={onPromptClose}
+                  tone="ghost"
+                  loading={closing}
+                  disabled={actionsBusy && !closing}
+                  fullWidth
+                />
+              </View>
+              <View style={styles.destructiveRowCell}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Excluir jogo"
+                  disabled={(actionsBusy && !deleting) || deleting}
+                  onPress={() => {
+                    triggerHaptic("warning");
+                    onPromptDelete();
+                  }}
+                  style={({ pressed }) => [
+                    styles.destructiveMiniButton,
+                    styles.watermelonSolidButton,
+                    pressed ? styles.inlinePressed : null,
+                    (actionsBusy && !deleting) || deleting ? styles.destructiveDisabled : null,
+                  ]}
+                >
+                  {deleting ? (
+                    <ActivityIndicator color={palette.ink} />
+                  ) : (
+                    <Text style={styles.watermelonSolidLabel}>Excluir</Text>
+                  )}
+                </Pressable>
+              </View>
             </View>
           </AppleListSection>
         </Animated.View>
@@ -291,21 +328,16 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                 }}
                 style={({ pressed }) => [
                   styles.circleActionButton,
-                  styles.circleActionButtonAccent,
+                  styles.circleActionButtonEmber,
                   pressed ? styles.circleActionButtonPressed : null,
                 ]}
               >
-                <AppleGlassSurface
-                  pointerEvents="none"
-                  variant="accent"
-                  intensity="regular"
-                  style={styles.circleActionSurface}
-                />
                 <AppIcon
                   iosName="bubble.left.and.bubble.right.fill"
                   fallbackName="forum"
                   size={20}
                   color={palette.ink}
+                  type="monochrome"
                 />
               </Pressable>
             </View>
@@ -509,20 +541,56 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.015)",
     borderColor: "rgba(231,216,188,0.08)",
   },
-  circleActionSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 28,
-  },
-  circleActionButtonAccent: {
-    backgroundColor: "rgba(241,143,92,0.14)",
-    borderColor: "rgba(241,143,92,0.28)",
+  /** Solid `palette.ember` — matches Games sheet “Jogos” tab; avoids muddy glass + tint on first paint. */
+  circleActionButtonEmber: {
+    backgroundColor: palette.ember,
+    borderColor: "rgba(17,17,17,0.12)",
   },
   circleActionButtonPressed: {
     opacity: 0.92,
     transform: [{ scale: 0.97 }],
   },
-  destructiveStack: {
-    gap: 10,
+  destructiveRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: spacing.sm,
+  },
+  destructiveRowCell: {
+    flex: 1,
+    minWidth: 0,
+  },
+  destructiveMiniButton: {
+    minHeight: 46,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.xs,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  watermelonOutlineButton: {
+    backgroundColor: "rgba(225, 77, 92, 0.22)",
+    borderWidth: 1,
+    borderColor: WATERMELON_RED,
+  },
+  watermelonOutlineLabel: {
+    color: WATERMELON_RED,
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  watermelonSolidButton: {
+    backgroundColor: WATERMELON_RED,
+    borderWidth: 1,
+    borderColor: WATERMELON_RED,
+  },
+  watermelonSolidLabel: {
+    color: palette.ink,
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+  },
+  destructiveDisabled: {
+    opacity: 0.55,
   },
   inlinePressed: {
     opacity: 0.84,

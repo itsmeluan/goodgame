@@ -8,6 +8,9 @@ import { AppIcon } from "@/components/AppIcon";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 
+/** Solid fill for danger row icon (e.g. delete) — watermelon red. */
+const APPLE_LIST_DANGER_ICON_SURFACE = "#E14D5C";
+
 type AppleListIcon = {
   iosName: SFSymbol;
   fallbackName: keyof typeof MaterialIcons.glyphMap;
@@ -29,6 +32,8 @@ type AppleListGroupProps = {
 
 type AppleListRowProps = {
   icon?: AppleListIcon;
+  /** Overrides default leading icon size (compact 16, default 19). */
+  leadingIconSize?: number;
   label: string;
   subtitle?: string;
   trailingValue?: string | null;
@@ -108,6 +113,7 @@ export function AppleListGroup({
 
 export function AppleListRow({
   icon,
+  leadingIconSize,
   label,
   subtitle,
   trailingValue = null,
@@ -119,6 +125,8 @@ export function AppleListRow({
   size = "default",
 }: AppleListRowProps) {
   const rowTone = tonePalette[tone];
+  const resolvedLeadingIconSize =
+    leadingIconSize ?? (size === "compact" ? 16 : 19);
 
   return (
     <Pressable
@@ -141,20 +149,37 @@ export function AppleListRow({
     >
       {icon ? (
         <View style={[styles.leadingIconWrap, size === "compact" ? styles.leadingIconWrapCompact : null]}>
-          <AppleGlassSurface
-            pointerEvents="none"
-            variant={tone === "accent" ? "accent" : "dark"}
-            intensity="clear"
-            style={[
-              styles.leadingIconSurface,
-              size === "compact" ? styles.leadingIconSurfaceCompact : null,
-            ]}
-          />
+          {tone === "danger" ? (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.leadingIconSurface,
+                size === "compact" ? styles.leadingIconSurfaceCompact : null,
+                styles.leadingIconDangerSurface,
+              ]}
+            />
+          ) : (
+            <AppleGlassSurface
+              pointerEvents="none"
+              variant={tone === "accent" ? "accent" : "dark"}
+              intensity="clear"
+              style={[
+                styles.leadingIconSurface,
+                size === "compact" ? styles.leadingIconSurfaceCompact : null,
+              ]}
+            />
+          )}
           <AppIcon
             iosName={icon.iosName}
             fallbackName={icon.fallbackName}
-            size={size === "compact" ? 16 : 19}
-            color={tone === "danger" ? "#F3B0AE" : tone === "accent" ? palette.ink : palette.ember}
+            size={resolvedLeadingIconSize}
+            color={
+              tone === "danger"
+                ? "#FFF8F5"
+                : tone === "accent"
+                  ? palette.ink
+                  : palette.ember
+            }
           />
         </View>
       ) : null}
@@ -272,6 +297,9 @@ const styles = StyleSheet.create({
   },
   leadingIconSurfaceCompact: {
     borderRadius: 18,
+  },
+  leadingIconDangerSurface: {
+    backgroundColor: APPLE_LIST_DANGER_ICON_SURFACE,
   },
   rowCopy: {
     flex: 1,

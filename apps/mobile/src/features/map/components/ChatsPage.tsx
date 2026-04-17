@@ -7,7 +7,7 @@ import { MapClosePageButton } from "@/features/map/components/MapClosePageButton
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
 import { formatCompactAddress, formatDateTime, formatMeetupStatus } from "@/lib/formatting";
-import { palette, sheetContentGutter, spacing } from "@/theme/tokens";
+import { palette, spacing } from "@/theme/tokens";
 import type { MeetupPost } from "@/types/domain";
 
 
@@ -128,7 +128,7 @@ export function ChatsPage({
       routes={routes}
       onPop={popRoute}
       headerVariant="compact"
-      scenePaddingHorizontal={sheetContentGutter}
+      scenePaddingHorizontal={spacing.lg}
     />
   );
 }
@@ -167,6 +167,10 @@ function ChatsSectionScene({
             const effectiveStatus = resolveMeetupEffectiveStatus(meetup, nowTimestamp);
             const overdue = !sectionArchived && isMeetupOverdue(meetup, nowTimestamp);
 
+            const hasUnread = unreadChatMeetupIds.has(meetup.id);
+            const isLastOpened = selectedChatMeetupId === meetup.id;
+            const highlightOpen = !sectionArchived && isLastOpened;
+
             return (
               <AppleListRow
                 key={meetup.id}
@@ -180,16 +184,12 @@ function ChatsSectionScene({
                   meetup.locationHint
                 }\n${formatMeetupStatus(effectiveStatus)}`}
                 trailingValue={
-                  unreadChatMeetupIds.has(meetup.id)
-                    ? "Novo"
-                    : selectedChatMeetupId === meetup.id
-                      ? "Aberto"
-                      : null
+                  hasUnread ? "Novo" : highlightOpen ? "Aberto" : null
                 }
                 onPress={() => onOpenChat(meetup.id)}
                 separator={index > 0}
                 tone={
-                  unreadChatMeetupIds.has(meetup.id) || selectedChatMeetupId === meetup.id
+                  hasUnread || highlightOpen
                     ? "accent"
                     : overdue
                       ? "danger"

@@ -1,7 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-
+import { Animated, Pressable, StyleSheet, Text, View, useWindowDimensions } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
@@ -10,21 +7,23 @@ import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { TextField } from "@/components/TextField";
 import { AddressAutocompleteField } from "@/features/map/components/AddressAutocompleteField";
-import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import { HorizontalChipRail } from "@/features/map/components/HorizontalChipRail";
+import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
+import { NewMeetupComposerSectionBlock } from "@/features/map/components/NewMeetupComposerPrimitives";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 import { triggerHaptic } from "@/lib/haptics";
-import { palette, screenEdgeGlassBleed, spacing } from "@/theme/tokens";
+import { meetupSheetEdgePadding, palette, screenEdgeGlassBleed, spacing } from "@/theme/tokens";
 import type { VenueKind } from "@/types/domain";
 
 export type VenueKindOption = readonly [VenueKind, string];
 export type VenueGameOption = { id: string; label: string; formatIds?: string[] };
 
 type VenuesSheetComposerProps = {
+  sheetHeight: number;
+  translateY: Animated.Value;
   bottomInset: number;
   keyboardPadding: number;
   name: string;
-  neighborhood: string;
   addressQuery: string;
   addressFocused: boolean;
   addressSuggestions: AddressSuggestion[];
@@ -41,7 +40,6 @@ type VenuesSheetComposerProps = {
   submitting: boolean;
   onClose: () => void;
   onChangeName: (value: string) => void;
-  onChangeNeighborhood: (value: string) => void;
   onChangeAddressFocused: (focused: boolean) => void;
   onChangeAddressQuery: (value: string) => void;
   onUseCurrentLocation: () => void;
@@ -54,10 +52,11 @@ type VenuesSheetComposerProps = {
 };
 
 export function VenuesSheetComposer({
+  sheetHeight,
+  translateY,
   bottomInset,
   keyboardPadding,
   name,
-  neighborhood,
   addressQuery,
   addressFocused,
   addressSuggestions,
@@ -74,7 +73,6 @@ export function VenuesSheetComposer({
   submitting,
   onClose,
   onChangeName,
-  onChangeNeighborhood,
   onChangeAddressFocused,
   onChangeAddressQuery,
   onUseCurrentLocation,
@@ -85,18 +83,20 @@ export function VenuesSheetComposer({
   onToggleVenueGameId,
   onSubmit,
 }: VenuesSheetComposerProps) {
-  const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
+  const sheetWidth = windowWidth - spacing.sm * 2;
   const submitDisabled =
     locatingDraftPoint || !name.trim() || !hasSelectedVenueAddress || !selectedVenueFormatCount;
 
   return (
-    <View
+    <Animated.View
       style={[
         styles.sheet,
         {
-          paddingLeft: insets.left + spacing.lg,
-          paddingRight: insets.right + spacing.lg,
-          paddingBottom: Math.max(bottomInset, spacing.md),
+          height: sheetHeight,
+          width: sheetWidth,
+          maxHeight: sheetHeight,
+          transform: [{ translateY }],
         },
       ]}
     >
@@ -107,109 +107,106 @@ export function VenuesSheetComposer({
         style={styles.sheetGlassSurface}
       />
 
-      <View style={styles.sheetDragZone}>
-        <View style={styles.handle} />
-      </View>
+      <View style={styles.sheetBody}>
+        <View style={styles.sheetHeaderSection}>
+          <View style={styles.sheetDragZone}>
+            <View style={styles.overlayHeader}>
+              <View style={styles.overlayTitleWrap}>
+                <Text style={styles.overlayTitle}>Novo local</Text>
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Fechar sugestão de local"
+                onPress={() => {
+                  triggerHaptic("selection");
+                  onClose();
+                }}
+                style={({ pressed }) => [styles.overlayCloseButton, pressed ? styles.pressed : null]}
+              >
+                <AppleGlassSurface
+                  pointerEvents="none"
+                  variant="dark"
+                  intensity="clear"
+                  style={styles.overlayCloseButtonSurface}
+                />
+                <AppIcon iosName="xmark" fallbackName="close" size={20} color={palette.sand} />
+              </Pressable>
+            </View>
+          </View>
+          <SheetGlassHairline />
+        </View>
 
-      <View style={styles.overlayHeader}>
-        <Text style={styles.overlayTitle}>Novo local</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Fechar sugestão de local"
-          onPress={() => {
-            triggerHaptic("selection");
-            onClose();
-          }}
-          style={({ pressed }) => [
-            styles.overlayCloseButton,
-            pressed ? styles.overlayCloseButtonPressed : null,
+        <KeyboardAwareScrollView
+          style={styles.sheetScroll}
+          keyboardShouldPersistTaps="handled"
+          keyboardOffset={keyboardPadding}
+          contentContainerStyle={[
+            styles.sceneContent,
+            {
+              paddingBottom: spacing.sm + keyboardPadding,
+            },
           ]}
+          showsVerticalScrollIndicator={false}
         >
-          <AppleGlassSurface
-            pointerEvents="none"
-            variant="dark"
-            intensity="clear"
-            style={styles.overlayCloseButtonSurface}
-          />
-          <AppIcon iosName="xmark" fallbackName="close" size={18} color={palette.sand} />
-        </Pressable>
-      </View>
+          <NewMeetupComposerSectionBlock title="Dados">
+            <TextField
+              label="Nome do local"
+              value={name}
+              onChangeText={onChangeName}
+              placeholder="Ex.: Loja da Galera"
+            />
+            <AddressAutocompleteField
+              label="Endereço"
+              value={addressQuery}
+              focused={addressFocused}
+              onFocusChange={onChangeAddressFocused}
+              onChangeText={onChangeAddressQuery}
+              suggestions={addressSuggestions}
+              loading={addressLoading}
+              onUseCurrentLocation={onUseCurrentLocation}
+              onUseTypedAddress={onUseTypedAddress}
+              onSelectSuggestion={onSelectAddressSuggestion}
+              placeholder="Digite rua, avenida ou nome do lugar"
+            />
+            <TextField
+              label="Detalhes"
+              value={details}
+              onChangeText={onChangeDetails}
+              placeholder="Partidas, horários, consumo mínimo"
+              multiline
+            />
+          </NewMeetupComposerSectionBlock>
 
-      <KeyboardAwareScrollView
-        keyboardShouldPersistTaps="handled"
-        keyboardOffset={keyboardPadding}
-        contentContainerStyle={styles.sceneContent}
-      >
-        <SectionBlock title="Dados">
-          <TextField
-            label="Nome do local"
-            value={name}
-            onChangeText={onChangeName}
-            placeholder="Ex.: Loja da Galera"
-          />
-          <TextField
-            label="Bairro"
-            value={neighborhood}
-            onChangeText={onChangeNeighborhood}
-            placeholder="Ex.: Pinheiros"
-          />
-          <AddressAutocompleteField
-            label="Endereço"
-            value={addressQuery}
-            focused={addressFocused}
-            onFocusChange={onChangeAddressFocused}
-            onChangeText={onChangeAddressQuery}
-            suggestions={addressSuggestions}
-            loading={addressLoading}
-            onUseCurrentLocation={onUseCurrentLocation}
-            onUseTypedAddress={onUseTypedAddress}
-            onSelectSuggestion={onSelectAddressSuggestion}
-            placeholder="Digite rua, avenida ou nome do lugar"
-          />
-          <TextField
-            label="Detalhes"
-            value={details}
-            onChangeText={onChangeDetails}
-            placeholder="Partidas, horários, consumo mínimo"
-            multiline
-          />
-        </SectionBlock>
+          <NewMeetupComposerSectionBlock title="Tipo de local">
+            <HorizontalChipRail>
+              {venueKindOptions.map(([kind, label]) => (
+                <ChoiceChip
+                  key={kind}
+                  label={label}
+                  selected={selectedVenueKind === kind}
+                  onPress={() => onSelectVenueKind(kind)}
+                />
+              ))}
+            </HorizontalChipRail>
+          </NewMeetupComposerSectionBlock>
 
-        <SectionBlock title="Tipo de local">
-          <HorizontalChipRail>
-            {venueKindOptions.map(([kind, label]) => (
-              <ChoiceChip
-                key={kind}
-                label={label}
-                selected={selectedVenueKind === kind}
-                onPress={() => onSelectVenueKind(kind)}
-              />
-            ))}
-          </HorizontalChipRail>
-        </SectionBlock>
+          <NewMeetupComposerSectionBlock title="Jogos">
+            <HorizontalChipRail>
+              {venueGameOptions.map((game) => (
+                <ChoiceChip
+                  key={game.id}
+                  label={game.label}
+                  selected={selectedVenueGameIds.includes(game.id)}
+                  onPress={() => onToggleVenueGameId(game.id)}
+                />
+              ))}
+            </HorizontalChipRail>
+          </NewMeetupComposerSectionBlock>
 
-        <SectionBlock title="Jogos">
-          <HorizontalChipRail>
-            {venueGameOptions.map((game) => (
-              <ChoiceChip
-                key={game.id}
-                label={game.label}
-                selected={selectedVenueGameIds.includes(game.id)}
-                onPress={() => onToggleVenueGameId(game.id)}
-              />
-            ))}
-          </HorizontalChipRail>
-        </SectionBlock>
+          {successMessage ? <MapInlineNotice tone="success" message={successMessage} /> : null}
+        </KeyboardAwareScrollView>
 
-        {successMessage ? <MapInlineNotice tone="success" message={successMessage} /> : null}
-
-        <View style={styles.footerBar}>
-          <AppleGlassSurface
-            pointerEvents="none"
-            variant="dark"
-            intensity="clear"
-            style={styles.footerBarSurface}
-          />
+        <View style={[styles.footerBar, { paddingBottom: spacing.lg + bottomInset }]}>
           <View style={styles.footerButtonCell}>
             <PrimaryButton label="Cancelar" onPress={onClose} tone="ghost" />
           </View>
@@ -222,26 +219,16 @@ export function VenuesSheetComposer({
             />
           </View>
         </View>
-      </KeyboardAwareScrollView>
-    </View>
+      </View>
+    </Animated.View>
   );
 }
 
-function SectionBlock({
-  title,
-  children,
-}: {
-  title?: string;
-  children: React.ReactNode;
-}) {
+function SheetGlassHairline() {
   return (
-    <View style={styles.sectionCard}>
-      {title ? (
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>{title}</Text>
-        </View>
-      ) : null}
-      {children}
+    <View style={styles.sheetHairline}>
+      <View style={styles.sheetHairlineHighlight} />
+      <View style={styles.sheetHairlineCore} />
     </View>
   );
 }
@@ -249,15 +236,20 @@ function SectionBlock({
 const styles = StyleSheet.create({
   sheet: {
     position: "absolute",
-    left: 0,
-    right: 0,
+    left: spacing.sm,
     bottom: 0,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     backgroundColor: "rgba(12,14,20,0.82)",
     overflow: "visible",
+    paddingHorizontal: meetupSheetEdgePadding,
     paddingTop: spacing.sm,
-    gap: spacing.md,
+    flexShrink: 0,
+  },
+  sheetBody: {
+    flex: 1,
+    minHeight: 0,
+    flexDirection: "column",
   },
   sheetGlassSurface: {
     position: "absolute",
@@ -269,16 +261,30 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
+  sheetHeaderSection: {
+    flexShrink: 0,
+    marginBottom: spacing.md,
+  },
+  sheetScroll: {
+    flex: 1,
+    flexGrow: 1,
+    minHeight: 0,
+  },
+  sheetHairline: {
+    marginHorizontal: -meetupSheetEdgePadding,
+    overflow: "hidden",
+  },
+  sheetHairlineHighlight: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(255,255,255,0.09)",
+  },
+  sheetHairlineCore: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(231,216,188,0.09)",
+  },
   sheetDragZone: {
     paddingTop: spacing.sm,
-    paddingBottom: spacing.sm,
-    alignItems: "center",
-  },
-  handle: {
-    width: 42,
-    height: 6,
-    borderRadius: 999,
-    backgroundColor: "rgba(231,216,188,0.22)",
+    paddingBottom: spacing.xs,
   },
   overlayHeader: {
     flexDirection: "row",
@@ -286,10 +292,15 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing.md,
   },
+  overlayTitleWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
   overlayTitle: {
     color: palette.sand,
-    fontSize: 22,
-    fontWeight: "800",
+    fontSize: 28,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   overlayCloseButton: {
     position: "relative",
@@ -304,39 +315,22 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderRadius: 18,
   },
-  overlayCloseButtonPressed: {
+  pressed: {
     opacity: 0.92,
-    transform: [{ scale: 0.97 }],
   },
   sceneContent: {
-    gap: spacing.lg,
-    paddingTop: 8,
-    paddingBottom: spacing.md,
+    gap: spacing.sm,
+    paddingTop: 2,
+    paddingBottom: spacing.sm,
     overflow: "visible",
   },
-  sectionCard: {
-    gap: spacing.md,
-  },
-  sectionHeader: {
-    gap: 0,
-  },
-  sectionTitle: {
-    color: palette.sand,
-    fontSize: 16,
-    fontWeight: "800",
-  },
   footerBar: {
-    position: "relative",
+    flexShrink: 0,
     flexDirection: "row",
-    alignItems: "center",
     gap: spacing.sm,
-    padding: spacing.sm,
-    borderRadius: 26,
-    overflow: "hidden",
-  },
-  footerBarSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 26,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: "rgba(231,216,188,0.1)",
   },
   footerButtonCell: {
     flex: 1,

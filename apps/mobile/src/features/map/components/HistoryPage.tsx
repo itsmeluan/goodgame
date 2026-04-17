@@ -12,7 +12,7 @@ import {
   formatParticipantSummary,
   formatSyncLabel,
 } from "@/lib/formatting";
-import { palette, sheetContentGutter, spacing } from "@/theme/tokens";
+import { palette, spacing } from "@/theme/tokens";
 import type { MeetupPost } from "@/types/domain";
 
 
@@ -31,8 +31,8 @@ type HistoryRouteOption = {
   label: string;
   subtitle?: string;
   icon: {
-    iosName: "checkmark.seal.fill" | "xmark.seal.fill" | "clock.arrow.circlepath";
-    fallbackName: "verified" | "cancel" | "history";
+    iosName: "checkmark" | "xmark" | "clock.arrow.circlepath";
+    fallbackName: "check" | "close" | "history";
   };
   items: MeetupPost[];
 };
@@ -65,13 +65,13 @@ export function HistoryPage({
     {
       key: "completed",
       label: "Concluídas",
-      icon: { iosName: "checkmark.seal.fill", fallbackName: "verified" },
+      icon: { iosName: "checkmark", fallbackName: "check" },
       items: groupedHistory.completed,
     },
     {
       key: "cancelled",
       label: "Canceladas",
-      icon: { iosName: "xmark.seal.fill", fallbackName: "cancel" },
+      icon: { iosName: "xmark", fallbackName: "close" },
       items: groupedHistory.cancelled,
     },
     {
@@ -116,6 +116,7 @@ export function HistoryPage({
                   <AppleListRow
                     key={section.key}
                     icon={section.icon}
+                    leadingIconSize={15}
                     label={section.label}
                     trailingValue={String(section.items.length)}
                     onPress={() => pushRoute(section.key)}
@@ -158,7 +159,7 @@ export function HistoryPage({
       routes={routes}
       onPop={popRoute}
       headerVariant="compact"
-      scenePaddingHorizontal={sheetContentGutter}
+      scenePaddingHorizontal={spacing.lg}
     />
   );
 }
@@ -188,9 +189,10 @@ function HistoryScene({
             <AppleListRow
               key={meetup.id}
               icon={{
-                iosName: meetup.status === "cancelled" ? "xmark.circle.fill" : "calendar",
-                fallbackName: meetup.status === "cancelled" ? "cancel" : "calendar-today",
+                iosName: meetup.status === "cancelled" ? "xmark" : "calendar",
+                fallbackName: meetup.status === "cancelled" ? "close" : "calendar-today",
               }}
+              leadingIconSize={meetup.status === "cancelled" ? 15 : undefined}
               label={meetup.title}
               subtitle={`${formatDateTime(meetup.startsAt)}\n${
                 formatCompactAddress(meetup.addressLabel || meetup.locationHint) ||

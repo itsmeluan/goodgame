@@ -49,8 +49,8 @@ export function GamesSheetHeader({
       style={[
         styles.handleArea,
         {
-          paddingLeft: insets.left + spacing.lg,
-          paddingRight: insets.right + spacing.lg,
+          paddingLeft: insets.left + spacing.sm,
+          paddingRight: insets.right + spacing.sm,
         },
       ]}
       {...panHandlers}

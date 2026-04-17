@@ -32,10 +32,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: palette.parchment,
-    fontSize: 12,
-    fontWeight: "700",
-    letterSpacing: 0.8,
-    textTransform: "uppercase",
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.2,
   },
   inlineNotice: {
     borderRadius: radius.lg,

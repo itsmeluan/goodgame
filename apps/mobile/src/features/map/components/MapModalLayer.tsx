@@ -1,37 +1,20 @@
 import type { ComponentProps } from "react";
 
-import { MapCalendarPopover } from "@/features/map/components/MapCalendarPopover";
 import { MapFiltersModal } from "@/features/map/components/MapFiltersModal";
-import { MapTimePickerPopover } from "@/features/map/components/MapTimePickerPopover";
 import { MeetupComposerModal } from "@/features/map/components/MeetupComposerModal";
+import { NewMeetupCalendarOverlay } from "@/features/map/components/NewMeetupCalendarOverlay";
 import { NewMeetupComposerSheet } from "@/features/map/components/NewMeetupComposerSheet";
+import { NewMeetupTimeOverlay } from "@/features/map/components/NewMeetupTimeOverlay";
 import { VenuesSheetComposer } from "@/features/map/components/VenuesSheetComposer";
 
 type MapFiltersModalProps = ComponentProps<typeof MapFiltersModal>;
 type NewMeetupComposerSheetProps = ComponentProps<typeof NewMeetupComposerSheet>;
 type VenuesSheetComposerProps = ComponentProps<typeof VenuesSheetComposer>;
 
-type CalendarOverlayProps = {
-  open: boolean;
-  monthLabel: string;
-  cells: ComponentProps<typeof MapCalendarPopover>["cells"];
-  selectedDateKey: string;
-  onShiftMonth: (amount: number) => void;
-  onSelectDate: (dateKey: string, date: Date) => void;
-  onClose: () => void;
-};
+/** Same picker UI as "Novo jogo" (`NewMeetupComposerSheet`). */
+type CalendarOverlayProps = { open: boolean } & ComponentProps<typeof NewMeetupCalendarOverlay>;
 
-type TimeOverlayProps = {
-  open: boolean;
-  selectedHour: string;
-  selectedMinute: string;
-  hours: string[];
-  minutes: string[];
-  onChangeHour: (value: string) => void;
-  onChangeMinute: (value: string) => void;
-  onClose: () => void;
-  onConfirm: () => void;
-};
+type TimeOverlayProps = { open: boolean } & ComponentProps<typeof NewMeetupTimeOverlay>;
 
 export type MapModalLayerProps = {
   filtersProps: MapFiltersModalProps;
@@ -61,8 +44,7 @@ export function MapModalLayer({
       <MapFiltersModal {...filtersProps} />
 
       {manageCalendarOverlay.open ? (
-        <MapCalendarPopover
-          title="Escolha a data"
+        <NewMeetupCalendarOverlay
           monthLabel={manageCalendarOverlay.monthLabel}
           cells={manageCalendarOverlay.cells}
           selectedDateKey={manageCalendarOverlay.selectedDateKey}
@@ -73,8 +55,7 @@ export function MapModalLayer({
       ) : null}
 
       {manageTimeOverlay.open ? (
-        <MapTimePickerPopover
-          title="Escolha o horário"
+        <NewMeetupTimeOverlay
           selectedHour={manageTimeOverlay.selectedHour}
           selectedMinute={manageTimeOverlay.selectedMinute}
           hours={manageTimeOverlay.hours}

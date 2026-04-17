@@ -25,7 +25,10 @@ export const spacing = {
 } as const;
 
 /** Horizontal inset for sheet/list content (grid), on top of safe-area insets. */
-export const sheetContentGutter = spacing.lg;
+export const sheetContentGutter = spacing.sm;
+
+/** Horizontal padding inside the meetup composer sheet (Novo jogo) — reuse for nested overlays. */
+export const meetupSheetEdgePadding = spacing.sm;
 
 /** Bleed full-bleed glass layers past layout edges so the rim clears the display curve; content grids unchanged. */
 export const screenEdgeGlassBleed = 16;

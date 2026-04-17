@@ -1,6 +1,8 @@
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { palette, radius, spacing } from "@/theme/tokens";
 
@@ -27,8 +29,19 @@ export function NewMeetupTimeOverlay({
 }: NewMeetupTimeOverlayProps) {
   return (
     <View style={styles.pickerOverlayWrap} pointerEvents="box-none">
-      <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Fechar seleção de horário"
+        style={styles.pickerScrim}
+        onPress={onClose}
+      />
       <View style={styles.timePopover}>
+        <AppleGlassSurface
+          pointerEvents="none"
+          variant="dark"
+          intensity="clear"
+          style={styles.timePopoverSurface}
+        />
         <Text style={styles.timePopoverTitle}>Escolha o horário</Text>
         <View style={styles.timeWheelRow}>
           <TimeWheelColumn
@@ -91,7 +104,19 @@ function TimeWheelColumn({
     <View style={styles.timeWheelColumn}>
       <Text style={styles.timeWheelLabel}>{label}</Text>
       <View style={styles.timeWheelFrame}>
-        <View style={styles.timeWheelSelectionBand} pointerEvents="none" />
+        <View style={styles.timeWheelSelectionBand} pointerEvents="none">
+          <LinearGradient
+            colors={[
+              "rgba(255,255,255,0.14)",
+              "rgba(255,255,255,0.05)",
+              "rgba(255,255,255,0.02)",
+            ]}
+            locations={[0, 0.42, 1]}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
         <ScrollView
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
@@ -133,17 +158,33 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxl,
+    /** Darker than before (was transparent); aligned with calendar overlay + slightly stronger scrim */
+    backgroundColor: "rgba(3,7,11,0.58)",
+  },
+  pickerScrim: {
+    ...StyleSheet.absoluteFillObject,
   },
   timePopover: {
+    position: "relative",
     alignSelf: "center",
     width: "100%",
     maxWidth: 360,
-    borderRadius: radius.lg,
+    borderRadius: 26,
     borderWidth: 1,
-    borderColor: palette.line,
-    backgroundColor: "rgba(18,18,18,0.99)",
+    borderColor: "rgba(231,216,188,0.12)",
+    backgroundColor: "rgba(12,14,20,0.82)",
     padding: spacing.lg,
     gap: spacing.md,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.28,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 16,
+  },
+  timePopoverSurface: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 26,
   },
   timePopoverTitle: {
     color: palette.sand,
@@ -174,8 +215,8 @@ const styles = StyleSheet.create({
     height: 176,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: palette.line,
-    backgroundColor: palette.card,
+    borderColor: "rgba(231,216,188,0.08)",
+    backgroundColor: "rgba(8,10,14,0.55)",
     overflow: "hidden",
   },
   timeWheelSelectionBand: {
@@ -185,9 +226,11 @@ const styles = StyleSheet.create({
     right: spacing.sm,
     height: 44,
     borderRadius: radius.md,
-    backgroundColor: "rgba(241,143,92,0.12)",
     borderWidth: 1,
-    borderColor: "rgba(241,143,92,0.28)",
+    borderColor: "rgba(255,255,255,0.22)",
+    overflow: "hidden",
+    /** Translucent base so scroll text stays visible; gradient adds glass-like sheen */
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
   timeWheelContent: {
     paddingVertical: 66,

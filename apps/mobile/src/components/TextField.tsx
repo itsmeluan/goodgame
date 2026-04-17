@@ -1,4 +1,11 @@
-import { StyleSheet, Text, TextInput, type TextInputProps, View } from "react-native";
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  type TextInputProps,
+  View,
+} from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { useKeyboardAwareInputFocus } from "@/components/KeyboardAwareScrollView";
@@ -14,6 +21,10 @@ type TextFieldProps = {
   autoCapitalize?: "none" | "sentences" | "words" | "characters";
   keyboardType?: "default" | "email-address" | "numeric";
   onFocus?: TextInputProps["onFocus"];
+  /** Tighter label/input spacing (e.g. stacked forms like perfil / composer). */
+  density?: "default" | "compact";
+  /** Default gray label; `light` uses sand for dark sheet forms. */
+  labelTone?: "default" | "light";
 };
 
 export function TextField({
@@ -26,12 +37,14 @@ export function TextField({
   autoCapitalize = "sentences",
   keyboardType = "default",
   onFocus,
+  density = "default",
+  labelTone = "default",
 }: TextFieldProps) {
   const { inputRef, handleFocus } = useKeyboardAwareInputFocus(multiline ? 148 : 110);
 
   return (
-    <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
+    <View style={[styles.wrapper, density === "compact" ? styles.wrapperCompact : null]}>
+      <Text style={[styles.label, labelTone === "light" ? styles.labelLight : null]}>{label}</Text>
       <View style={styles.inputShell}>
         <AppleGlassSurface
           pointerEvents="none"
@@ -56,6 +69,7 @@ export function TextField({
           }}
           style={[styles.input, multiline && styles.multiline]}
           allowFontScaling
+          {...(Platform.OS === "android" ? { includeFontPadding: false } : null)}
         />
       </View>
     </View>
@@ -66,11 +80,17 @@ const styles = StyleSheet.create({
   wrapper: {
     gap: 7,
   },
+  wrapperCompact: {
+    gap: 5,
+  },
   label: {
     color: palette.pine,
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0.1,
+  },
+  labelLight: {
+    color: palette.sand,
   },
   inputShell: {
     minHeight: 50,
@@ -87,15 +107,18 @@ const styles = StyleSheet.create({
   input: {
     minHeight: 50,
     paddingHorizontal: spacing.md,
-    paddingVertical: 13,
+    paddingTop: Platform.select({ ios: 11, android: 9, default: 10 }),
+    paddingBottom: Platform.select({ ios: 13, android: 11, default: 12 }),
     color: palette.sand,
     fontSize: 16,
-    lineHeight: 21,
+    // Omit fixed lineHeight on single-line so vertical centering matches native metrics.
     backgroundColor: "transparent",
   },
   multiline: {
     minHeight: 118,
-    paddingTop: spacing.md,
+    paddingTop: 12,
+    paddingBottom: spacing.md,
     textAlignVertical: "top",
+    lineHeight: 22,
   },
 });

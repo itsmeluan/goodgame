@@ -1,46 +1,54 @@
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import {
-  APPLE_LIST_COMPACT_TEXT_INSET,
-  AppleListGroup,
-  AppleListRow,
-  AppleListSection,
-} from "@/components/AppleListNavigation";
+import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/AppleListNavigation";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { Avatar } from "@/components/Avatar";
 import { GlassCard } from "@/components/GlassCard";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
+import { BlockedUsersPage } from "@/features/map/components/BlockedUsersPage";
 import { MapClosePageButton } from "@/features/map/components/MapClosePageButton";
 import { ProfileSummaryCard } from "@/features/profile/ProfileSummaryCard";
 import { formatAverageRating, formatSyncLabel } from "@/lib/formatting";
-import { palette, sheetContentGutter, spacing } from "@/theme/tokens";
-import type { PlayerProfile, ReputationSummary } from "@/types/domain";
+import { palette, spacing } from "@/theme/tokens";
+import type { BlockedUserProfile, PlayerProfile, ReputationSummary } from "@/types/domain";
 
 type AccountPageProps = {
   profile: PlayerProfile;
   reputationSummary: ReputationSummary;
   lastAccountSyncAt: Date | null;
   blockedUsersCount: number;
+  blockedUsers: BlockedUserProfile[];
+  blockedUsersError: string | null;
+  blockedUsersSuccess: string | null;
+  loadingBlockedUsers: boolean;
+  unblockingUserId: string | null;
   bottomInset: number;
   onProfileEdit: () => void;
-  onOpenBlockedUsers: () => void;
+  onEnterBlockedUsersScene?: () => void;
+  onUnblockUser: (user: BlockedUserProfile) => void;
   onSignOut: () => void;
   onDeleteAccount: () => void;
   onClose: () => void;
 };
 
-type AccountRouteKey = "profile" | "reputation";
+type AccountRouteKey = "profile" | "reputation" | "blocked";
 
 export function AccountPage({
   profile,
   reputationSummary,
   lastAccountSyncAt,
   blockedUsersCount,
+  blockedUsers,
+  blockedUsersError,
+  blockedUsersSuccess,
+  loadingBlockedUsers,
+  unblockingUserId,
   bottomInset,
   onProfileEdit,
-  onOpenBlockedUsers,
+  onEnterBlockedUsersScene,
+  onUnblockUser,
   onSignOut,
   onDeleteAccount,
   onClose,
@@ -48,6 +56,9 @@ export function AccountPage({
   const [routeKeys, setRouteKeys] = useState<AccountRouteKey[]>([]);
 
   const pushRoute = (key: AccountRouteKey) => {
+    if (key === "blocked") {
+      onEnterBlockedUsersScene?.();
+    }
     setRouteKeys((current) => (current[current.length - 1] === key ? current : [...current, key]));
   };
 
@@ -104,14 +115,14 @@ export function AccountPage({
           >
             <AppleListGroup>
               <AppleListRow
-                icon={{ iosName: "person.crop.circle.fill", fallbackName: "account-circle" }}
+                icon={{ iosName: "person.fill", fallbackName: "person" }}
                 label="Perfil"
                 onPress={() => pushRoute("profile")}
                 size="compact"
               />
               <AppleListRow
                 separator
-                icon={{ iosName: "star.bubble.fill", fallbackName: "stars" }}
+                icon={{ iosName: "star.fill", fallbackName: "grade" }}
                 label="Reputação"
                 subtitle={`${reputationSummary.ratingsCount} avaliação(ões)`}
                 trailingValue={formatAverageRating(reputationSummary.averageRating)}
@@ -123,7 +134,7 @@ export function AccountPage({
                 icon={{ iosName: "hand.raised.fill", fallbackName: "block" }}
                 label="Usuários bloqueados"
                 trailingValue={String(blockedUsersCount)}
-                onPress={onOpenBlockedUsers}
+                onPress={() => pushRoute("blocked")}
                 size="compact"
               />
             </AppleListGroup>
@@ -132,7 +143,10 @@ export function AccountPage({
           <AppleListSection title="Sessão" size="compact">
             <AppleListGroup>
               <AppleListRow
-                icon={{ iosName: "rectangle.portrait.and.arrow.right", fallbackName: "logout" }}
+                icon={{
+                  iosName: "arrow.right.to.line",
+                  fallbackName: "exit-to-app",
+                }}
                 label="Desconectar"
                 onPress={onSignOut}
                 showChevron={false}
@@ -140,7 +154,7 @@ export function AccountPage({
               />
               <AppleListRow
                 separator
-                icon={{ iosName: "trash.fill", fallbackName: "delete-forever" }}
+                icon={{ iosName: "trash", fallbackName: "delete-outline" }}
                 label="Excluir conta"
                 onPress={onDeleteAccount}
                 showChevron={false}
@@ -175,52 +189,71 @@ export function AccountPage({
         };
       }
 
+      if (routeKey === "reputation") {
+        return {
+          key: routeKey,
+          content: (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
+              <View style={styles.sceneLead}>
+                <Text style={styles.sceneLeadTitle}>Reputação</Text>
+                <Text style={styles.sceneLeadSubtitle}>
+                  {reputationSummary.ratingsCount} avaliação(ões)
+                </Text>
+              </View>
+              <AppleListSection subtitle={formatSyncLabel(lastAccountSyncAt)} size="compact">
+                <AppleListGroup>
+                  <AppleListRow
+                    icon={{ iosName: "star.fill", fallbackName: "stars" }}
+                    label="Nota média"
+                    trailingValue={formatAverageRating(reputationSummary.averageRating)}
+                    showChevron={false}
+                    size="compact"
+                  />
+                  <AppleListRow
+                    separator
+                    icon={{ iosName: "checkmark.circle.fill", fallbackName: "task-alt" }}
+                    label="Presenças"
+                    trailingValue={String(reputationSummary.attendedCount)}
+                    showChevron={false}
+                    size="compact"
+                  />
+                  <AppleListRow
+                    separator
+                    icon={{ iosName: "xmark.circle.fill", fallbackName: "highlight-off" }}
+                    label="No-show"
+                    trailingValue={String(reputationSummary.noShowCount)}
+                    showChevron={false}
+                    size="compact"
+                  />
+                  <AppleListRow
+                    separator
+                    icon={{ iosName: "dice.fill", fallbackName: "casino" }}
+                    label="Jogos criados"
+                    trailingValue={String(reputationSummary.hostedCount)}
+                    showChevron={false}
+                    size="compact"
+                  />
+                </AppleListGroup>
+              </AppleListSection>
+            </ScrollView>
+          ),
+        };
+      }
+
       return {
         key: routeKey,
         content: (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
-            <View style={styles.sceneLead}>
-              <Text style={styles.sceneLeadTitle}>Reputação</Text>
-              <Text style={styles.sceneLeadSubtitle}>
-                {reputationSummary.ratingsCount} avaliação(ões)
-              </Text>
-            </View>
-            <AppleListSection subtitle={formatSyncLabel(lastAccountSyncAt)} size="compact">
-              <AppleListGroup>
-                <AppleListRow
-                  icon={{ iosName: "star.fill", fallbackName: "stars" }}
-                  label="Nota média"
-                  trailingValue={formatAverageRating(reputationSummary.averageRating)}
-                  showChevron={false}
-                  size="compact"
-                />
-                <AppleListRow
-                  separator
-                  icon={{ iosName: "checkmark.circle.fill", fallbackName: "task-alt" }}
-                  label="Presenças"
-                  trailingValue={String(reputationSummary.attendedCount)}
-                  showChevron={false}
-                  size="compact"
-                />
-                <AppleListRow
-                  separator
-                  icon={{ iosName: "xmark.circle.fill", fallbackName: "highlight-off" }}
-                  label="No-show"
-                  trailingValue={String(reputationSummary.noShowCount)}
-                  showChevron={false}
-                  size="compact"
-                />
-                <AppleListRow
-                  separator
-                  icon={{ iosName: "dice.fill", fallbackName: "casino" }}
-                  label="Jogos criados"
-                  trailingValue={String(reputationSummary.hostedCount)}
-                  showChevron={false}
-                  size="compact"
-                />
-              </AppleListGroup>
-            </AppleListSection>
-          </ScrollView>
+          <BlockedUsersPage
+            blockedUsers={blockedUsers}
+            blockedUsersError={blockedUsersError}
+            blockedUsersSuccess={blockedUsersSuccess}
+            loadingBlockedUsers={loadingBlockedUsers}
+            unblockingUserId={unblockingUserId}
+            bottomInset={bottomInset}
+            onUnblockUser={onUnblockUser}
+            onClose={onClose}
+            embeddedInAccount
+          />
         ),
       };
     }),
@@ -231,7 +264,7 @@ export function AccountPage({
       routes={routes}
       onPop={popRoute}
       headerVariant="compact"
-      scenePaddingHorizontal={sheetContentGutter}
+      scenePaddingHorizontal={spacing.lg}
     />
   );
 }
@@ -242,25 +275,28 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sceneContent: {
+    alignItems: "stretch",
     paddingTop: 8,
     paddingBottom: spacing.xxl,
     gap: 12,
   },
   sceneLead: {
+    alignSelf: "stretch",
     gap: 4,
     paddingTop: 2,
-    paddingLeft: APPLE_LIST_COMPACT_TEXT_INSET,
   },
   sceneLeadTitle: {
     color: palette.sand,
     fontSize: 16,
     lineHeight: 21,
     fontWeight: "800",
+    textAlign: "left",
   },
   sceneLeadSubtitle: {
     color: palette.pine,
     fontSize: 11,
     lineHeight: 15,
+    textAlign: "left",
   },
   accountHero: {
     flexDirection: "row",
