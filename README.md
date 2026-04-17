@@ -21,7 +21,7 @@ Este `README` passa a funcionar como memória operacional de alto nível do proj
 - filtros de mapa por entidade, tipo de jogo, formato, distância, data e período;
 - criação, edição, entrada, saída e encerramento de partidas presenciais;
 - locais para jogar e fluxo de sugestão/gestão de venues;
-- chat de grupo por partida com presença, replies, imagem do grupo e sincronização incremental;
+- chat de grupo por partida com presença, replies, imagem do grupo e sincronização incremental; balões do próprio usuário alinhados à cor de marca (laranja `ember`);
 - amizades, pedidos de amizade, presença online e perfil público de jogador;
 - reputação, presença confirmada e no-show;
 - denúncia, bloqueio, desbloqueio e exclusão de conta;
@@ -61,6 +61,10 @@ Este `README` passa a funcionar como memória operacional de alto nível do proj
 - `docs/release-readiness.md`: checklist histórico de lançamento
 - `docs/apple-polish-review.md`: revisão Apple para polish visual e performance
 - `docs/apple-performance-runbook.md`: playbook de Organizer, App Store Connect, MetricKit e Instruments
+
+### Snapshots Git (referência)
+
+- `snapshot/app-2026-04-16` — estado consolidado do app mobile no repositório: mapa (games sheet, balões e coordenadas), stack de sheets com botão de voltar dedicado, chat de meetup com balões do próprio usuário na cor de marca (`palette.ember`) e bloco de participantes/pós-jogo. Use `git checkout snapshot/app-2026-04-16` para inspecionar ou ramificar a partir desse ponto.
 
 ## Backend
 
