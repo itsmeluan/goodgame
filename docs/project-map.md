@@ -20,6 +20,10 @@ O projeto está organizado em duas frentes:
 - `apps/mobile/src/components/ChoiceChip.tsx`
 - `apps/mobile/src/components/GoodGameLogo.tsx`
 - `apps/mobile/src/components/PrimaryButton.tsx`
+- `apps/mobile/src/components/SheetBackButton.tsx`
+  Botão de voltar para stacks de sheet (iOS/Android), usado no fluxo mapa → jogos → detalhes.
+- `apps/mobile/src/components/SlidingSheetStack.tsx`
+  Stack de conteúdos em sheet com transições e suporte a header com voltar.
 - `apps/mobile/src/components/SectionCard.tsx`
 - `apps/mobile/src/components/TextField.tsx`
 
@@ -60,7 +64,19 @@ O projeto está organizado em duas frentes:
   - integração com notificações, amigos, reputação e safety
 
 - `apps/mobile/src/features/map/InteractiveMap.native.tsx`
-  Mapa nativo com markers, localização atual, cone de direção e botão de recentralizar.
+  Mapa nativo com markers, localização atual, cone de direção, botão de recentralizar e ancoragem de overlays (ex.: balões) a coordenadas de tela.
+
+- `apps/mobile/src/features/map/components/MapGamesSheet.tsx` e tabs (`GamesSheetMeetupsTab`, `GamesSheetVenuesTab`, etc.)
+  Sheet principal de “Jogos” sobre o mapa.
+
+- `apps/mobile/src/features/map/components/MeetupSheetCard.tsx` / `MeetupSheetCardContainer.tsx`
+  Card e container de detalhe de meetup dentro do sheet.
+
+- `apps/mobile/src/features/map/components/MeetupSheetParticipantsScene.tsx`
+  Cena de participantes do meetup no contexto do sheet.
+
+- `apps/mobile/src/features/map/components/ChatMeetupListLeading.tsx`
+  Leading/acessório de lista de chats de meetup no drawer.
 
 - `apps/mobile/src/features/map/InteractiveMap.tsx`
   Fallback web.
@@ -76,9 +92,12 @@ O projeto está organizado em duas frentes:
   - imagem do grupo
   - detalhes recolhíveis
   - strip horizontal de participantes
-  - thread de mensagens
+  - thread de mensagens (balões próprios com fundo em `palette.ember` / laranja de marca)
   - composer estilo mensageria
   - bloco de confiança pós-jogo
+
+- `apps/mobile/src/features/chat/MeetupParticipantsBlock.tsx`
+  Bloco de participantes, presença e avaliação pós-partida reutilizável no chat.
 
 - `apps/mobile/src/features/chat/MeetupChatPreview.tsx`
   Componente legado do chat antigo. Pode ser removido depois de uma rodada final de limpeza.
