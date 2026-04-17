@@ -1,4 +1,13 @@
-import { memo, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  memo,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { MaterialIcons } from "@expo/vector-icons";
 import {
   Animated,
@@ -86,7 +95,8 @@ type OverlayPinSnapshot = {
 
 const OVERDUE_MEETUP_AFTER_MS = 60 * 60 * 1000;
 const COINCIDENT_GROUP_EXPAND_AT_ZOOM = 0.016;
-const COINCIDENT_GROUP_COLLAPSE_AT_ZOOM = 0.022;
+/** Wider hysteresis than expand so expand/collapse does not oscillate at one zoom level. */
+const COINCIDENT_GROUP_COLLAPSE_AT_ZOOM = 0.028;
 const PROJECTED_CLUSTER_ENABLE_AT_ZOOM = 0.038;
 const PROJECTED_CLUSTER_DISABLE_AT_ZOOM = 0.03;
 const MARKER_IMAGE_SOURCES = {
@@ -156,7 +166,10 @@ export function InteractiveMap({
   const hasAutoCenteredOnUserRef = useRef(false);
   const lastFocusedSignatureRef = useRef<string | null>(null);
   const latestRegionRef = useRef<Region>(buildRegion([]));
-  const selectedPointRunIdRef = useRef(0);
+  const selectedDisplayedOverlayPinRef = useRef<{ id: string; coordinate: MapCoordinate } | null>(null);
+  const bubbleAnchorRequestIdRef = useRef(0);
+  const bubblePositionRafRef = useRef<number | null>(null);
+  const scheduleBubbleAnchorUpdateRef = useRef<(() => void) | null>(null);
   const markerPressLockUntilRef = useRef(0);
   const expandedCoincidentGroupKeysRef = useRef<Set<string>>(new Set());
   const projectedClusteringEnabledRef = useRef(false);
@@ -287,13 +300,16 @@ export function InteractiveMap({
     }
 
     const venueCollisionOffsets = buildVenueCollisionOffsets(overlayGroups);
-    const meetupVenueAvoidanceOffsets = buildMeetupVenueAvoidanceOffsets(overlayGroups);
+    const meetupVenueAvoidanceOffsets = buildMeetupVenueAvoidanceOffsets(overlayGroups, clusterRegion);
 
     overlayGroups.forEach((group) => {
       const venueCollisionOffset = venueCollisionOffsets.get(group.key) ?? { x: 0, y: 0 };
       const meetupVenueAvoidanceOffset = meetupVenueAvoidanceOffsets.get(group.key) ?? { x: 0, y: 0 };
       if (expandedCoincidentGroupKeys.has(group.key)) {
-        const spreadItems = buildExpandedGroupItems(group);
+        const spreadItems = buildExpandedGroupItems(
+          group,
+          Math.max(clusterRegion.latitudeDelta, clusterRegion.longitudeDelta)
+        );
 
         spreadItems.forEach((spreadItem) => {
           if (spreadItem.kind === "venue") {
@@ -554,6 +570,10 @@ export function InteractiveMap({
   }, [pressedOverlayPinId, rawOverlayPins, selectedPinOverlayKey]);
   const selectedDisplayedOverlayPin = selectedRawOverlayPin ?? pressedOverlayPinSnapshot;
 
+  selectedDisplayedOverlayPinRef.current = selectedDisplayedOverlayPin
+    ? { id: selectedDisplayedOverlayPin.id, coordinate: selectedDisplayedOverlayPin.coordinate }
+    : null;
+
   useEffect(() => {
     if (!pressedOverlayPinId && !pressedOverlayPinSnapshot) {
       return;
@@ -623,39 +643,68 @@ export function InteractiveMap({
     onVisibleRegionChange?.(visibleRegion);
   }, [onVisibleRegionChange, visibleRegion]);
 
+  const scheduleBubbleAnchorUpdate = useCallback(() => {
+    if (bubblePositionRafRef.current !== null) {
+      return;
+    }
+    bubblePositionRafRef.current = requestAnimationFrame(() => {
+      bubblePositionRafRef.current = null;
+      const pin = selectedDisplayedOverlayPinRef.current;
+      const map = mapRef.current;
+      if (!mapReady || !map || !mapSize.width || !mapSize.height || !pin) {
+        return;
+      }
+      const reqId = ++bubbleAnchorRequestIdRef.current;
+      void map.pointForCoordinate(pin.coordinate).then((pt) => {
+        if (bubbleAnchorRequestIdRef.current !== reqId) {
+          return;
+        }
+        setSelectedPinScreenPoint({ x: pt.x, y: pt.y });
+      });
+    });
+  }, [mapReady, mapSize.height, mapSize.width]);
+
+  scheduleBubbleAnchorUpdateRef.current = scheduleBubbleAnchorUpdate;
+
   useEffect(() => {
-    if (!mapReady || !mapRef.current || !selectedDisplayedOverlayPin) {
+    return () => {
+      if (bubblePositionRafRef.current !== null) {
+        cancelAnimationFrame(bubblePositionRafRef.current);
+        bubblePositionRafRef.current = null;
+      }
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!mapReady || !mapSize.width || !mapSize.height) {
+      return;
+    }
+
+    if (!selectedDisplayedOverlayPin) {
+      bubbleAnchorRequestIdRef.current += 1;
       setSelectedPinScreenPoint(null);
       return;
     }
 
-    const fallbackPoint = projectCoordinateToPoint({
-      coordinate: selectedDisplayedOverlayPin.coordinate,
-      region: visibleRegion,
-      mapSize,
+    const pin = selectedDisplayedOverlayPin;
+
+    const reqId = ++bubbleAnchorRequestIdRef.current;
+    void mapRef.current?.pointForCoordinate(pin.coordinate).then((pt) => {
+      if (bubbleAnchorRequestIdRef.current !== reqId) {
+        return;
+      }
+      setSelectedPinScreenPoint({ x: pt.x, y: pt.y });
     });
-    setSelectedPinScreenPoint(fallbackPoint);
-
-    const runId = ++selectedPointRunIdRef.current;
-
-    void mapRef.current
-      .pointForCoordinate(selectedDisplayedOverlayPin.coordinate)
-      .then((point) => {
-        if (selectedPointRunIdRef.current !== runId) {
-          return;
-        }
-
-        setSelectedPinScreenPoint({
-          x: point.x,
-          y: point.y,
-        });
-      })
-      .catch(() => {
-        if (selectedPointRunIdRef.current === runId) {
-          setSelectedPinScreenPoint(fallbackPoint);
-        }
-      });
-  }, [mapReady, mapSize, selectedDisplayedOverlayPin, visibleRegion]);
+    // Pin object identity changes when overlay data recomputes; id + lat/lng are stable anchors.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    mapReady,
+    mapSize.height,
+    mapSize.width,
+    selectedDisplayedOverlayPin?.coordinate.latitude,
+    selectedDisplayedOverlayPin?.coordinate.longitude,
+    selectedDisplayedOverlayPin?.id,
+  ]);
 
   useEffect(() => {
     if (!focusTarget || !mapRef.current) {
@@ -720,66 +769,49 @@ export function InteractiveMap({
     selectedVenueId,
   ]);
 
+  const selectedBubblePinIdRef = useRef<string | null>(null);
+
   useEffect(() => {
-    if (!selectedDisplayedOverlayPin) {
+    const nextId = selectedDisplayedOverlayPin?.id ?? null;
+    if (!nextId) {
+      selectedBubblePinIdRef.current = null;
       bubbleProgress.setValue(0);
       return;
     }
 
+    if (selectedBubblePinIdRef.current === nextId) {
+      return;
+    }
+
+    selectedBubblePinIdRef.current = nextId;
     bubbleProgress.setValue(0);
-    Animated.parallel([
-      Animated.timing(bubbleProgress, {
-        toValue: 1,
-        duration: 220,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [bubbleProgress, selectedDisplayedOverlayPin]);
+    Animated.timing(bubbleProgress, {
+      toValue: 1,
+      duration: 220,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [bubbleProgress, selectedDisplayedOverlayPin?.id]);
 
   const handleOverlayMarkerPress = useCallback(
     (item: VisibleOverlayPin, event: { stopPropagation?: () => void }) => {
       markerPressLockUntilRef.current = Date.now() + 600;
       event.stopPropagation?.();
 
-      const fallbackPoint = projectCoordinateToPoint({
+      selectedDisplayedOverlayPinRef.current = {
+        id: item.id,
         coordinate: item.coordinate,
-        region: latestRegionRef.current,
-        mapSize,
-      });
+      };
       setPressedOverlayPinId(item.id);
       setPressedOverlayPinSnapshot({
         id: item.id,
         coordinate: item.coordinate,
         calloutContent: item.calloutContent,
       });
-      setSelectedPinScreenPoint(fallbackPoint);
-
-      if (mapRef.current) {
-        const currentRunId = ++selectedPointRunIdRef.current;
-
-        void mapRef.current
-          .pointForCoordinate(item.coordinate)
-          .then((point) => {
-            if (selectedPointRunIdRef.current !== currentRunId) {
-              return;
-            }
-
-            setSelectedPinScreenPoint({
-              x: point.x,
-              y: point.y,
-            });
-          })
-          .catch(() => {
-            if (selectedPointRunIdRef.current === currentRunId) {
-              setSelectedPinScreenPoint(fallbackPoint);
-            }
-          });
-      }
 
       item.onPress?.();
     },
-    [mapSize]
+    []
   );
 
   useEffect(() => {
@@ -934,6 +966,7 @@ export function InteractiveMap({
               <Marker
                 coordinate={{ latitude: profile.lat, longitude: profile.lng }}
                 pinColor={palette.forest}
+                tracksViewChanges={false}
               >
                 <Callout>
                   <PinCallout
@@ -1048,6 +1081,12 @@ function handleMapLayout(event: LayoutChangeEvent) {
     setVisibleRegion((current) =>
       areRegionsClose(current, nextRegion) ? current : nextRegion
     );
+
+    if (!selectedDisplayedOverlayPinRef.current) {
+      return;
+    }
+
+    scheduleBubbleAnchorUpdateRef.current?.();
   }
 
   function handleRegionChangeComplete(nextRegion: Region) {
@@ -1430,10 +1469,34 @@ function buildVenueCollisionOffsets(groups: OverlayPinGroup[]) {
   return offsets;
 }
 
-function buildMeetupVenueAvoidanceOffsets(groups: OverlayPinGroup[]) {
+/**
+ * Screen-space offset magnitude (passed through `offsetCoordinateByPixelOffset`) for meetup pins
+ * near venues. At wide zoom, 0 so pins can overlap; when zoomed in, enough to separate from venue art.
+ */
+function resolveMeetupVenueAvoidancePixelMagnitude(zoomLevel: number): number {
+  if (zoomLevel >= 0.11) {
+    return 0;
+  }
+  if (zoomLevel >= 0.055) {
+    return 10;
+  }
+  if (zoomLevel >= 0.032) {
+    return 18;
+  }
+  if (zoomLevel >= 0.022) {
+    return 26;
+  }
+  if (zoomLevel >= 0.016) {
+    return 34;
+  }
+  return 40;
+}
+
+function buildMeetupVenueAvoidanceOffsets(groups: OverlayPinGroup[], region: Region) {
   const offsets = new Map<string, PixelOffset>();
   const venueGroups = groups.filter((group) => group.venueIds.length > 0);
   const meetupGroups = groups.filter((group) => group.meetupIds.length > 0);
+  const zoomLevel = Math.max(region.latitudeDelta, region.longitudeDelta);
 
   meetupGroups.forEach((group) => {
     const nearbyVenueGroups = venueGroups
@@ -1474,14 +1537,21 @@ function buildMeetupVenueAvoidanceOffsets(groups: OverlayPinGroup[]) {
     }
 
     const nearestDistanceMeters = Math.min(...nearbyVenueGroups.map((candidate) => candidate.distanceMeters));
-    const magnitude =
+    const baseMagnitude = resolveMeetupVenueAvoidancePixelMagnitude(zoomLevel);
+    if (baseMagnitude <= 0) {
+      offsets.set(group.key, { x: 0, y: 0 });
+      return;
+    }
+
+    const distanceFactor =
       nearestDistanceMeters <= 8
-        ? 52
+        ? 1
         : nearestDistanceMeters <= 16
-          ? 44
+          ? 0.9
           : nearestDistanceMeters <= 28
-            ? 38
-            : 32;
+            ? 0.78
+            : 0.65;
+    const magnitude = baseMagnitude * distanceFactor;
     const vectorLength = Math.max(Math.sqrt(eastMeters * eastMeters + northMeters * northMeters), 0.0001);
     const normalizedEastMeters = (eastMeters / vectorLength) * magnitude;
     const normalizedNorthMeters = (northMeters / vectorLength) * magnitude;
@@ -1495,7 +1565,7 @@ function buildMeetupVenueAvoidanceOffsets(groups: OverlayPinGroup[]) {
   return offsets;
 }
 
-function buildExpandedGroupItems(group: OverlayPinGroup) {
+function buildExpandedGroupItems(group: OverlayPinGroup, zoomLevel: number) {
   const items = [
     ...group.venues
       .slice()
@@ -1509,7 +1579,7 @@ function buildExpandedGroupItems(group: OverlayPinGroup) {
       .map((meetup) => ({ kind: "meetup" as const, meetup })),
   ];
 
-  const radius = resolveCoincidentSpreadRadius(items.length);
+  const radius = resolveCoincidentSpreadRadius(items.length, zoomLevel);
 
   if (items.length === 2) {
     return items.map((item, index) => ({
@@ -1531,20 +1601,19 @@ function buildExpandedGroupItems(group: OverlayPinGroup) {
   });
 }
 
-function resolveCoincidentSpreadRadius(count: number) {
-  if (count <= 2) {
-    return 20;
+function resolveCoincidentSpreadRadius(count: number, zoomLevel: number) {
+  const base =
+    count <= 2 ? 20 : count === 3 ? 24 : count <= 5 ? 28 : 34;
+  if (zoomLevel >= 0.11) {
+    return base * 0.4;
   }
-
-  if (count === 3) {
-    return 24;
+  if (zoomLevel >= 0.055) {
+    return base * 0.6;
   }
-
-  if (count <= 5) {
-    return 28;
+  if (zoomLevel >= 0.028) {
+    return base * 0.78;
   }
-
-  return 34;
+  return base;
 }
 
 function buildOverlayGroupKey({
@@ -1575,7 +1644,7 @@ function resolveProjectedClusteringEnabled({
 }) {
   const clusterablePins = pins.filter(shouldPinParticipateInProjectedClustering);
 
-  if (clusterablePins.length < 4) {
+  if (clusterablePins.length < 2) {
     return false;
   }
 
@@ -2063,7 +2132,7 @@ const OverlayMarkers = memo(function OverlayMarkers({
     <>
       {pins.map((item) => (
         <Marker
-          key={`${item.kind}:${item.id}:${resolveMarkerImageAssetKey(item)}`}
+          key={`${item.kind}:${item.id}`}
           identifier={item.id}
           anchor={{ x: 0.5, y: 0.5 }}
           coordinate={item.coordinate}
