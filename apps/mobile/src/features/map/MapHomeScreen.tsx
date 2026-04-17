@@ -24,6 +24,7 @@ import type { ChatListSection } from "@/features/map/components/ChatsPage";
 import { MapHomeSurface } from "@/features/map/components/MapHomeSurface";
 import { MapCircleActionButton } from "@/features/map/components/MapCircleActionButton";
 import { MeetupSheetCardContainer } from "@/features/map/components/MeetupSheetCardContainer";
+import { MeetupSheetParticipantsScene } from "@/features/map/components/MeetupSheetParticipantsScene";
 import { MeetupSheetListRowContainer } from "@/features/map/components/MeetupSheetListRowContainer";
 import { VenueSheetCardContainer } from "@/features/map/components/VenueSheetCardContainer";
 import { VenueSheetListRowContainer } from "@/features/map/components/VenueSheetListRowContainer";
@@ -185,6 +186,14 @@ type PageScreen =
   | "history"
   | "player";
 type ChatViewMode = "list" | "room";
+
+/** Captured when entering chat room so Voltar restores the previous sheet/scene (not always the map). */
+type ChatReturnSnapshot = {
+  activeScreen: AppScreen;
+  pageScreen: PageScreen;
+  chatViewMode: ChatViewMode;
+};
+
 type PlayerReturnContext = {
   activeScreen: Exclude<AppScreen, "player">;
   pageScreen: Exclude<PageScreen, "player"> | null;
@@ -203,7 +212,15 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [activeScreen, setActiveScreen] = useState<AppScreen>("map");
   const [pageScreen, setPageScreen] = useState<PageScreen>("chats");
   const [chatViewMode, setChatViewMode] = useState<ChatViewMode>("list");
-  const [chatOpenedFromList, setChatOpenedFromList] = useState(false);
+  /** Nested ChatsPage routes (game group → meetup list). Lifted so it survives chat room overlay / remounts. */
+  const [chatsRouteStackKeys, setChatsRouteStackKeys] = useState<string[]>([]);
+  const chatReturnSnapshotRef = useRef<ChatReturnSnapshot | null>(null);
+  useEffect(() => {
+    if (pageScreen !== "chats") {
+      setChatsRouteStackKeys([]);
+    }
+  }, [pageScreen]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -243,6 +260,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [selectedMeetupId, setSelectedMeetupId] = useState<string | null>(null);
   const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   const [selectedMapGroup, setSelectedMapGroup] = useState<MapSelectionGroup | null>(null);
+  const [pinCalloutDismissNonce, setPinCalloutDismissNonce] = useState(0);
   const [selectedChatMeetupId, setSelectedChatMeetupId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [mapViewportRegion, setMapViewportRegion] = useState<Region | null>(null);
@@ -371,6 +389,10 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [gamesSheetPreviewMode, setGamesSheetPreviewMode] = useState(false);
   const [expandedMeetupInfoId, setExpandedMeetupInfoId] = useState<string | null>(null);
   const [expandedMeetupManageId, setExpandedMeetupManageId] = useState<string | null>(null);
+  const [externalMeetupManageRequest, setExternalMeetupManageRequest] = useState<{
+    groupId: string;
+    meetupId: string;
+  } | null>(null);
   const [expandedVenueInfoId, setExpandedVenueInfoId] = useState<string | null>(null);
   const [expandedVenueManageId, setExpandedVenueManageId] = useState<string | null>(null);
   const [deletingEntityId, setDeletingEntityId] = useState<string | null>(null);
@@ -387,6 +409,12 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [demoMeetupPresenceById, setDemoMeetupPresenceById] = useState<
     Record<string, MeetupMemberPresence[]>
   >({});
+  const [sheetMeetupPresenceById, setSheetMeetupPresenceById] = useState<
+    Record<string, MeetupMemberPresence[]>
+  >({});
+  const [sheetMeetupPresenceLoadingId, setSheetMeetupPresenceLoadingId] = useState<string | null>(
+    null
+  );
   const [demoMessagesByMeetupId, setDemoMessagesByMeetupId] = useState<
     Record<string, ChatMessage[]>
   >({});
@@ -906,6 +934,74 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       selectedChatIsDemo,
     ]
   );
+
+  const loadSheetMeetupPresence = useCallback(
+    async (meetupId: string) => {
+      if (isDemoId(meetupId)) {
+        const next =
+          demoMeetupPresenceById[meetupId] ?? demoBundle.meetupPresenceById[meetupId] ?? [];
+        setSheetMeetupPresenceById((current) => ({ ...current, [meetupId]: next }));
+        return;
+      }
+
+      setSheetMeetupPresenceLoadingId(meetupId);
+      try {
+        const result = await getMeetupMemberPresence(meetupId);
+        setSheetMeetupPresenceById((current) => ({ ...current, [meetupId]: result }));
+      } catch (fetchError) {
+        setMessageError(toMessage(fetchError));
+      } finally {
+        setSheetMeetupPresenceLoadingId((prev) => (prev === meetupId ? null : prev));
+      }
+    },
+    [demoBundle.meetupPresenceById, demoMeetupPresenceById]
+  );
+
+  const resolvePresenceForSheetMeetup = useCallback(
+    (meetup: MeetupPost) => {
+      if (effectiveSelectedChatMeetup?.id === meetup.id) {
+        return effectiveMeetupPresence;
+      }
+
+      if (isDemoId(meetup.id)) {
+        return (
+          demoMeetupPresenceById[meetup.id] ??
+          demoBundle.meetupPresenceById[meetup.id] ??
+          sheetMeetupPresenceById[meetup.id] ??
+          []
+        );
+      }
+
+      return sheetMeetupPresenceById[meetup.id] ?? [];
+    },
+    [
+      demoBundle.meetupPresenceById,
+      demoMeetupPresenceById,
+      effectiveMeetupPresence,
+      effectiveSelectedChatMeetup?.id,
+      sheetMeetupPresenceById,
+    ]
+  );
+
+  const resolveLoadingForSheetMeetup = useCallback(
+    (meetup: MeetupPost) => {
+      if (effectiveSelectedChatMeetup?.id === meetup.id) {
+        return loadingMeetupPresence;
+      }
+
+      if (isDemoId(meetup.id)) {
+        return false;
+      }
+
+      return sheetMeetupPresenceLoadingId === meetup.id;
+    },
+    [
+      effectiveSelectedChatMeetup?.id,
+      loadingMeetupPresence,
+      sheetMeetupPresenceLoadingId,
+    ]
+  );
+
   const effectiveMessages = useMemo(
     () =>
       effectiveSelectedChatMeetup && selectedChatIsDemo
@@ -1439,7 +1535,11 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     />
   );
 
-  const renderMeetupSheetDetail = (meetup: MeetupPost, openManage: () => void) => (
+  const renderMeetupSheetDetail = (
+    meetup: MeetupPost,
+    openManage: () => void,
+    openParticipants: () => void
+  ) => (
     <MeetupSheetCardContainer
       mode="detail"
       meetup={meetup}
@@ -1493,6 +1593,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
           setManageTimePickerOpen(true);
         })
       }
+      onOpenDetailParticipants={openParticipants}
       onManageAddressFocusChange={setManageAddressFocused}
       onManageAddressChange={(value) => {
         setManageAddressQuery(value);
@@ -1516,7 +1617,10 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     />
   );
 
-  const renderMeetupSheetManage = (meetup: MeetupPost) => (
+  const renderMeetupSheetManage = (
+    meetup: MeetupPost,
+    openManageParticipants: () => void
+  ) => (
     <MeetupSheetCardContainer
       mode="manage"
       meetup={meetup}
@@ -1568,6 +1672,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
           setManageTimePickerOpen(true);
         })
       }
+      onOpenManageParticipants={openManageParticipants}
       onManageAddressFocusChange={setManageAddressFocused}
       onManageAddressChange={(value) => {
         setManageAddressQuery(value);
@@ -1588,6 +1693,23 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       onPromptClose={() => promptMeetupStatusChange(meetup, "closed")}
       onPromptCancel={() => promptMeetupStatusChange(meetup, "cancelled")}
       onPromptDelete={() => promptDeleteMeetup(meetup)}
+    />
+  );
+
+  const renderMeetupSheetParticipants = (meetup: MeetupPost) => (
+    <MeetupSheetParticipantsScene
+      meetup={meetup}
+      meetupPresence={resolvePresenceForSheetMeetup(meetup)}
+      loadingMeetupPresence={resolveLoadingForSheetMeetup(meetup)}
+      onOpenPlayerProfile={openPlayerProfile}
+      onRemoveParticipant={(userId) => {
+        const member = resolvePresenceForSheetMeetup(meetup).find((m) => m.userId === userId);
+        if (member) {
+          promptRemoveMeetupMember(member, meetup);
+        }
+      }}
+      removingParticipantId={removingMeetupMemberId}
+      onRequestPresence={loadSheetMeetupPresence}
     />
   );
 
@@ -1768,6 +1890,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const composerSheetTranslateY = useRef(new Animated.Value(0)).current;
   const currentComposerSheetValueRef = useRef(0);
   const pageTranslateY = useRef(new Animated.Value(height)).current;
+  /** Horizontal slide for chat room when opened from chat list (right →). */
+  const chatRoomTranslateX = useRef(new Animated.Value(0)).current;
   const currentPageTranslateYRef = useRef(height);
   const pagePanStartRef = useRef(0);
   const pageLayerOpacity = useMemo(
@@ -2753,22 +2877,6 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
 
     void handleMarkNotificationsReadRef.current(unreadChatNotificationIds);
   }, [activeScreen, chatViewMode, effectiveNotifications, selectedChatMeetupId]);
-
-  useEffect(() => {
-    if (pageScreen !== "alerts") {
-      return;
-    }
-
-    const unreadAlertNotificationIds = effectiveNotifications
-      .filter((item) => item.kind !== "message_received" && item.readAt === null)
-      .map((item) => item.id);
-
-    if (!unreadAlertNotificationIds.length) {
-      return;
-    }
-
-    void handleMarkNotificationsReadRef.current(unreadAlertNotificationIds);
-  }, [effectiveNotifications, pageScreen]);
 
   async function handleCreateMeetup() {
     try {
@@ -3932,7 +4040,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
 
   function closeCurrentPageToMap() {
     Keyboard.dismiss();
-    setChatOpenedFromList(false);
+    chatReturnSnapshotRef.current = null;
+    chatRoomTranslateX.setValue(0);
     setGamesSheetPreviewMode(false);
 
     if (activeScreen !== "map") {
@@ -4019,7 +4128,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     setDrawerPanel("root");
     drawerPanelProgress.setValue(0);
     setGamesSheetPreviewMode(false);
-    setChatOpenedFromList(false);
+    chatReturnSnapshotRef.current = null;
+    chatRoomTranslateX.setValue(0);
     if (activeScreen !== "map") {
       animatePageOutToMap();
       return;
@@ -4045,6 +4155,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   function runFromDrawer(action: () => void) {
     Keyboard.dismiss();
     closeComposer(false);
+    dismissPinCallout();
     setDrawerOpen(false);
     closeDrawerSubmenus();
 
@@ -4069,7 +4180,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   function openChatsPage() {
     runFromDrawer(() => {
       setChatViewMode("list");
-      setChatOpenedFromList(false);
+      setChatsRouteStackKeys([]);
       openPageScreenFromMap("chats");
     });
   }
@@ -4098,7 +4209,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     });
   }
 
-  function openChat(meetupId?: string, options?: { fromList?: boolean }) {
+  function openChat(meetupId?: string) {
     Keyboard.dismiss();
     closeComposer(false);
     const targetMeetup =
@@ -4113,9 +4224,22 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       return;
     }
 
+    const openChatFromChatList = activeScreen === "chats" && chatViewMode === "list";
+
+    chatReturnSnapshotRef.current = {
+      activeScreen,
+      pageScreen,
+      chatViewMode,
+    };
+
+    if (openChatFromChatList) {
+      chatRoomTranslateX.setValue(width);
+    } else {
+      chatRoomTranslateX.setValue(0);
+    }
+
     setDrawerOpen(false);
     setChatViewMode("room");
-    setChatOpenedFromList(options?.fromList ?? false);
 
     if (meetupId) {
       setSelectedMeetupId(meetupId);
@@ -4147,26 +4271,72 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     pageTranslateY.setValue(0);
     currentPageTranslateYRef.current = 0;
     setActiveScreen("chats");
+
+    if (openChatFromChatList) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          Animated.spring(chatRoomTranslateX, {
+            toValue: 0,
+            damping: 28,
+            stiffness: 300,
+            mass: 0.88,
+            overshootClamping: true,
+            useNativeDriver: true,
+          }).start();
+        });
+      });
+    }
   }
 
   function closeChatScreen() {
     Keyboard.dismiss();
 
-    if (chatOpenedFromList && chatViewMode === "room" && activeScreen === "chats") {
-      setChatViewMode("list");
-      setChatOpenedFromList(false);
-      setPageScreen("chats");
-      pageTranslateY.setValue(0);
-      currentPageTranslateYRef.current = 0;
-      setActiveScreen("chats");
+    const snap = chatReturnSnapshotRef.current;
+    chatReturnSnapshotRef.current = null;
+
+    if (!snap) {
+      openMap();
       return;
     }
 
-    openMap();
+    if (snap.activeScreen === "map") {
+      animatePageOutToMap(() => {
+        setChatViewMode(snap.chatViewMode);
+        setPageScreen(snap.pageScreen);
+      });
+      return;
+    }
+
+    const backToChatList = snap.activeScreen === "chats" && snap.chatViewMode === "list";
+
+    if (backToChatList) {
+      Animated.timing(chatRoomTranslateX, {
+        toValue: width,
+        duration: 280,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) {
+          return;
+        }
+        setChatViewMode(snap.chatViewMode);
+        setPageScreen(snap.pageScreen);
+        setActiveScreen(snap.activeScreen);
+        pageTranslateY.setValue(0);
+        currentPageTranslateYRef.current = 0;
+      });
+      return;
+    }
+
+    setChatViewMode(snap.chatViewMode);
+    setPageScreen(snap.pageScreen);
+    setActiveScreen(snap.activeScreen);
+    pageTranslateY.setValue(0);
+    currentPageTranslateYRef.current = 0;
   }
 
-  function promptRemoveMeetupMember(member: MeetupMemberPresence) {
-    if (!selectedChatMeetup?.isCreator || member.role === "creator") {
+  function promptRemoveMeetupMember(member: MeetupMemberPresence, meetup: MeetupPost) {
+    if (!meetup.isCreator || member.role === "creator") {
       return;
     }
 
@@ -4179,27 +4349,29 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
           text: "Remover",
           style: "destructive",
           onPress: () => {
-            void handleRemoveMeetupMember(member.userId);
+            void handleRemoveMeetupMember(meetup.id, member.userId);
           },
         },
       ]
     );
   }
 
-  async function handleRemoveMeetupMember(memberUserId: string) {
-    if (!selectedChatMeetup?.isCreator) {
+  async function handleRemoveMeetupMember(meetupId: string, memberUserId: string) {
+    const meetup = allMeetups.find((item) => item.id === meetupId);
+    if (!meetup?.isCreator) {
       return;
     }
 
     try {
       setRemovingMeetupMemberId(memberUserId);
       setMessageError(null);
-      await removeMeetupMember(selectedChatMeetup.id, memberUserId);
-      await Promise.all([
-        loadDashboardRef.current("refresh"),
-        syncMeetupPresence(selectedChatMeetup.id),
-        loadNotificationsRef.current(),
-      ]);
+      await removeMeetupMember(meetupId, memberUserId);
+      await Promise.all([loadDashboardRef.current("refresh"), loadNotificationsRef.current()]);
+      const nextPresence = await getMeetupMemberPresence(meetupId);
+      if (selectedChatMeetup?.id === meetupId) {
+        setMeetupPresence(nextPresence);
+      }
+      setSheetMeetupPresenceById((current) => ({ ...current, [meetupId]: nextPresence }));
       setEntityActionSuccess("Participante removido da partida e do chat.");
     } catch (removeError) {
       setMessageError(toMessage(removeError));
@@ -4321,6 +4493,13 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     animateGamesSheet(false);
   }
 
+  function dismissPinCallout() {
+    setSelectedMapGroup(null);
+    setSelectedMeetupId(null);
+    setSelectedVenueId(null);
+    setPinCalloutDismissNonce((current) => current + 1);
+  }
+
   function handleSelectMeetupFromMap(meetupId: string) {
     const meetup = allMeetups.find((item) => item.id === meetupId);
     setSelectedMapGroup(null);
@@ -4365,7 +4544,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     };
 
     if (activeScreen !== "map") {
-      setChatOpenedFromList(false);
+      chatReturnSnapshotRef.current = null;
       animatePageOutToMap(() => {
         requestAnimationFrame(applyFocus);
       });
@@ -4387,7 +4566,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     };
 
     if (activeScreen !== "map") {
-      setChatOpenedFromList(false);
+      chatReturnSnapshotRef.current = null;
       animatePageOutToMap(() => {
         requestAnimationFrame(applyFocus);
       });
@@ -4490,6 +4669,51 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     }
   }
 
+  const consumeExternalMeetupManageRequest = useCallback(() => {
+    setExternalMeetupManageRequest(null);
+  }, []);
+
+  const openMeetupManageEditorFromChat = useCallback(() => {
+    const meetup = effectiveSelectedChatMeetup;
+    if (!meetup?.isCreator) {
+      return;
+    }
+
+    Keyboard.dismiss();
+    closeComposer(false);
+    setDrawerOpen(false);
+
+    const groupId = slugifyGameLabel(inferGameNameFromLabels([meetup.formatName]));
+
+    const apply = () => {
+      switchGamesSheetSection("meetups", { animate: false });
+      setGamesSheetPreviewMode(false);
+      animateGamesSheet(true);
+      setExpandedGameGroups((current) => ({
+        ...current,
+        [groupId]: true,
+      }));
+      setExternalMeetupManageRequest({ groupId, meetupId: meetup.id });
+    };
+
+    if (activeScreen !== "map") {
+      chatReturnSnapshotRef.current = null;
+      animatePageOutToMap(() => {
+        requestAnimationFrame(apply);
+      });
+      return;
+    }
+
+    apply();
+  }, [
+    activeScreen,
+    animateGamesSheet,
+    animatePageOutToMap,
+    closeComposer,
+    effectiveSelectedChatMeetup,
+    switchGamesSheetSection,
+  ]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingSafeArea}>
@@ -4521,12 +4745,14 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       onSelectVenue: handleSelectVenueFromMap,
       onSelectMapGroup: handleSelectMapGroup,
       onClearSelection: clearSelectedPin,
+      pinCalloutDismissNonce,
       onSelectDraftCoordinate: (coordinate: MapCoordinate) => {
         setSelectedVenueId(null);
         setDraftCoordinate(coordinate);
       },
     },
     topOverlay: {
+      onDismissPinCallout: dismissPinCallout,
       profileName: profile.displayName,
       profileAvatarUrl: profile.avatarUrl,
       showUnreadMenuIndicator: hasUnreadMenuIndicator,
@@ -4547,6 +4773,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       onOpenComposer: openComposerSheet,
     },
     gamesSheet: {
+      onDismissPinCallout: dismissPinCallout,
       top: gamesSheetTop,
       height: gamesSheetHeight,
       translateY: gamesSheetTranslateY,
@@ -4616,6 +4843,11 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       renderMeetupListItem: renderMeetupSheetListItem,
       renderMeetupDetail: renderMeetupSheetDetail,
       renderMeetupManage: renderMeetupSheetManage,
+      renderMeetupParticipants: renderMeetupSheetParticipants,
+      externalMeetupManageRequest,
+      onConsumedExternalMeetupManageRequest: consumeExternalMeetupManageRequest,
+      resolveMeetupById: (meetupId: string) =>
+        allMeetups.find((item) => item.id === meetupId) ?? null,
       renderVenueListItem: renderVenueSheetListItem,
       renderVenueDetail: renderVenueSheetDetail,
       renderVenueManage: renderVenueSheetManage,
@@ -4627,6 +4859,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     opacity: pageLayerOpacity,
     translateY: pageTranslateY,
     scale: pageLayerScale,
+    chatRoomTranslateX,
     pageScreen,
     chatViewMode,
     profileName: profile.displayName,
@@ -4659,10 +4892,11 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       onClearReply: () => setReplyingToMessageId(null),
       onChangeMessageBody: setMessageBody,
       onSendMessage: () => void handleSendMessage(),
-      onOpenMap: () =>
+      onOpenMeetupPinOnMap: () =>
         effectiveSelectedChatMeetup && !selectedChatIsDemo
-          ? focusMeetupOnMap(effectiveSelectedChatMeetup.id, true)
+          ? focusMeetupOnMap(effectiveSelectedChatMeetup.id, false)
           : openMap(),
+      onEditMeetup: openMeetupManageEditorFromChat,
       onLeaveMeetup: () =>
         effectiveSelectedChatMeetup
           ? void handleLeaveMeetup(effectiveSelectedChatMeetup.id)
@@ -4672,23 +4906,26 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       onUpdateMeetupStatus: (status: "closed" | "cancelled") =>
         promptChatMeetupStatusChange(status),
       onRemoveParticipant: (userId: string) =>
-        promptRemoveMeetupMember(
-          effectiveMeetupPresence.find((member) => member.userId === userId) ?? {
-            userId,
-            displayName: "Participante",
-            handle: "",
-            avatarPath: null,
-            avatarUrl: null,
-            attendanceStatus: "interested",
-            role: "participant",
-            joinedAt: new Date().toISOString(),
-          }
-        ),
+        effectiveSelectedChatMeetup
+          ? promptRemoveMeetupMember(
+              effectiveMeetupPresence.find((member) => member.userId === userId) ?? {
+                userId,
+                displayName: "Participante",
+                handle: "",
+                avatarPath: null,
+                avatarUrl: null,
+                attendanceStatus: "interested",
+                role: "participant",
+                joinedAt: new Date().toISOString(),
+              },
+              effectiveSelectedChatMeetup
+            )
+          : undefined,
       onRateMember: (reviewedUserId: string, attended: boolean, rating?: number) =>
         void handleRateMember(
           reviewedUserId,
           attended,
-          rating === 1 || rating === 0 || rating === -1 ? rating : 0
+          attended ? (rating ?? 5) : undefined
         ),
       onPickChatImage: () => void handlePickChatImage(),
       pickingChatImage: uploadingChatImage,
@@ -4699,8 +4936,9 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       nowTimestamp,
       profile,
       reputationSummary,
-      selectedChatMeetupId: selectedChatMeetup?.id ?? null,
       chatSections: chatListSections,
+      chatsRouteStackKeys,
+      onChatsRouteStackChange: setChatsRouteStackKeys,
       lastDashboardSyncAt,
       lastAccountSyncAt,
       lastFriendSyncAt,
@@ -4827,7 +5065,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
                 .map((item) => item.id)
             : undefined
         ),
-      onOpenChat: (meetupId: string) => openChat(meetupId, { fromList: true }),
+      onOpenChat: (meetupId: string) => openChat(meetupId),
       onOpenNotification: (notification: InAppNotification) => {
         void handleOpenNotification(notification);
       },
@@ -4860,9 +5098,11 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     archivedChats: archivedChatMeetups,
     expandedChatGroupIds: expandedDrawerChatGroupIds,
     unreadChatMeetupIds,
-    selectedChatMeetupId: selectedChatMeetup?.id ?? null,
     nowTimestamp,
-    onClose: () => setDrawerOpen(false),
+    onClose: () => {
+      dismissPinCallout();
+      setDrawerOpen(false);
+    },
     onOpenMap: openMap,
     onOpenGames: openGames,
     onOpenChats: openChatsPage,
@@ -5152,7 +5392,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
 
   return (
     <>
-      <StatusBar style={activeScreen === "map" && !drawerOpen && !filtersOpen ? "dark" : "light"} />
+      <StatusBar style="light" />
       <MapHomeSurface
         screenLayerProps={screenLayerProps}
         pageLayerProps={pageLayerProps}

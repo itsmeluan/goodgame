@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
@@ -24,6 +24,7 @@ export type GamesSheetMeetupGroup<Item extends { id: string }> = {
 };
 
 type GamesSheetMeetupsTabProps<Item extends { id: string }> = {
+  onDismissPinCallout?: () => void;
   sceneWidth?: number;
   titleNote: string;
   bottomPadding: number;
@@ -45,9 +46,19 @@ type GamesSheetMeetupsTabProps<Item extends { id: string }> = {
     openDetail: () => void,
     separator: boolean
   ) => ReactElement;
-  renderMeetupDetail: (item: Item, openManage: () => void) => ReactElement;
-  renderMeetupManage: (item: Item) => ReactElement;
+  renderMeetupDetail: (
+    item: Item,
+    openManage: () => void,
+    openParticipants: () => void
+  ) => ReactElement;
+  renderMeetupManage: (item: Item, openManageParticipants: () => void) => ReactElement;
+  renderMeetupParticipants: (item: Item) => ReactElement;
   emptyState: ReactElement | null;
+  /** Open manage route from outside the sheet (e.g. chat “Editar”). */
+  externalManageRequest?: { groupId: string; meetupId: string } | null;
+  onConsumedExternalManageRequest?: () => void;
+  /** Resolve meetup when it may not appear in the current group list (filters). */
+  resolveMeetupById?: (meetupId: string) => Item | null;
 };
 
 type MeetupRoute =
@@ -67,9 +78,16 @@ type MeetupRoute =
       type: "manage";
       groupId: string;
       meetupId: string;
+    }
+  | {
+      key: string;
+      type: "participants";
+      groupId: string;
+      meetupId: string;
     };
 
 export function GamesSheetMeetupsTab<Item extends { id: string }>({
+  onDismissPinCallout,
   sceneWidth,
   titleNote,
   bottomPadding,
@@ -89,7 +107,11 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
   renderMeetupListItem,
   renderMeetupDetail,
   renderMeetupManage,
+  renderMeetupParticipants,
   emptyState,
+  externalManageRequest = null,
+  onConsumedExternalManageRequest = () => {},
+  resolveMeetupById,
 }: GamesSheetMeetupsTabProps<Item>) {
   const [routeStack, setRouteStack] = useState<MeetupRoute[]>([]);
   const currentSortLabel =
@@ -99,6 +121,43 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
     () => groups.filter((group) => group.meetups.length > 0),
     [groups]
   );
+
+  const resolveMeetupForRoute = useCallback(
+    (groupId: string, meetupId: string) => {
+      const group = visibleGroups.find((item) => item.id === groupId);
+      const fromGroup = group?.meetups.find((item) => item.id === meetupId) ?? null;
+      return fromGroup ?? resolveMeetupById?.(meetupId) ?? null;
+    },
+    [visibleGroups, resolveMeetupById]
+  );
+
+  useEffect(() => {
+    if (!externalManageRequest) {
+      return;
+    }
+
+    const meetup = resolveMeetupForRoute(
+      externalManageRequest.groupId,
+      externalManageRequest.meetupId
+    );
+
+    if (!meetup) {
+      onConsumedExternalManageRequest?.();
+      return;
+    }
+
+    onOpenManageMeetup(meetup);
+    setRouteStack([
+      {
+        key: `manage:${externalManageRequest.groupId}:${externalManageRequest.meetupId}`,
+        type: "manage",
+        groupId: externalManageRequest.groupId,
+        meetupId: externalManageRequest.meetupId,
+      },
+    ]);
+    onConsumedExternalManageRequest?.();
+    // Intentionally omit onOpenManageMeetup from deps — parent passes a new inline function each render.
+  }, [externalManageRequest, onConsumedExternalManageRequest, resolveMeetupForRoute]);
 
   const pushGroupRoute = (groupId: string) => {
     setRouteStack((current) => {
@@ -126,8 +185,7 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
   };
 
   const pushManageRoute = (groupId: string, meetupId: string) => {
-    const group = visibleGroups.find((item) => item.id === groupId);
-    const meetup = group?.meetups.find((item) => item.id === meetupId) ?? null;
+    const meetup = resolveMeetupForRoute(groupId, meetupId);
 
     if (!meetup) {
       return;
@@ -146,13 +204,31 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
     });
   };
 
+  const pushParticipantsRoute = (groupId: string, meetupId: string) => {
+    const meetup = resolveMeetupForRoute(groupId, meetupId);
+
+    if (!meetup) {
+      return;
+    }
+
+    setRouteStack((current) => {
+      const nextRoute = {
+        key: `participants:${groupId}:${meetupId}`,
+        type: "participants" as const,
+        groupId,
+        meetupId,
+      };
+
+      return current[current.length - 1]?.key === nextRoute.key ? current : [...current, nextRoute];
+    });
+  };
+
   const popRoute = () => {
     setRouteStack((current) => {
       const activeRoute = current[current.length - 1];
 
       if (activeRoute?.type === "manage") {
-        const group = visibleGroups.find((item) => item.id === activeRoute.groupId);
-        const meetup = group?.meetups.find((item) => item.id === activeRoute.meetupId) ?? null;
+        const meetup = resolveMeetupForRoute(activeRoute.groupId, activeRoute.meetupId);
 
         if (meetup) {
           onCloseManageMeetup(meetup);
@@ -185,11 +261,20 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
     });
   }, [managedMeetupId, routeStack]);
 
+  useEffect(() => {
+    if (managedMeetupId) {
+      return;
+    }
+
+    setRouteStack((current) => current.filter((route) => route.type !== "manage"));
+  }, [managedMeetupId]);
+
   const routes = [
     {
       key: "root",
       content: (
         <ScrollView
+          onTouchStart={onDismissPinCallout}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={[styles.content, { paddingBottom: bottomPadding }]}
         >
@@ -287,6 +372,7 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
           key: route.key,
           content: (
             <ScrollView
+              onTouchStart={onDismissPinCallout}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={[
                 styles.sceneContent,
@@ -315,17 +401,39 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
         };
       }
 
-      const meetup = group?.meetups.find((item) => item.id === route.meetupId) ?? null;
+      const meetup = resolveMeetupForRoute(route.groupId, route.meetupId);
 
       if (route.type === "manage") {
         return {
           key: route.key,
           content: (
             <ScrollView
+              onTouchStart={onDismissPinCallout}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={[styles.sceneContent, { paddingBottom: bottomPadding }]}
             >
-              {meetup ? renderMeetupManage(meetup) : emptyState}
+              {meetup ? (
+                renderMeetupManage(meetup, () =>
+                  pushParticipantsRoute(route.groupId, route.meetupId)
+                )
+              ) : (
+                emptyState
+              )}
+            </ScrollView>
+          ),
+        };
+      }
+
+      if (route.type === "participants") {
+        return {
+          key: route.key,
+          content: (
+            <ScrollView
+              onTouchStart={onDismissPinCallout}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={[styles.sceneContent, { paddingBottom: bottomPadding }]}
+            >
+              {meetup ? renderMeetupParticipants(meetup) : emptyState}
             </ScrollView>
           ),
         };
@@ -335,10 +443,19 @@ export function GamesSheetMeetupsTab<Item extends { id: string }>({
         key: route.key,
         content: (
           <ScrollView
+            onTouchStart={onDismissPinCallout}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[styles.sceneContent, { paddingBottom: bottomPadding }]}
           >
-            {meetup ? renderMeetupDetail(meetup, () => pushManageRoute(route.groupId, route.meetupId)) : emptyState}
+            {meetup ? (
+              renderMeetupDetail(
+                meetup,
+                () => pushManageRoute(route.groupId, route.meetupId),
+                () => pushParticipantsRoute(route.groupId, route.meetupId)
+              )
+            ) : (
+              emptyState
+            )}
           </ScrollView>
         ),
       };

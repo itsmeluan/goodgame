@@ -23,12 +23,14 @@ export function ChoiceChip({ label, selected, onPress }: ChoiceChipProps) {
         pressed ? styles.pressed : null,
       ]}
     >
-      <AppleGlassSurface
-        pointerEvents="none"
-        variant={selected ? "accent" : "dark"}
-        intensity="clear"
-        style={styles.surface}
-      />
+      {!selected ? (
+        <AppleGlassSurface
+          pointerEvents="none"
+          variant="dark"
+          intensity="clear"
+          style={styles.surface}
+        />
+      ) : null}
       <Text style={[styles.label, selected ? styles.selectedLabel : styles.unselectedLabel]}>
         {label}
       </Text>
@@ -44,9 +46,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 9,
   },
+  /** Solid app orange — same as `PrimaryButton` primary / games CTA (no glass tint). */
   selected: {
-    backgroundColor: "rgba(241,143,92,0.16)",
-    borderColor: "rgba(241,143,92,0.28)",
+    backgroundColor: palette.ember,
+    borderColor: "rgba(17,17,17,0.12)",
   },
   unselected: {
     backgroundColor: "rgba(255,255,255,0.015)",
@@ -65,7 +68,7 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   selectedLabel: {
-    color: palette.sand,
+    color: palette.ink,
   },
   unselectedLabel: {
     color: palette.sand,

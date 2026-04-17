@@ -1,4 +1,10 @@
 export const palette = {
+  /** Opaque navy for map pages + chat (matches former pageSafeArea + blue wash, no transparency). */
+  pageChrome: "#0D161F",
+  /** Full-opacity chrome matching the Novo jogo sheet base (rgb 12,14,20); use under page glass so the tone matches that sheet. */
+  sheetBaseChrome: "#0C0E14",
+  /** Slightly darker band for chat header/footer (message list stays `pageChrome`). */
+  chatChromeBand: "#0A1219",
   ink: "#111111",
   forest: "#363636",
   moss: "#505050",
@@ -13,6 +19,8 @@ export const palette = {
   mapSurface: "rgba(14,18,24,0.8)",
   venue: "#E9E2D7",
   beacon: "#F18F5C",
+  /** Watermelon red — destructive / danger (matches MeetupSheetCard, AppleList danger). */
+  watermelon: "#E14D5C",
 } as const;
 
 export const spacing = {

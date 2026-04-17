@@ -32,7 +32,6 @@ export type MapDrawerProps = {
   archivedChats: MeetupPost[];
   expandedChatGroupIds: Record<string, boolean>;
   unreadChatMeetupIds: Set<string>;
-  selectedChatMeetupId: string | null;
   nowTimestamp: number;
   onClose: () => void;
   onOpenMap: () => void;
@@ -68,7 +67,6 @@ export function MapDrawer({
   archivedChats,
   expandedChatGroupIds,
   unreadChatMeetupIds,
-  selectedChatMeetupId,
   nowTimestamp,
   onClose,
   onOpenMap,
@@ -129,7 +127,7 @@ export function MapDrawer({
                 intensity="clear"
                 style={styles.drawerCloseButtonSurface}
               />
-              <AppIcon iosName="xmark" fallbackName="close" size={22} color={palette.sand} />
+              <AppIcon iosName="xmark" fallbackName="close" size={17} color={palette.sand} />
             </Pressable>
           </View>
 
@@ -198,7 +196,6 @@ export function MapDrawer({
                 archivedChats={archivedChats}
                 expandedGroupIds={expandedChatGroupIds}
                 unreadChatMeetupIds={unreadChatMeetupIds}
-                selectedChatMeetupId={selectedChatMeetupId}
                 nowTimestamp={nowTimestamp}
                 onBack={onBackToRoot}
                 onToggleGroup={onToggleChatGroup}

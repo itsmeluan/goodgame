@@ -1,5 +1,14 @@
 import { useEffect, useRef } from "react";
-import { ActivityIndicator, Animated, Easing, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import {
   AppleListGroup,
@@ -18,6 +27,8 @@ import type { MeetupStatus, MeetupPost } from "@/types/domain";
 
 /** Watermelon red — aligned with list danger accents (AppleListNavigation). */
 const WATERMELON_RED = "#E14D5C";
+/** Join — bright green (sheet detail “Entrar”). */
+const JOIN_GREEN = "#2BC250";
 
 type MeetupSheetCardProps = {
   mode: "detail" | "manage";
@@ -53,6 +64,10 @@ type MeetupSheetCardProps = {
   onToggleInfo: () => void;
   onOpenManageCalendar: () => void;
   onOpenManageTimePicker: () => void;
+  /** Abre a cena de participantes (stack da sheet de jogos) a partir de Editar. */
+  onOpenManageParticipants?: () => void;
+  /** Abre a mesma cena a partir dos detalhes do jogo. */
+  onOpenDetailParticipants?: () => void;
   onManageAddressFocusChange: (focused: boolean) => void;
   onManageAddressChange: (value: string) => void;
   onManageAddressUseCurrentLocation: () => void;
@@ -95,6 +110,8 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
     onToggleManage,
     onOpenManageCalendar,
     onOpenManageTimePicker,
+    onOpenManageParticipants,
+    onOpenDetailParticipants,
     onManageAddressFocusChange,
     onManageAddressChange,
     onManageAddressUseCurrentLocation,
@@ -110,8 +127,25 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
   const creatorLine = `${meetup.creatorDisplayName}${distanceLabel ? ` · ${distanceLabel}` : ""}`;
   const pageIntro = useRef(new Animated.Value(1)).current;
   const actionsBusy = closing || cancelling || deleting;
-  const showChatAction = meetup.isMember || meetup.isCreator;
   const showEditAction = meetup.isCreator;
+
+  function confirmLeaveMeetup() {
+    Alert.alert(
+      "Sair da partida",
+      "Deseja sair deste jogo? Você perderá acesso ao chat e à participação.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Sair",
+          style: "destructive",
+          onPress: () => {
+            triggerHaptic("warning");
+            onLeaveMeetup();
+          },
+        },
+      ]
+    );
+  }
 
   useEffect(() => {
     pageIntro.setValue(0);
@@ -162,6 +196,16 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                 onPress={onOpenManageTimePicker}
                 size="compact"
               />
+              {onOpenManageParticipants ? (
+                <AppleListRow
+                  separator
+                  icon={{ iosName: "person.3.fill", fallbackName: "groups" }}
+                  label="Participantes"
+                  subtitle={String(meetup.joinedPlayers)}
+                  onPress={onOpenManageParticipants}
+                  size="compact"
+                />
+              ) : null}
             </AppleListGroup>
           </AppleListSection>
 
@@ -272,37 +316,16 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
           </Pressable>
         </View>
 
-        {showChatAction ? (
-          <View style={styles.actionRow}>
-            <View style={styles.actionCluster}>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Ver no mapa"
-                onPress={() => {
-                  triggerHaptic("selection");
-                  onFocusMeetupOnMap();
-                }}
-                style={({ pressed }) => [
-                  styles.circleActionButton,
-                  styles.circleActionButtonGlass,
-                  pressed ? styles.circleActionButtonPressed : null,
-                ]}
-              >
-                <AppIcon
-                  iosName="map.fill"
-                  fallbackName="map"
-                  size={20}
-                  color={palette.sand}
-                />
-              </Pressable>
-
-              {showEditAction ? (
+        <View style={styles.actionRow}>
+          <View style={styles.actionCluster}>
+            {meetup.isCreator ? (
+              <>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Editar partida"
+                  accessibilityLabel="Ver no mapa"
                   onPress={() => {
                     triggerHaptic("selection");
-                    onToggleManage();
+                    onFocusMeetupOnMap();
                   }}
                   style={({ pressed }) => [
                     styles.circleActionButton,
@@ -311,52 +334,187 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                   ]}
                 >
                   <AppIcon
-                    iosName="slider.horizontal.3"
-                    fallbackName="tune"
+                    iosName="map.fill"
+                    fallbackName="map"
                     size={20}
                     color={palette.sand}
                   />
                 </Pressable>
-              ) : null}
 
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Abrir chat"
-                onPress={() => {
-                  triggerHaptic("soft");
-                  onOpenChat();
-                }}
-                style={({ pressed }) => [
-                  styles.circleActionButton,
-                  styles.circleActionButtonEmber,
-                  pressed ? styles.circleActionButtonPressed : null,
-                ]}
-              >
-                <AppIcon
-                  iosName="bubble.left.and.bubble.right.fill"
-                  fallbackName="forum"
-                  size={20}
-                  color={palette.ink}
-                  type="monochrome"
-                />
-              </Pressable>
-            </View>
+                {showEditAction ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Editar partida"
+                    onPress={() => {
+                      triggerHaptic("selection");
+                      onToggleManage();
+                    }}
+                    style={({ pressed }) => [
+                      styles.circleActionButton,
+                      styles.circleActionButtonGlass,
+                      pressed ? styles.circleActionButtonPressed : null,
+                    ]}
+                  >
+                    <AppIcon
+                      iosName="slider.horizontal.3"
+                      fallbackName="tune"
+                      size={20}
+                      color={palette.sand}
+                    />
+                  </Pressable>
+                ) : null}
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir chat"
+                  onPress={() => {
+                    triggerHaptic("soft");
+                    onOpenChat();
+                  }}
+                  style={({ pressed }) => [
+                    styles.circleActionButton,
+                    styles.circleActionButtonEmber,
+                    pressed ? styles.circleActionButtonPressed : null,
+                  ]}
+                >
+                  <AppIcon
+                    iosName="bubble.left.and.bubble.right.fill"
+                    fallbackName="forum"
+                    size={20}
+                    color={palette.ink}
+                    type="monochrome"
+                  />
+                </Pressable>
+              </>
+            ) : meetup.isMember ? (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Sair da partida"
+                  accessibilityState={{ disabled: leaving }}
+                  disabled={leaving}
+                  onPress={confirmLeaveMeetup}
+                  style={({ pressed }) => [
+                    styles.circleActionButton,
+                    styles.circleActionButtonWatermelon,
+                    pressed && !leaving ? styles.circleActionButtonPressed : null,
+                    leaving ? styles.circleActionButtonDisabled : null,
+                  ]}
+                >
+                  {leaving ? (
+                    <ActivityIndicator color={palette.ink} size="small" />
+                  ) : (
+                    <AppIcon
+                      iosName="arrow.left.to.line"
+                      fallbackName="logout"
+                      size={20}
+                      color={palette.ink}
+                      type="monochrome"
+                    />
+                  )}
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver no mapa"
+                  onPress={() => {
+                    triggerHaptic("selection");
+                    onFocusMeetupOnMap();
+                  }}
+                  style={({ pressed }) => [
+                    styles.circleActionButton,
+                    styles.circleActionButtonGlass,
+                    pressed ? styles.circleActionButtonPressed : null,
+                  ]}
+                >
+                  <AppIcon
+                    iosName="map.fill"
+                    fallbackName="map"
+                    size={20}
+                    color={palette.sand}
+                  />
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Abrir chat"
+                  onPress={() => {
+                    triggerHaptic("soft");
+                    onOpenChat();
+                  }}
+                  style={({ pressed }) => [
+                    styles.circleActionButton,
+                    styles.circleActionButtonEmber,
+                    pressed ? styles.circleActionButtonPressed : null,
+                  ]}
+                >
+                  <AppIcon
+                    iosName="bubble.left.and.bubble.right.fill"
+                    fallbackName="forum"
+                    size={20}
+                    color={palette.ink}
+                    type="monochrome"
+                  />
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={joinDisabled ? "Partida indisponível" : "Entrar na partida"}
+                  accessibilityState={{ disabled: joinDisabled || joining }}
+                  disabled={joinDisabled || joining}
+                  onPress={() => {
+                    if (joinDisabled) {
+                      return;
+                    }
+                    triggerHaptic("soft");
+                    onJoinMeetup();
+                  }}
+                  style={({ pressed }) => [
+                    styles.circleActionButton,
+                    styles.circleActionButtonJoin,
+                    pressed && !joinDisabled && !joining ? styles.circleActionButtonPressed : null,
+                    joinDisabled || joining ? styles.circleActionButtonDisabled : null,
+                  ]}
+                >
+                  {joining ? (
+                    <ActivityIndicator color={palette.ink} size="small" />
+                  ) : (
+                    <AppIcon
+                      iosName="arrow.right.to.line"
+                      fallbackName="login"
+                      size={20}
+                      color={palette.ink}
+                      type="monochrome"
+                    />
+                  )}
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Ver no mapa"
+                  onPress={() => {
+                    triggerHaptic("selection");
+                    onFocusMeetupOnMap();
+                  }}
+                  style={({ pressed }) => [
+                    styles.circleActionButton,
+                    styles.circleActionButtonGlass,
+                    pressed ? styles.circleActionButtonPressed : null,
+                  ]}
+                >
+                  <AppIcon
+                    iosName="map.fill"
+                    fallbackName="map"
+                    size={20}
+                    color={palette.sand}
+                  />
+                </Pressable>
+              </>
+            )}
           </View>
-        ) : (
-          <View style={styles.actionRow}>
-            <View style={styles.actionSecondaryCell}>
-              <PrimaryButton label="Mapa" onPress={onFocusMeetupOnMap} tone="ghost" />
-            </View>
-            <View style={styles.actionPrimaryCell}>
-              <PrimaryButton
-                label={joinDisabled ? "Indisponível" : "Entrar"}
-                onPress={onJoinMeetup}
-                loading={joining}
-                disabled={joinDisabled}
-              />
-            </View>
-          </View>
-        )}
+        </View>
 
         <AppleListGroup>
           <AppleListRow
@@ -374,9 +532,22 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
             showChevron={false}
             size="compact"
           />
+          {onOpenDetailParticipants ? (
+            <AppleListRow
+              separator
+              icon={{ iosName: "person.3.fill", fallbackName: "groups" }}
+              label="Participantes"
+              subtitle={String(meetup.joinedPlayers)}
+              onPress={() => {
+                triggerHaptic("selection");
+                onOpenDetailParticipants();
+              }}
+              size="compact"
+            />
+          ) : null}
           <AppleListRow
             separator
-            icon={{ iosName: "person.3.sequence.fill", fallbackName: "groups-2" }}
+            icon={{ iosName: "globe", fallbackName: "public" }}
             label="Modo"
             subtitle={formatHostMode(meetup.hostMode)}
             showChevron={false}
@@ -396,17 +567,6 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
           <View style={styles.noteBlock}>
             <Text style={styles.noteLabel}>Notas</Text>
             <Text style={styles.description}>{meetup.description.trim()}</Text>
-          </View>
-        ) : null}
-
-        {!meetup.isCreator && meetup.isMember ? (
-          <View style={styles.actionSection}>
-            <PrimaryButton
-              label="Sair da partida"
-              onPress={onLeaveMeetup}
-              loading={leaving}
-              tone="ghost"
-            />
           </View>
         ) : null}
 
@@ -545,6 +705,19 @@ const styles = StyleSheet.create({
   circleActionButtonEmber: {
     backgroundColor: palette.ember,
     borderColor: "rgba(17,17,17,0.12)",
+  },
+  /** Entrar — verde claro (#2BC250), bom contraste no fundo escuro. */
+  circleActionButtonJoin: {
+    backgroundColor: JOIN_GREEN,
+    borderColor: "rgba(17,17,17,0.14)",
+  },
+  /** Sair — melancia sólida (mesma família de danger do app). */
+  circleActionButtonWatermelon: {
+    backgroundColor: palette.watermelon,
+    borderColor: "rgba(17,17,17,0.14)",
+  },
+  circleActionButtonDisabled: {
+    opacity: 0.48,
   },
   circleActionButtonPressed: {
     opacity: 0.92,

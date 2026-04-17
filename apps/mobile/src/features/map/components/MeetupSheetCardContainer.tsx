@@ -36,6 +36,8 @@ type MeetupSheetCardContainerProps = {
   onToggleInfo: () => void;
   onOpenManageCalendar: () => void;
   onOpenManageTimePicker: () => void;
+  onOpenManageParticipants?: () => void;
+  onOpenDetailParticipants?: () => void;
   onManageAddressFocusChange: (focused: boolean) => void;
   onManageAddressChange: (value: string) => void;
   onManageAddressUseCurrentLocation: () => void;
@@ -77,6 +79,8 @@ export function MeetupSheetCardContainer({
   onToggleInfo,
   onOpenManageCalendar,
   onOpenManageTimePicker,
+  onOpenManageParticipants,
+  onOpenDetailParticipants,
   onManageAddressFocusChange,
   onManageAddressChange,
   onManageAddressUseCurrentLocation,
@@ -130,6 +134,8 @@ export function MeetupSheetCardContainer({
       onToggleInfo={onToggleInfo}
       onOpenManageCalendar={onOpenManageCalendar}
       onOpenManageTimePicker={onOpenManageTimePicker}
+      onOpenManageParticipants={onOpenManageParticipants}
+      onOpenDetailParticipants={onOpenDetailParticipants}
       onManageAddressFocusChange={onManageAddressFocusChange}
       onManageAddressChange={onManageAddressChange}
       onManageAddressUseCurrentLocation={onManageAddressUseCurrentLocation}

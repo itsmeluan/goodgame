@@ -11,6 +11,7 @@ import { triggerHaptic } from "@/lib/haptics";
 import { palette, spacing } from "@/theme/tokens";
 
 export type MapTopOverlayProps = {
+  onDismissPinCallout?: () => void;
   profileName: string;
   profileAvatarUrl: string | null;
   showUnreadMenuIndicator: boolean;
@@ -28,6 +29,7 @@ export type MapTopOverlayProps = {
 };
 
 export function MapTopOverlay({
+  onDismissPinCallout,
   profileName,
   profileAvatarUrl,
   showUnreadMenuIndicator,
@@ -50,19 +52,26 @@ export function MapTopOverlay({
       style={styles.mapOverlaySafeArea}
       edges={["top", "left", "right"]}
       pointerEvents="box-none"
+      onTouchStart={onDismissPinCallout}
     >
       <View style={styles.mapTopBar} pointerEvents="box-none">
         <View style={styles.mapTopStack}>
           <MapCircleActionButton
             icon="menu"
             accessibilityLabel="Abrir menu"
-            onPress={onOpenDrawer}
+            onPress={() => {
+              onDismissPinCallout?.();
+              onOpenDrawer();
+            }}
             showDot={showUnreadMenuIndicator}
           />
           <MapCircleActionButton
             icon="filter-list"
             accessibilityLabel="Abrir filtros"
-            onPress={onToggleFilters}
+            onPress={() => {
+              onDismissPinCallout?.();
+              onToggleFilters();
+            }}
             active={filtersActive || filtersOpen}
             badge={activeFilterCount ? String(activeFilterCount) : null}
           />
@@ -73,6 +82,7 @@ export function MapTopOverlay({
             accessibilityRole="button"
             accessibilityLabel="Abrir conta"
             onPress={() => {
+              onDismissPinCallout?.();
               triggerHaptic("selection");
               onOpenAccount();
             }}
@@ -88,13 +98,19 @@ export function MapTopOverlay({
           <MapCircleActionButton
             icon="groups-2"
             accessibilityLabel="Abrir amigos"
-            onPress={onOpenFriends}
+            onPress={() => {
+              onDismissPinCallout?.();
+              onOpenFriends();
+            }}
             badge={incomingFriendRequestsCount ? String(incomingFriendRequestsCount) : null}
           />
           <MapCircleActionButton
             icon="add"
             accessibilityLabel="Novo jogo"
-            onPress={onOpenComposer}
+            onPress={() => {
+              onDismissPinCallout?.();
+              onOpenComposer();
+            }}
             accent
           />
         </View>
@@ -108,7 +124,7 @@ export function MapTopOverlay({
       </View>
 
       {error || refreshing ? (
-        <View style={styles.topBanner}>
+        <View style={styles.topBanner} onTouchStart={onDismissPinCallout}>
           <AppleGlassSurface
             pointerEvents="none"
             variant="dark"

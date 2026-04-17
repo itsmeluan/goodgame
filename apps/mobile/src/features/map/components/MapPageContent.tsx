@@ -39,8 +39,9 @@ type MapPageContentProps = {
   nowTimestamp: number;
   profile: PlayerProfile;
   reputationSummary: ReputationSummary;
-  selectedChatMeetupId: string | null;
   chatSections: ChatListSection[];
+  chatsRouteStackKeys: string[];
+  onChatsRouteStackChange: (keys: string[]) => void;
   lastDashboardSyncAt: Date | null;
   lastAccountSyncAt: Date | null;
   lastFriendSyncAt: Date | null;
@@ -130,8 +131,9 @@ export function MapPageContent({
   nowTimestamp,
   profile,
   reputationSummary,
-  selectedChatMeetupId,
   chatSections,
+  chatsRouteStackKeys,
+  onChatsRouteStackChange,
   lastDashboardSyncAt,
   lastAccountSyncAt,
   lastFriendSyncAt,
@@ -215,9 +217,10 @@ export function MapPageContent({
       <ChatsPage
         sections={chatSections}
         unreadChatMeetupIds={unreadChatMeetupIds}
-        selectedChatMeetupId={selectedChatMeetupId}
         nowTimestamp={nowTimestamp}
         bottomInset={bottomInset}
+        routeStackKeys={chatsRouteStackKeys}
+        onRouteStackChange={onChatsRouteStackChange}
         onOpenChat={onOpenChat}
         onClose={onClose}
       />

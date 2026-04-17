@@ -20,6 +20,7 @@ export type MapGamesSheetProps<
   MeetupItem extends { id: string },
   VenueItem extends { id: string; name: string; neighborhood?: string | null }
 > = {
+  onDismissPinCallout?: () => void;
   top: number;
   height: number;
   translateY: Animated.Value;
@@ -59,8 +60,16 @@ export type MapGamesSheetProps<
     openDetail: () => void,
     separator: boolean
   ) => ReactElement;
-  renderMeetupDetail: (item: MeetupItem, openManage: () => void) => ReactElement;
-  renderMeetupManage: (item: MeetupItem) => ReactElement;
+  renderMeetupDetail: (
+    item: MeetupItem,
+    openManage: () => void,
+    openParticipants: () => void
+  ) => ReactElement;
+  renderMeetupManage: (item: MeetupItem, openManageParticipants: () => void) => ReactElement;
+  renderMeetupParticipants: (item: MeetupItem) => ReactElement;
+  externalMeetupManageRequest?: { groupId: string; meetupId: string } | null;
+  onConsumedExternalMeetupManageRequest?: () => void;
+  resolveMeetupById?: (meetupId: string) => MeetupItem | null;
   renderVenueListItem: (
     item: VenueItem,
     openDetail: () => void,
@@ -74,6 +83,7 @@ export function MapGamesSheet<
   MeetupItem extends { id: string },
   VenueItem extends { id: string; name: string; neighborhood?: string | null }
 >({
+  onDismissPinCallout,
   top,
   height,
   translateY,
@@ -111,6 +121,10 @@ export function MapGamesSheet<
   renderMeetupListItem,
   renderMeetupDetail,
   renderMeetupManage,
+  renderMeetupParticipants,
+  externalMeetupManageRequest = null,
+  onConsumedExternalMeetupManageRequest = () => {},
+  resolveMeetupById,
   renderVenueListItem,
   renderVenueDetail,
   renderVenueManage,
@@ -119,6 +133,7 @@ export function MapGamesSheet<
 
   return (
     <Animated.View
+      onTouchStart={onDismissPinCallout}
       onLayout={(event) => {
         const nextWidth = event.nativeEvent.layout.width;
         if (nextWidth > 0 && nextWidth !== sheetWidth) {
@@ -147,6 +162,7 @@ export function MapGamesSheet<
         venueCount={venueCount}
         section={section}
         panHandlers={headerPanHandlers}
+        onDismissPinCallout={onDismissPinCallout}
         onSelectMeetups={onSelectMeetups}
         onSelectVenues={onSelectVenues}
       />
@@ -172,6 +188,7 @@ export function MapGamesSheet<
           ) : null}
           {section === "meetups" ? (
             <GamesSheetMeetupsTab
+              onDismissPinCallout={onDismissPinCallout}
               sceneWidth={sheetWidth || undefined}
               titleNote={titleNote}
               bottomPadding={contentBottomPadding}
@@ -191,6 +208,10 @@ export function MapGamesSheet<
               renderMeetupListItem={renderMeetupListItem}
               renderMeetupDetail={renderMeetupDetail}
               renderMeetupManage={renderMeetupManage}
+              renderMeetupParticipants={renderMeetupParticipants}
+              externalManageRequest={externalMeetupManageRequest}
+              onConsumedExternalManageRequest={onConsumedExternalMeetupManageRequest}
+              resolveMeetupById={resolveMeetupById}
               emptyState={
                 <MapEmptyCard
                   title="Nenhum jogo encontrado"
@@ -200,6 +221,7 @@ export function MapGamesSheet<
             />
           ) : (
             <GamesSheetVenuesTab
+              onDismissPinCallout={onDismissPinCallout}
               sceneWidth={sheetWidth || undefined}
               titleNote={titleNote}
               bottomPadding={contentBottomPadding}

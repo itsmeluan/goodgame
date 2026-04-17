@@ -1,9 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Animated,
   Easing,
   PanResponder,
-  Pressable,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -14,16 +20,16 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AppleGlassSurface } from "@/components/AppleGlassSurface";
-import { AppIcon } from "@/components/AppIcon";
-import { triggerHaptic } from "@/lib/haptics";
-import { palette, radius, sheetContentGutter, spacing } from "@/theme/tokens";
+import { SheetBackButton } from "@/components/SheetBackButton";
+import { palette, sheetContentGutter, spacing } from "@/theme/tokens";
 
 export type SlidingSheetRoute = {
   key: string;
   content: ReactNode;
   title?: string;
   subtitle?: string;
+  /** Trailing control on the same row as Voltar (e.g. map action). */
+  headerRight?: ReactNode;
   /**
    * When `false`, the scene back row is omitted (no layout space) — use when nested UI
    * renders its own Voltar (e.g. edição dentro do cartão de local).
@@ -39,6 +45,11 @@ type SlidingSheetStackProps = {
   contentStyle?: StyleProp<ViewStyle>;
   sceneWidth?: number;
   scenePaddingHorizontal?: number;
+  /**
+   * Extra horizontal inset for the scene back header (Voltar row), on top of safe area + `scenePaddingHorizontal`.
+   * Use when `scenePaddingHorizontal` is 0 but nested scroll content uses its own gutter (e.g. chat details).
+   */
+  sceneHeaderPaddingHorizontal?: number;
   /** When false, only `scenePaddingHorizontal` is applied (parent already handles safe area). Default true. */
   padSceneWithSafeArea?: boolean;
   fillHeight?: boolean;
@@ -54,16 +65,19 @@ function SlidingSheetSceneHeader({
   headerSpacing,
   route,
   onHeaderBackPress,
+  paddingHorizontal = 0,
 }: {
   headerVariant: "default" | "compact";
   headerSpacing: "default" | "tight";
   route: SlidingSheetRoute;
   onHeaderBackPress: () => void;
+  paddingHorizontal?: number;
 }) {
   return (
     <View
       style={[
         styles.sceneHeader,
+        paddingHorizontal > 0 ? { paddingHorizontal } : null,
         headerVariant === "compact"
           ? headerSpacing === "tight"
             ? [styles.sceneHeaderCompact, styles.sceneHeaderCompactTight]
@@ -71,38 +85,16 @@ function SlidingSheetSceneHeader({
           : null,
       ]}
     >
-      <View
-        style={{
-          gap: spacing.sm,
-        }}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-          onPress={() => {
-            triggerHaptic("selection");
-            onHeaderBackPress();
-          }}
-          style={({ pressed }) => [
-            styles.backButton,
-            headerVariant === "compact" ? styles.backButtonCompact : null,
-            pressed ? styles.backButtonPressed : null,
-          ]}
-        >
-          <AppleGlassSurface
-            pointerEvents="none"
-            variant="dark"
-            intensity="clear"
-            style={styles.backButtonSurface}
+      <View style={{ gap: spacing.sm }}>
+        <View style={styles.sceneHeaderTopRow}>
+          <SheetBackButton
+            onPress={onHeaderBackPress}
+            compact={headerVariant === "compact"}
           />
-          <AppIcon
-            iosName="chevron.left"
-            fallbackName="arrow-back"
-            size={17}
-            color={palette.sand}
-          />
-          <Text style={styles.backButtonLabel}>Voltar</Text>
-        </Pressable>
+          {route.headerRight ? (
+            <View style={styles.sceneHeaderRight}>{route.headerRight}</View>
+          ) : null}
+        </View>
         {route.title || route.subtitle ? (
           <View style={styles.sceneTitleWrap}>
             {route.title ? (
@@ -139,6 +131,7 @@ export function SlidingSheetStack({
   contentStyle,
   sceneWidth,
   scenePaddingHorizontal = sheetContentGutter,
+  sceneHeaderPaddingHorizontal = 0,
   padSceneWithSafeArea = true,
   fillHeight = true,
   headerVariant = "default",
@@ -290,6 +283,7 @@ export function SlidingSheetStack({
                 headerSpacing={headerSpacing}
                 route={route}
                 onHeaderBackPress={runPopAnimationThenOnPop}
+                paddingHorizontal={sceneHeaderPaddingHorizontal}
               />
             ) : null}
 
@@ -350,32 +344,14 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingBottom: spacing.xs,
   },
-  backButton: {
-    alignSelf: "flex-start",
-    minHeight: 38,
+  sceneHeaderTopRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
-    marginLeft: 0,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.pill,
-    overflow: "hidden",
+    justifyContent: "space-between",
+    gap: spacing.sm,
   },
-  backButtonCompact: {
-    minHeight: 32,
-    paddingHorizontal: 12,
-  },
-  backButtonPressed: {
-    opacity: 0.92,
-  },
-  backButtonSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.pill,
-  },
-  backButtonLabel: {
-    color: palette.sand,
-    fontSize: 12,
-    fontWeight: "800",
+  sceneHeaderRight: {
+    flexShrink: 0,
   },
   sceneTitleWrap: {
     gap: 2,

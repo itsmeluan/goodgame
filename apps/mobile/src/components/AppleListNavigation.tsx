@@ -32,6 +32,8 @@ type AppleListGroupProps = {
 
 type AppleListRowProps = {
   icon?: AppleListIcon;
+  /** When set, replaces the default SF Symbol / glass leading block (e.g. avatar). */
+  leading?: ReactNode;
   /** Overrides default leading icon size (compact 16, default 19). */
   leadingIconSize?: number;
   label: string;
@@ -113,6 +115,7 @@ export function AppleListGroup({
 
 export function AppleListRow({
   icon,
+  leading,
   leadingIconSize,
   label,
   subtitle,
@@ -147,7 +150,11 @@ export function AppleListRow({
         pressed ? styles.rowPressed : null,
       ]}
     >
-      {icon ? (
+      {leading ? (
+        <View style={[styles.leadingIconWrap, size === "compact" ? styles.leadingIconWrapCompact : null]}>
+          {leading}
+        </View>
+      ) : icon ? (
         <View style={[styles.leadingIconWrap, size === "compact" ? styles.leadingIconWrapCompact : null]}>
           {tone === "danger" ? (
             <View

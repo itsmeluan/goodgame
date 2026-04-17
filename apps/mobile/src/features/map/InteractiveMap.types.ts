@@ -29,4 +29,6 @@ export type InteractiveMapProps = {
   onSelectMapGroup?: (group: MapSelectionGroup) => void;
   onClearSelection: () => void;
   onSelectDraftCoordinate: (coordinate: MapCoordinate) => void;
+  /** Incremented by the parent when the pin callout should close after a tap outside the map (e.g. top bar or sheet). */
+  pinCalloutDismissNonce?: number;
 };
