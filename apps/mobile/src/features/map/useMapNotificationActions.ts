@@ -116,8 +116,64 @@ export function useMapNotificationActions({
     [focusMeetupOnMap, focusVenueOnMap, handleMarkNotificationsRead, openChat, resetFilters]
   );
 
+  /** Abre chat / mapa a partir do payload da push (toque na notificação). */
+  const handlePushNotificationData = useCallback(
+    async (raw: unknown) => {
+      if (!raw || typeof raw !== "object") {
+        return;
+      }
+
+      const data = raw as Record<string, unknown>;
+      const kind = typeof data.kind === "string" ? data.kind : "";
+      const meetupId =
+        typeof data.meetupId === "string" && data.meetupId.trim() ? data.meetupId.trim() : null;
+      const venueIdFromData =
+        typeof data.venueId === "string" && data.venueId.trim()
+          ? data.venueId.trim()
+          : typeof data.venue_id === "string" && data.venue_id.trim()
+            ? data.venue_id.trim()
+            : null;
+      const notificationId =
+        typeof data.notificationId === "string" && data.notificationId.trim()
+          ? data.notificationId.trim()
+          : null;
+
+      if (notificationId) {
+        try {
+          await markMyNotificationsRead([notificationId]);
+        } catch {
+          // best-effort: marca lida no servidor para o toque via push
+        }
+      }
+
+      if (kind === "message_received" && meetupId) {
+        openChat(meetupId);
+        return;
+      }
+
+      if (kind === "nearby_venue_created" && venueIdFromData) {
+        resetFilters();
+        focusVenueOnMap(venueIdFromData, true);
+        return;
+      }
+
+      if (meetupId) {
+        resetFilters();
+        focusMeetupOnMap(meetupId, true);
+        return;
+      }
+
+      if (venueIdFromData) {
+        resetFilters();
+        focusVenueOnMap(venueIdFromData, true);
+      }
+    },
+    [focusMeetupOnMap, focusVenueOnMap, openChat, resetFilters]
+  );
+
   return {
     handleMarkNotificationsRead,
     handleOpenNotification,
+    handlePushNotificationData,
   };
 }

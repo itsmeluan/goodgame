@@ -17,6 +17,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { RealtimeChannel } from "@supabase/supabase-js";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
+import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 
 import { buildDemoBundle, buildEmptyDemoBundle } from "@/features/demo/demoData";
@@ -3873,7 +3874,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     );
   }, []);
 
-  const { handleMarkNotificationsRead, handleOpenNotification } = useMapNotificationActions({
+  const { handleMarkNotificationsRead, handleOpenNotification, handlePushNotificationData } =
+    useMapNotificationActions({
     notifications,
     effectiveNotifications,
     demoFallbackNotifications: demoBundle.notifications,
@@ -3888,6 +3890,38 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     resetFilters,
   });
   handleMarkNotificationsReadRef.current = handleMarkNotificationsRead;
+
+  const handledNotificationResponseIdsRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    function processResponse(response: Notifications.NotificationResponse) {
+      const identifier =
+        response.notification.request.identifier ||
+        `${String(response.notification.date)}:${response.notification.request.content.title ?? ""}`;
+      if (handledNotificationResponseIdsRef.current.has(identifier)) {
+        return;
+      }
+      handledNotificationResponseIdsRef.current.add(identifier);
+
+      InteractionManager.runAfterInteractions(() => {
+        void handlePushNotificationData(response.notification.request.content.data);
+      });
+    }
+
+    void Notifications.getLastNotificationResponseAsync().then((response) => {
+      if (response) {
+        processResponse(response);
+      }
+    });
+
+    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      processResponse(response);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [handlePushNotificationData]);
 
   const {
     handleUseCurrentLocationForVenue,
