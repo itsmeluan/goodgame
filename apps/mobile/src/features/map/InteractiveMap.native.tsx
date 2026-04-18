@@ -1061,6 +1061,8 @@ export function InteractiveMap({
             </>
           ) : null}
 
+          <OverlayMarkers pins={renderedOverlayPins} onPressPin={handleOverlayMarkerPress} />
+
           {liveUserCoordinate ? (
             <>
               <Circle
@@ -1069,6 +1071,7 @@ export function InteractiveMap({
                 fillColor="rgba(69, 126, 245, 0.16)"
                 strokeColor="rgba(69, 126, 245, 0.22)"
                 strokeWidth={1}
+                zIndex={1000}
               />
               {liveUserHeadingCone ? (
                 <Polygon
@@ -1076,26 +1079,22 @@ export function InteractiveMap({
                   fillColor="rgba(74, 134, 247, 0.18)"
                   strokeColor="rgba(74, 134, 247, 0)"
                   strokeWidth={0}
+                  zIndex={1000}
                 />
               ) : null}
-            </>
-          ) : null}
-
-          <OverlayMarkers pins={renderedOverlayPins} onPressPin={handleOverlayMarkerPress} />
-
-          {liveUserCoordinate ? (
-            <Marker
-              coordinate={liveUserCoordinate}
-              anchor={{ x: 0.5, y: 0.5 }}
-              tracksViewChanges={false}
-              zIndex={1000}
-            >
-              <View style={styles.liveUserMarker}>
-                <View style={styles.liveUserDotOuter}>
-                  <View style={styles.liveUserDotInner} />
+              <Marker
+                coordinate={liveUserCoordinate}
+                anchor={{ x: 0.5, y: 0.5 }}
+                tracksViewChanges={false}
+                zIndex={1000}
+              >
+                <View style={styles.liveUserMarker}>
+                  <View style={styles.liveUserDotOuter}>
+                    <View style={styles.liveUserDotInner} />
+                  </View>
                 </View>
-              </View>
-            </Marker>
+              </Marker>
+            </>
           ) : null}
 
         </MapView>
