@@ -94,6 +94,7 @@ Para listas auxiliares, o banco ordena resultados por distancia usando PostGIS.
 ## Decisoes praticas para o MVP
 
 - Comecar so com Magic: The Gathering reduz complexidade de taxonomia.
+- **Atualização:** a taxonomia passou a ser `games` + `formats` no Postgres (vários jogos; meetups referenciam `desired_format_id`; RPCs expõem `game_slug`). Ver migration `20260417180000_catalog_games_tabuleiro_yugioh_pokemon.sql` e `apps/mobile/src/features/map/gameLabels.ts`.
 - Usar dados mockados no app ate fechar auth e banco.
 - Comecar com locais cadastrados pela comunidade antes de integrar APIs de places.
 

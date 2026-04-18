@@ -64,7 +64,13 @@ O projeto está organizado em duas frentes:
   - integração com notificações, amigos, reputação e safety
 
 - `apps/mobile/src/features/map/InteractiveMap.native.tsx`
-  Mapa nativo com markers, localização atual, cone de direção, botão de recentralizar e ancoragem de overlays (ex.: balões) a coordenadas de tela.
+  Mapa nativo com markers, localização atual, cone de direção, botão de recentralizar e ancoragem de overlays (ex.: balões) a coordenadas de tela. Pins de meetup por “família” de jogo (Magic, Tabuleiro/dados, Yu-Gi-Oh!, Pokémon TCG); assets PNG em `apps/mobile/assets/map/` (Yu-Gi-Oh/Pokémon ainda placeholder até arte final).
+
+- `apps/mobile/src/features/map/gameLabels.ts`
+  Slugs do catálogo (`games.slug`), rótulos de filtro alinhados ao banco, resolução de slug a partir de `MeetupPost.gameSlug` ou nome do formato, e mapeamento para estilo visual de pin/lista.
+
+- `apps/mobile/src/components/icons/ListRowGameListIcon.tsx` e `listRowIconsSvgXml.ts`
+  Ícones SVG nas listas de jogos/locais (Magic, dados/Tabuleiro, placeholders Y/P para TCG).
 
 - `apps/mobile/src/features/map/components/MapGamesSheet.tsx` e tabs (`GamesSheetMeetupsTab`, `GamesSheetVenuesTab`, etc.)
   Sheet principal de “Jogos” sobre o mapa.
@@ -154,6 +160,9 @@ O projeto está organizado em duas frentes:
 
 - `supabase/migrations/20260402120000_chat_media_fields.sql`
   Imagem do grupo, mensagens enriquecidas e campos extras para a nova experiência de chat.
+
+- `supabase/migrations/20260417180000_catalog_games_tabuleiro_yugioh_pokemon.sql`
+  Jogos **Tabuleiro**, **Yu-Gi-Oh!**, **Pokémon TCG** e formatos associados; `list_meetup_cards` e `list_meetup_cards_in_bounds` passam a retornar `game_slug`.
 
 ## Fluxos principais do produto hoje
 

@@ -15,6 +15,10 @@ const files = {
   ICON_GAME_TYPE_MAGIC_OVERDUE_SVG_XML: "icon-game-type-magic-overdue.svg",
   ICON_GAME_TYPE_DICE_SVG_XML: "icon-game-type-dice.svg",
   ICON_GAME_TYPE_DICE_OVERDUE_SVG_XML: "icon-game-type-dice-overdue.svg",
+  ICON_GAME_TYPE_YUGIOH_SVG_XML: "icon-game-type-yugioh.svg",
+  ICON_GAME_TYPE_YUGIOH_OVERDUE_SVG_XML: "icon-game-type-yugioh-overdue.svg",
+  ICON_GAME_TYPE_POKEMON_SVG_XML: "icon-game-type-pokemon.svg",
+  ICON_GAME_TYPE_POKEMON_OVERDUE_SVG_XML: "icon-game-type-pokemon-overdue.svg",
 };
 
 function clean(raw) {

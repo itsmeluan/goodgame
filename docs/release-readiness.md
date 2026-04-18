@@ -4,6 +4,7 @@
 
 - mapa como tela principal do app;
 - criação e descoberta de jogos presenciais;
+- catálogo multi-jogo no Supabase (**Magic**, **Tabuleiro**, **Yu-Gi-Oh!**, **Pokémon TCG**) com formatos e `game_slug` nas RPCs de meetup para filtros e pins;
 - chat de grupo por jogo;
 - avisos in-app;
 - lista de locais para jogar;
@@ -33,6 +34,7 @@
 ## O que ainda falta antes de publicar
 
 - ícone final do app, splash, screenshots e texto das lojas (para uma nova versão, revisar se assets ainda representam o produto);
+- arte final dos pins e ícones de lista para **Yu-Gi-Oh!** e **Pokémon TCG** (hoje placeholders; Tabuleiro reutiliza pins de “dados”);
 - rodada forte de QA em build nativa;
 - contas de review prontas e confirmadas;
 - revisão final dos campos do App Store Connect (URLs de suporte e privacidade HTTPS, questionário de privacidade alinhado ao app);
@@ -84,7 +86,7 @@ npm run eas:submit:prod:android
 
 - validar login por e-mail em build real;
 - validar permissões de localização, fotos e notificações;
-- validar criação, edição, cancelamento e encerramento de partida;
+- validar criação, edição, cancelamento e encerramento de partida para mais de um tipo de jogo (Magic, Tabuleiro, Yu-Gi-Oh!, Pokémon TCG) e pins/listas coerentes;
 - validar denúncia, bloqueio, desbloqueio e exclusão de conta;
 - validar App Store privacy labels e Google Play Data safety;
 - validar o fluxo com 2 contas reais;

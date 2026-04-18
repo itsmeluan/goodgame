@@ -1,5 +1,7 @@
 # Produto MVP
 
+**Nota (2026):** O app evoluiu para um **catálogo multi-jogo** (Magic, Tabuleiro, Yu-Gi-Oh!, Pokémon TCG, entre outros formatos no Supabase). Este ficheiro descreve sobretudo a **visão original** centrada em Magic; estado atual do produto e arte de mapa em evolução: ver `README.md` na raiz do repositório.
+
 ## Problema
 
 Jogadores de Magic: The Gathering querem encontrar pessoas para jogar perto deles sem depender apenas de grupos fragmentados em WhatsApp, Discord ou redes sociais.

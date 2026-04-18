@@ -1,6 +1,6 @@
 # GG (Good Game)
 
-App mobile em Expo + Supabase para conectar jogadores de card games e jogos de tabuleiro em mesas presenciais, com foco inicial em Magic: The Gathering.
+App mobile em Expo + Supabase para conectar jogadores de card games e jogos de tabuleiro em mesas presenciais. O catálogo inclui **Magic: The Gathering**, **Tabuleiro** (genérico), **Yu-Gi-Oh!** e **Pokémon TCG**; filtros, perfil e pins do mapa derivam de `public.games` / `public.formats` no Supabase.
 
 ## Status oficial
 
@@ -18,7 +18,7 @@ Este `README` passa a funcionar como memória operacional de alto nível do proj
 - onboarding e edição de perfil com foto, localização aproximada, interesses, formatos, disponibilidade e dados opcionais;
 - mapa nativo como tela principal do produto;
 - navegação map-first com drawer, overlays e páginas auxiliares montadas no shell principal;
-- filtros de mapa por entidade, tipo de jogo, formato, distância, data e período;
+- filtros de mapa por entidade, tipo de jogo (vários jogos no catálogo), formato, distância, data e período;
 - criação, edição, entrada, saída e encerramento de partidas presenciais;
 - locais para jogar e fluxo de sugestão/gestão de venues;
 - chat de grupo por partida com presença, replies, imagem do grupo e sincronização incremental; balões do próprio usuário alinhados à cor de marca (laranja `ember`);
@@ -48,6 +48,8 @@ Este `README` passa a funcionar como memória operacional de alto nível do proj
 - O ciclo de meetup já cobre criação, participação, presença, avaliação, no-show e fechamento automático de partidas expiradas.
 - Perfis públicos de jogador e gestão de usuários bloqueados já existem e não devem ser tratados como backlog futuro.
 - `MapHomeScreen.tsx` ainda é uma tela sensível porque concentra muita lógica. Refactors ali precisam preservar comportamento antes de buscar limpeza estrutural.
+- Meetups expõem **`game_slug`** vindo das RPCs `list_meetup_cards` / `list_meetup_cards_in_bounds` (join `formats` → `games`). O app usa isso para pins e filtros; heurísticas em `gameLabels.ts` completam quando o slug ainda não existe.
+- Pins no mapa: **Magic** (sprites dedicados), **Tabuleiro** (reutiliza sprites de “dados”), **Yu-Gi-Oh!** e **Pokémon TCG** (sprites e ícones de lista ainda **placeholder** — substituir quando as artes finais estiverem prontas; ficheiros em `apps/mobile/assets/map/marker-meetup-yugioh*` e `marker-meetup-pokemon*`, SVGs em `listRowIconsSvgXml.ts`).
 
 ## Estrutura principal
 
@@ -94,7 +96,8 @@ As migrations em `supabase/migrations` já cobrem, além da base inicial:
 - reparo de auth/profile;
 - campos opcionais de perfil;
 - exclusão de conta e realtime de amizades;
-- gestão de usuários bloqueados.
+- gestão de usuários bloqueados;
+- catálogo ampliado de jogos e formatos (Tabuleiro, Yu-Gi-Oh!, Pokémon TCG) e coluna lógica `game_slug` nas RPCs de cards de meetup (`20260417180000_catalog_games_tabuleiro_yugioh_pokemon.sql`).
 
 ## Rodando localmente
 
@@ -151,3 +154,4 @@ Se o repositório ou o domínio de Pages mudar, atualize estas URLs no Connect *
 - `apps/mobile/src/features/map/MapHomeScreen.tsx` ainda concentra muita responsabilidade.
 - A thread do chat ainda usa `ScrollView`; históricos muito longos merecem atenção.
 - Muitos markers simultâneos e algumas animações do mapa ainda pedem profiling em aparelhos mais modestos.
+- Arte final para pins e ícones de lista **Yu-Gi-Oh!** e **Pokémon TCG** (hoje cópias/placeholders dos assets de dados e letras Y/P nos SVGs).
