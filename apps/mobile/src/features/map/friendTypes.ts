@@ -10,6 +10,8 @@ export type FriendActionCandidate = {
   avatarUrl: string | null;
   isOnline: boolean;
   lastSeenAt: string | null;
+  isPro?: boolean;
+  proExpiresAt?: string | null;
 };
 
 export type RecentPlayerCard = FriendActionCandidate & {
@@ -33,5 +35,7 @@ export function buildFriendProfileFromCandidate(
     avatarUrl: candidate.avatarUrl,
     isOnline: candidate.isOnline,
     lastSeenAt: candidate.lastSeenAt,
+    isPro: candidate.isPro ?? false,
+    proExpiresAt: candidate.proExpiresAt ?? null,
   };
 }

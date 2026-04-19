@@ -1,6 +1,13 @@
 import { analyticsCapture, analyticsFlush, analyticsReset } from "@/lib/analytics";
 import { clearPendingPasswordRecoveryState, getAuthRedirectUri } from "@/lib/authRedirect";
 import { supabase } from "@/lib/supabase";
+import {
+  type FormatDetailTags,
+  type FormatDetailTagsByFormatId,
+  formatDetailTagsToJsonb,
+  isNonEmptyDetailTagFilter,
+} from "@/lib/formatDetailTags";
+
 import type {
   AttendanceStatus,
   AvailabilitySlot,
@@ -16,13 +23,17 @@ import type {
   MeetupMemberPresence,
   MeetupPost,
   MeetupStatus,
+  NearbyPlayer,
   PlayerSearchResult,
   PlayerProfile,
+  PrivateChatSummary,
   PublicPlayerProfile,
   ReputationSummary,
   VenueCard,
   VenueKind,
   VenueSuggestion,
+  AppNewsItem,
+  AppFeedbackType,
 } from "@/types/domain";
 
 type ProfileRow = {
@@ -40,12 +51,28 @@ type ProfileRow = {
   game_names: string[] | null;
   format_ids: string[] | null;
   format_names: string[] | null;
+  format_details: { format_id: string; detail_tags: FormatDetailTags }[] | null;
   availability: AvailabilitySlot[] | null;
+  is_pro: boolean;
+  pro_expires_at: string | null;
+  trial_used: boolean;
+};
+
+type NearbyPlayerRow = {
+  user_id: string;
+  display_name: string;
+  handle: string;
+  avatar_path: string | null;
+  distance_km: number;
+  is_online: boolean;
+  is_pro?: boolean | null;
+  pro_expires_at?: string | null;
 };
 
 type CatalogFormatRow = {
   id: string;
   name: string;
+  slug: string;
   game_id: string;
   games: { slug: string } | { slug: string }[] | null;
 };
@@ -71,6 +98,7 @@ type MeetupRow = {
   description: string | null;
   format_name: string | null;
   game_slug: string | null;
+  format_detail_tags: FormatDetailTags | null;
   starts_at: string;
   host_mode: HostMode;
   status: MeetupStatus;
@@ -102,6 +130,8 @@ type MeetupMemberPresenceRow = {
   attendance_status: AttendanceStatus;
   role: "creator" | "participant";
   joined_at: string;
+  is_pro?: boolean | null;
+  pro_expires_at?: string | null;
 };
 
 type MessageRow = {
@@ -114,6 +144,8 @@ type MessageRow = {
   reply_to_message_id: string | null;
   reply_preview_author_name: string | null;
   reply_preview_body: string | null;
+  author_is_pro?: boolean | null;
+  author_pro_expires_at?: string | null;
 };
 
 type NotificationRow = {
@@ -138,6 +170,8 @@ type FriendRow = {
   avatar_path: string | null;
   is_online: boolean;
   last_seen_at: string | null;
+  is_pro?: boolean | null;
+  pro_expires_at?: string | null;
 };
 
 type BlockedUserRow = {
@@ -149,6 +183,8 @@ type BlockedUserRow = {
   avatar_path: string | null;
   blocked_at: string;
   reason: string | null;
+  is_pro?: boolean | null;
+  pro_expires_at?: string | null;
 };
 
 type PlayerSearchRow = {
@@ -160,6 +196,8 @@ type PlayerSearchRow = {
   avatar_path: string | null;
   relationship_state: PlayerSearchResult["relationshipState"];
   is_online: boolean;
+  is_pro?: boolean | null;
+  pro_expires_at?: string | null;
 };
 
 type LegalDocumentRow = {
@@ -180,6 +218,19 @@ type ReputationSummaryRow = {
   hosted_count: number | null;
 };
 
+type PrivateChatSummaryRow = {
+  chat_id: string;
+  other_user_id: string;
+  other_display_name: string;
+  other_handle: string;
+  other_avatar_path: string | null;
+  last_message_body: string | null;
+  last_message_at: string | null;
+  can_send_messages: boolean;
+  other_is_pro?: boolean | null;
+  other_pro_expires_at?: string | null;
+};
+
 type PublicPlayerProfileRow = {
   user_id: string;
   display_name: string;
@@ -194,6 +245,8 @@ type PublicPlayerProfileRow = {
   relationship_state: PublicPlayerProfile["relationshipState"];
   is_online: boolean;
   last_seen_at: string | null;
+  is_pro?: boolean | null;
+  pro_expires_at?: string | null;
   average_rating: number | string | null;
   ratings_count: number | null;
   attended_count: number | null;
@@ -332,7 +385,7 @@ export async function acceptCurrentLegalDocuments(input: {
 export async function getCatalogFormats() {
   const { data, error } = await supabase
     .from("formats")
-    .select("id, name, game_id, games(slug)")
+    .select("id, name, slug, game_id, games(slug)")
     .order("name");
 
   if (error) {
@@ -347,6 +400,7 @@ export async function getCatalogFormats() {
     return {
       id: format.id,
       name: format.name,
+      slug: format.slug?.trim() ?? "",
       gameId: format.game_id,
       gameSlug,
     };
@@ -377,6 +431,45 @@ export async function getMyProfile() {
   }
 
   return mapProfile(row);
+}
+
+export async function listNearbyPlayers(options?: {
+  viewerLat?: number | null;
+  viewerLng?: number | null;
+}) {
+  const { data, error } = await supabase.rpc("list_nearby_players", {
+    p_limit: 120,
+    p_viewer_lat: options?.viewerLat ?? null,
+    p_viewer_lng: options?.viewerLng ?? null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = (data ?? []) as NearbyPlayerRow[];
+
+  return rows.map(
+    (row) =>
+      ({
+        userId: row.user_id,
+        displayName: row.display_name,
+        handle: row.handle,
+        avatarUrl: resolveAvatarUrl(row.avatar_path),
+        distanceKm: row.distance_km,
+        isOnline: row.is_online,
+        isPro: Boolean(row.is_pro),
+        proExpiresAt: row.pro_expires_at ?? null,
+      }) satisfies NearbyPlayer
+  );
+}
+
+export async function startProTrial() {
+  const { error } = await supabase.rpc("start_pro_trial");
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function ensureMyProfileExists() {
@@ -417,6 +510,8 @@ export async function getPublicPlayerProfile(userId: string) {
     relationshipState: row.relationship_state,
     isOnline: row.is_online,
     lastSeenAt: row.last_seen_at,
+    isPro: Boolean(row.is_pro),
+    proExpiresAt: row.pro_expires_at ?? null,
     averageRating: Number(row.average_rating ?? 0),
     ratingsCount: row.ratings_count ?? 0,
     attendedCount: row.attended_count ?? 0,
@@ -436,8 +531,15 @@ export async function saveMyProfile(input: {
   lng: number | null;
   gameIds: string[];
   formatIds: string[];
+  /** Array JSON: `{ format_id, ...tags }` por formato. */
+  formatDetails?: FormatDetailTagsByFormatId;
   availability: AvailabilitySlot[];
 }) {
+  const formatDetailsPayload = buildFormatDetailsPayload(
+    input.formatIds,
+    input.formatDetails
+  );
+
   const { error } = await supabase.rpc("save_my_profile", {
     p_handle: input.handle,
     p_display_name: input.displayName,
@@ -450,6 +552,7 @@ export async function saveMyProfile(input: {
     p_game_ids: input.gameIds,
     p_format_ids: input.formatIds,
     p_availability: input.availability,
+    p_format_details: formatDetailsPayload,
   });
 
   if (error) {
@@ -635,7 +738,13 @@ export async function getDashboardFeedInBounds(bounds: {
   maxLat: number;
   minLng: number;
   maxLng: number;
+  detailTagFilter?: FormatDetailTags | null;
 }) {
+  const filterPayload =
+    bounds.detailTagFilter && isNonEmptyDetailTagFilter(bounds.detailTagFilter)
+      ? formatDetailTagsToJsonb(bounds.detailTagFilter)
+      : null;
+
   const [venuesResult, meetupsResult] = await Promise.all([
     supabase.rpc("list_venue_cards_in_bounds", {
       p_min_lat: bounds.minLat,
@@ -648,6 +757,7 @@ export async function getDashboardFeedInBounds(bounds: {
       p_max_lat: bounds.maxLat,
       p_min_lng: bounds.minLng,
       p_max_lng: bounds.maxLng,
+      p_detail_tag_filter: filterPayload,
     }),
   ]);
 
@@ -676,6 +786,7 @@ export async function createMeetup(input: {
   lng: number | null;
   venueId: string | null;
   addressLabel?: string | null;
+  formatDetailTags?: FormatDetailTags | null;
 }) {
   const { data, error } = await supabase.rpc("create_meetup_post", {
     p_title: input.title,
@@ -688,6 +799,7 @@ export async function createMeetup(input: {
     p_lng: input.lng,
     p_venue_id: input.venueId,
     p_address_label: input.addressLabel ?? null,
+    p_format_detail_tags: input.formatDetailTags ?? {},
   });
 
   if (error) {
@@ -834,6 +946,8 @@ export async function getMyBlockedUsers() {
     avatarUrl: resolveAvatarUrl(row.avatar_path),
     blockedAt: row.blocked_at,
     reason: row.reason ?? "",
+    isPro: Boolean(row.is_pro),
+    proExpiresAt: row.pro_expires_at ?? null,
   })) as BlockedUserProfile[];
 }
 
@@ -857,6 +971,8 @@ export async function getMeetupMessages(meetupId: string) {
     replyToMessageId: message.reply_to_message_id,
     replyPreviewAuthorName: message.reply_preview_author_name,
     replyPreviewBody: message.reply_preview_body,
+    authorIsPro: Boolean(message.author_is_pro),
+    authorProExpiresAt: message.author_pro_expires_at ?? null,
   })) as ChatMessage[];
 }
 
@@ -881,6 +997,8 @@ export async function getMeetupMessagesAfter(meetupId: string, after: string) {
     replyToMessageId: message.reply_to_message_id,
     replyPreviewAuthorName: message.reply_preview_author_name,
     replyPreviewBody: message.reply_preview_body,
+    authorIsPro: Boolean(message.author_is_pro),
+    authorProExpiresAt: message.author_pro_expires_at ?? null,
   })) as ChatMessage[];
 }
 
@@ -902,6 +1020,8 @@ export async function getMeetupMemberPresence(meetupId: string) {
     attendanceStatus: member.attendance_status,
     role: member.role,
     joinedAt: member.joined_at,
+    isPro: Boolean(member.is_pro),
+    proExpiresAt: member.pro_expires_at ?? null,
   })) as MeetupMemberPresence[];
 }
 
@@ -921,6 +1041,120 @@ export async function sendMeetupMessage(
   }
 
   analyticsCapture("meetup_message_sent", {
+    has_reply: Boolean(replyToMessageId),
+  });
+}
+
+export async function getOrCreatePrivateChat(otherUserId: string) {
+  const { data, error } = await supabase.rpc("get_or_create_private_chat", {
+    p_other_user_id: otherUserId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const row = (data?.[0] ?? null) as { chat_id: string; can_send_messages: boolean } | null;
+
+  if (!row) {
+    throw new Error("Não foi possível abrir o chat.");
+  }
+
+  return {
+    chatId: row.chat_id,
+    canSendMessages: row.can_send_messages,
+  };
+}
+
+export async function listPrivateChats() {
+  const { data, error } = await supabase.rpc("list_private_chats");
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as PrivateChatSummaryRow[]).map((row) => ({
+    chatId: row.chat_id,
+    otherUserId: row.other_user_id,
+    otherDisplayName: row.other_display_name,
+    otherHandle: row.other_handle,
+    otherAvatarPath: row.other_avatar_path,
+    otherAvatarUrl: resolveAvatarUrl(row.other_avatar_path),
+    lastMessageBody: row.last_message_body,
+    lastMessageAt: row.last_message_at,
+    canSendMessages: row.can_send_messages,
+    otherIsPro: Boolean(row.other_is_pro),
+    otherProExpiresAt: row.other_pro_expires_at ?? null,
+  })) as PrivateChatSummary[];
+}
+
+export async function getPrivateMessages(chatId: string) {
+  const { data, error } = await supabase.rpc("list_private_messages", {
+    p_chat_id: chatId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as MessageRow[]).map((message) => ({
+    id: message.id,
+    authorId: message.author_id,
+    authorName: message.author_name,
+    authorAvatarPath: message.author_avatar_path,
+    authorAvatarUrl: resolveAvatarUrl(message.author_avatar_path),
+    sentAt: message.sent_at,
+    body: message.body,
+    replyToMessageId: message.reply_to_message_id,
+    replyPreviewAuthorName: message.reply_preview_author_name,
+    replyPreviewBody: message.reply_preview_body,
+    authorIsPro: Boolean(message.author_is_pro),
+    authorProExpiresAt: message.author_pro_expires_at ?? null,
+  })) as ChatMessage[];
+}
+
+export async function getPrivateMessagesAfter(chatId: string, after: string) {
+  const { data, error } = await supabase.rpc("list_private_messages_after", {
+    p_chat_id: chatId,
+    p_after: after,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as MessageRow[]).map((message) => ({
+    id: message.id,
+    authorId: message.author_id,
+    authorName: message.author_name,
+    authorAvatarPath: message.author_avatar_path,
+    authorAvatarUrl: resolveAvatarUrl(message.author_avatar_path),
+    sentAt: message.sent_at,
+    body: message.body,
+    replyToMessageId: message.reply_to_message_id,
+    replyPreviewAuthorName: message.reply_preview_author_name,
+    replyPreviewBody: message.reply_preview_body,
+    authorIsPro: Boolean(message.author_is_pro),
+    authorProExpiresAt: message.author_pro_expires_at ?? null,
+  })) as ChatMessage[];
+}
+
+export async function sendPrivateMessage(
+  chatId: string,
+  body: string,
+  replyToMessageId?: string | null
+) {
+  const { error } = await supabase.rpc("send_private_message", {
+    p_chat_id: chatId,
+    p_body: body,
+    p_reply_to_message_id: replyToMessageId ?? null,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  analyticsCapture("private_message_sent", {
     has_reply: Boolean(replyToMessageId),
   });
 }
@@ -1049,6 +1283,10 @@ export async function getMyNotifications(limit = 8) {
     title: notification.title,
     body: notification.body,
     meetupId: notification.meetup_id,
+    privateChatId:
+      typeof notification.metadata?.private_chat_id === "string"
+        ? notification.metadata.private_chat_id
+        : null,
     venueId:
       typeof notification.metadata?.venue_id === "string" ? notification.metadata.venue_id : null,
     metadata: notification.metadata ?? {},
@@ -1069,6 +1307,17 @@ export async function markMyNotificationsRead(notificationIds?: string[]) {
 
 export async function heartbeatPresence() {
   const { error } = await supabase.rpc("upsert_my_presence");
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function updateMyApproximateLocation(latitude: number, longitude: number) {
+  const { error } = await supabase.rpc("update_my_approximate_location", {
+    p_lat: latitude,
+    p_lng: longitude,
+  });
 
   if (error) {
     throw error;
@@ -1321,6 +1570,39 @@ export async function deleteMyAccount() {
   }
 }
 
+function mapFormatPreferenceDetails(
+  row: ProfileRow
+): FormatDetailTagsByFormatId | undefined {
+  const raw = row.format_details;
+  if (!raw?.length) {
+    return undefined;
+  }
+
+  const out: FormatDetailTagsByFormatId = {};
+  for (const entry of raw) {
+    const id = entry.format_id;
+    if (!id) {
+      continue;
+    }
+    out[id] = (entry.detail_tags as FormatDetailTags) ?? {};
+  }
+
+  return Object.keys(out).length ? out : undefined;
+}
+
+function buildFormatDetailsPayload(
+  formatIds: string[],
+  byFormat?: FormatDetailTagsByFormatId
+): { format_id: string }[] {
+  return formatIds.map((id) => {
+    const tags = byFormat?.[id];
+    if (!tags || !Object.keys(tags).length) {
+      return { format_id: id };
+    }
+    return { format_id: id, ...tags };
+  });
+}
+
 function mapProfile(row: ProfileRow): PlayerProfile {
   return {
     userId: row.user_id,
@@ -1338,7 +1620,11 @@ function mapProfile(row: ProfileRow): PlayerProfile {
     gameNames: row.game_names ?? [],
     formatIds: row.format_ids ?? [],
     formatNames: row.format_names ?? [],
+    formatPreferenceDetails: mapFormatPreferenceDetails(row),
     availability: row.availability ?? [],
+    isPro: Boolean(row.is_pro),
+    proExpiresAt: row.pro_expires_at,
+    trialUsed: Boolean(row.trial_used),
   };
 }
 
@@ -1366,6 +1652,7 @@ function mapMeetup(row: MeetupRow): MeetupPost {
     description: row.description ?? "",
     formatName: row.format_name ?? "Casual",
     gameSlug: row.game_slug?.trim() ?? "",
+    formatDetailTags: row.format_detail_tags ?? null,
     startsAt: row.starts_at,
     hostMode: row.host_mode,
     status: row.status,
@@ -1404,6 +1691,8 @@ function mapFriendProfile(row: FriendRow): FriendProfile {
     avatarUrl: resolveAvatarUrl(row.avatar_path),
     isOnline: row.is_online,
     lastSeenAt: row.last_seen_at,
+    isPro: Boolean(row.is_pro),
+    proExpiresAt: row.pro_expires_at ?? null,
   };
 }
 
@@ -1418,7 +1707,132 @@ function mapPlayerSearchResult(row: PlayerSearchRow): PlayerSearchResult {
     avatarUrl: resolveAvatarUrl(row.avatar_path),
     relationshipState: row.relationship_state,
     isOnline: row.is_online,
+    isPro: Boolean(row.is_pro),
+    proExpiresAt: row.pro_expires_at ?? null,
   };
+}
+
+type AppNewsRow = {
+  id: string;
+  title: string;
+  body: string;
+  image_path: string | null;
+  published_at: string;
+  sort_key: number;
+  show_on_map_cold_start: boolean;
+};
+
+export async function submitAppFeedback(input: {
+  feedbackType: AppFeedbackType;
+  message: string;
+  appArea?: string | null;
+  appVersion: string;
+  platform: string;
+}): Promise<void> {
+  const { error } = await supabase.rpc("submit_app_feedback", {
+    p_feedback_type: input.feedbackType,
+    p_message: input.message.trim(),
+    p_app_area: input.appArea?.trim() ? input.appArea.trim() : null,
+    p_app_version: input.appVersion.trim() || null,
+    p_platform: input.platform.trim() || null,
+  });
+
+  if (error) {
+    const msg = (error.message ?? "").toLowerCase();
+    if (msg.includes("not_authenticated")) {
+      throw new Error("Faça login para enviar feedback.");
+    }
+    if (msg.includes("invalid_feedback_type")) {
+      throw new Error("Selecione um tipo de feedback válido.");
+    }
+    if (msg.includes("message_required")) {
+      throw new Error("Escreva uma mensagem antes de enviar.");
+    }
+    throw error;
+  }
+}
+
+export async function listAppNews(): Promise<AppNewsItem[]> {
+  const { data, error } = await supabase.rpc("list_app_news");
+
+  if (error) {
+    throw error;
+  }
+
+  return ((data ?? []) as AppNewsRow[]).map((row) => ({
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    imageUrl: resolveNewsImageUrl(row.image_path),
+    publishedAt: row.published_at,
+    sortKey: row.sort_key,
+    showOnMapColdStart: row.show_on_map_cold_start,
+  }));
+}
+
+export async function countUnreadAppNews(): Promise<number> {
+  const { data, error } = await supabase.rpc("count_unread_app_news");
+
+  if (error) {
+    throw error;
+  }
+
+  const n = data as number | null;
+  return typeof n === "number" && !Number.isNaN(n) ? n : 0;
+}
+
+export async function markAppNewsInboxOpened(): Promise<void> {
+  const { error } = await supabase.rpc("mark_app_news_inbox_opened");
+
+  if (error) {
+    throw error;
+  }
+}
+
+type AppNewsColdStartRow = {
+  id: string;
+  title: string;
+  body: string;
+  image_path: string | null;
+  published_at: string;
+};
+
+export async function getAppNewsColdStartCandidate(): Promise<AppNewsItem | null> {
+  const { data, error } = await supabase.rpc("get_app_news_cold_start_candidate");
+
+  if (error) {
+    throw error;
+  }
+
+  const rows = (data ?? []) as AppNewsColdStartRow[];
+  const row = rows[0];
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    title: row.title,
+    body: row.body,
+    imageUrl: resolveNewsImageUrl(row.image_path),
+    publishedAt: row.published_at,
+    sortKey: 0,
+    showOnMapColdStart: true,
+  };
+}
+
+export async function dismissAppNewsColdStart(newsId: string): Promise<void> {
+  const { error } = await supabase.rpc("dismiss_app_news_cold_start", {
+    p_news_id: newsId,
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+function resolveNewsImageUrl(path: string | null) {
+  return resolveStoragePublicUrl("app-news", path);
 }
 
 function resolveAvatarUrl(avatarPath: string | null) {

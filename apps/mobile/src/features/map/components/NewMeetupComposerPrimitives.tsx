@@ -6,12 +6,15 @@ import { palette, radius, spacing } from "@/theme/tokens";
 export function NewMeetupComposerSectionBlock({
   title,
   children,
+  gap = spacing.sm,
 }: {
   title: string;
   children: ReactNode;
+  /** Espaço entre o título e o conteúdo (padrão `spacing.sm`). */
+  gap?: number;
 }) {
   return (
-    <View style={styles.sectionBlock}>
+    <View style={[styles.sectionBlock, { gap }]}>
       <Text style={styles.sectionTitle}>{title}</Text>
       {children}
     </View>
@@ -28,7 +31,7 @@ export function NewMeetupComposerInlineNotice({ message }: { message: string }) 
 
 const styles = StyleSheet.create({
   sectionBlock: {
-    gap: spacing.sm,
+    width: "100%",
   },
   sectionTitle: {
     color: palette.parchment,

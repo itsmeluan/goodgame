@@ -8,16 +8,20 @@ import { palette, radius, spacing } from "@/theme/tokens";
 type PageScreen =
   | "chats"
   | "alerts"
+  | "novidades"
   | "places"
   | "account"
   | "friends"
   | "history"
+  | "nearby_players"
+  | "feedback"
   | "player";
 
 type MapPageHeaderProps = {
   pageScreen: PageScreen;
   profileName: string;
   profileAvatarUrl: string | null;
+  profileIsPro: boolean;
   showUnreadMenuIndicator: boolean;
   onOpenMenu: () => void;
   onOpenAccount: () => void;
@@ -32,10 +36,16 @@ function getPageTitle(pageScreen: PageScreen) {
       return "Chats";
     case "alerts":
       return "Avisos";
+    case "novidades":
+      return "Novidades";
     case "places":
       return "Locais";
     case "history":
       return "Histórico";
+    case "nearby_players":
+      return "Jogadores próximos";
+    case "feedback":
+      return "Feedback";
     case "friends":
       return "Amigos";
     case "player":
@@ -49,6 +59,7 @@ export function MapPageHeader({
   pageScreen,
   profileName,
   profileAvatarUrl,
+  profileIsPro,
   showUnreadMenuIndicator,
   onOpenMenu,
   onOpenAccount,
@@ -65,7 +76,10 @@ export function MapPageHeader({
     pageScreen === "player" ||
     pageScreen === "chats" ||
     pageScreen === "alerts" ||
-    pageScreen === "history"
+    pageScreen === "novidades" ||
+    pageScreen === "history" ||
+    pageScreen === "nearby_players" ||
+    pageScreen === "feedback"
       ? spacing.lg
       : 0;
   const showPageHeaderHandle =
@@ -74,7 +88,10 @@ export function MapPageHeader({
     pageScreen !== "player" &&
     pageScreen !== "chats" &&
     pageScreen !== "alerts" &&
-    pageScreen !== "history";
+    pageScreen !== "novidades" &&
+    pageScreen !== "history" &&
+    pageScreen !== "nearby_players" &&
+    pageScreen !== "feedback";
 
   return (
     <View
@@ -117,7 +134,7 @@ export function MapPageHeader({
             pressed ? styles.pageAvatarButtonPressed : null,
           ]}
         >
-          <Avatar name={profileName} uri={profileAvatarUrl} size={50} />
+          <Avatar name={profileName} uri={profileAvatarUrl} size={50} isPro={profileIsPro} />
         </Pressable>
       )}
     </View>

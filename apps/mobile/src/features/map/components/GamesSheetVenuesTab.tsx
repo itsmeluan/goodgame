@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleListGroup } from "@/components/AppleListNavigation";
@@ -29,6 +29,10 @@ type GamesSheetVenuesTabProps<Item extends { id: string; name: string; neighborh
   renderVenueDetail: (item: Item, openManage: () => void) => ReactElement;
   renderVenueManage: (item: Item) => ReactElement;
   emptyState: ReactElement | null;
+  /** Abrir detalhe a partir de deep link / partilha (mapa + sheet). */
+  externalVenueDetailRequest?: { venueId: string } | null;
+  onConsumedExternalVenueDetailRequest?: () => void;
+  resolveVenueById?: (venueId: string) => Item | null;
 };
 
 export function GamesSheetVenuesTab<Item extends { id: string; name: string; neighborhood?: string | null }>({
@@ -45,8 +49,42 @@ export function GamesSheetVenuesTab<Item extends { id: string; name: string; nei
   renderVenueDetail,
   renderVenueManage,
   emptyState,
+  externalVenueDetailRequest = null,
+  onConsumedExternalVenueDetailRequest = () => {},
+  resolveVenueById,
 }: GamesSheetVenuesTabProps<Item>) {
   const [routeStack, setRouteStack] = useState<VenueStackRoute[]>([]);
+
+  const resolveVenueForRoute = useCallback(
+    (venueId: string) => venues.find((v) => v.id === venueId) ?? resolveVenueById?.(venueId) ?? null,
+    [venues, resolveVenueById]
+  );
+
+  useEffect(() => {
+    if (!externalVenueDetailRequest) {
+      return;
+    }
+
+    const venue = resolveVenueForRoute(externalVenueDetailRequest.venueId);
+
+    if (!venue) {
+      onConsumedExternalVenueDetailRequest?.();
+      return;
+    }
+
+    setRouteStack([
+      {
+        key: `venue-detail:${externalVenueDetailRequest.venueId}`,
+        venueId: externalVenueDetailRequest.venueId,
+        surface: "detail",
+      },
+    ]);
+    onConsumedExternalVenueDetailRequest?.();
+  }, [
+    externalVenueDetailRequest,
+    onConsumedExternalVenueDetailRequest,
+    resolveVenueForRoute,
+  ]);
 
   const pushDetailRoute = (venueId: string) => {
     setRouteStack((current) => {

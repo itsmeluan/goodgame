@@ -63,7 +63,7 @@ export function LegalDocumentModal({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: palette.sheetBaseChrome,
   },
   header: {
     flexDirection: "row",

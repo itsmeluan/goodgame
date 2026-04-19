@@ -31,8 +31,10 @@ select ygo.id, seed.slug, seed.name
 from ygo
 cross join (
   values
-    ('yugioh-torneio', 'Yu-Gi-Oh! · Torneio'),
-    ('yugioh-casual', 'Yu-Gi-Oh! · Casual')
+    ('yugioh-advanced', 'Advanced'),
+    ('yugioh-speed-duel', 'Speed Duel'),
+    ('yugioh-traditional', 'Traditional'),
+    ('yugioh-outros', 'Outros')
 ) as seed(slug, name)
 on conflict (game_id, slug) do update
 set name = excluded.name;
@@ -43,8 +45,12 @@ select pkm.id, seed.slug, seed.name
 from pkm
 cross join (
   values
-    ('pokemon-torneio', 'Pokémon TCG · Torneio'),
-    ('pokemon-casual', 'Pokémon TCG · Casual')
+    ('pokemon-standard', 'Standard'),
+    ('pokemon-expanded', 'Expanded'),
+    ('pokemon-unlimited', 'Unlimited'),
+    ('pokemon-glc', 'Gym Leader Challenge (GLC)'),
+    ('pokemon-draft-limited', 'Draft/Limited'),
+    ('pokemon-outros', 'Outros')
 ) as seed(slug, name)
 on conflict (game_id, slug) do update
 set name = excluded.name;

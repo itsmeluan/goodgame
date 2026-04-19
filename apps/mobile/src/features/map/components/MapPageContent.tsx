@@ -3,6 +3,9 @@ import { AlertsPage } from "@/features/map/components/AlertsPage";
 import { ChatsPage, type ChatListSection } from "@/features/map/components/ChatsPage";
 import { FriendsPage } from "@/features/map/components/FriendsPage";
 import { HistoryPage } from "@/features/map/components/HistoryPage";
+import { FeedbackPage } from "@/features/map/components/FeedbackPage";
+import { NearbyPlayersPage } from "@/features/map/components/NearbyPlayersPage";
+import { NovidadesPage } from "@/features/map/components/NovidadesPage";
 import { PlacesPage, type VenueGameOption, type VenueKindOption } from "@/features/map/components/PlacesPage";
 import { PlayerProfilePage } from "@/features/map/components/PlayerProfilePage";
 import type {
@@ -17,6 +20,7 @@ import type {
   MeetupPost,
   PlayerProfile,
   PlayerSearchResult,
+  PrivateChatSummary,
   PublicPlayerProfile,
   ReputationSummary,
   VenueCard,
@@ -27,10 +31,13 @@ import type {
 type PageScreen =
   | "chats"
   | "alerts"
+  | "novidades"
   | "places"
   | "account"
   | "friends"
   | "history"
+  | "nearby_players"
+  | "feedback"
   | "player";
 
 type MapPageContentProps = {
@@ -40,6 +47,8 @@ type MapPageContentProps = {
   profile: PlayerProfile;
   reputationSummary: ReputationSummary;
   chatSections: ChatListSection[];
+  privateChats: PrivateChatSummary[];
+  loadingPrivateChats: boolean;
   chatsRouteStackKeys: string[];
   onChatsRouteStackChange: (keys: string[]) => void;
   lastDashboardSyncAt: Date | null;
@@ -47,6 +56,7 @@ type MapPageContentProps = {
   lastFriendSyncAt: Date | null;
   markingNotificationsRead: boolean;
   unreadChatMeetupIds: Set<string>;
+  unreadPrivateChatIds: Set<string>;
   notifications: InAppNotification[];
   notificationError: string | null;
   venues: VenueCard[];
@@ -121,7 +131,11 @@ type MapPageContentProps = {
   incomingRequestFriendshipId: string | null;
   onMarkNotificationsRead: () => void;
   onOpenChat: (meetupId: string) => void;
+  onOpenPrivateChat: (thread: PrivateChatSummary) => void;
+  onOpenPrivateChatFromViewedProfile: () => void;
   onOpenNotification: (notification: InAppNotification) => void;
+  onOpenProPaywall: (source: string) => void;
+  onAppNewsInboxOpened?: () => void;
   onClose: () => void;
 };
 
@@ -132,6 +146,8 @@ export function MapPageContent({
   profile,
   reputationSummary,
   chatSections,
+  privateChats,
+  loadingPrivateChats,
   chatsRouteStackKeys,
   onChatsRouteStackChange,
   lastDashboardSyncAt,
@@ -139,6 +155,7 @@ export function MapPageContent({
   lastFriendSyncAt,
   markingNotificationsRead,
   unreadChatMeetupIds,
+  unreadPrivateChatIds,
   notifications,
   notificationError,
   venues,
@@ -209,19 +226,27 @@ export function MapPageContent({
   incomingRequestFriendshipId,
   onMarkNotificationsRead,
   onOpenChat,
+  onOpenPrivateChat,
+  onOpenPrivateChatFromViewedProfile,
   onOpenNotification,
+  onOpenProPaywall,
+  onAppNewsInboxOpened,
   onClose,
 }: MapPageContentProps) {
   if (pageScreen === "chats") {
     return (
       <ChatsPage
         sections={chatSections}
+        privateChats={privateChats}
+        loadingPrivateChats={loadingPrivateChats}
         unreadChatMeetupIds={unreadChatMeetupIds}
+        unreadPrivateChatIds={unreadPrivateChatIds}
         nowTimestamp={nowTimestamp}
         bottomInset={bottomInset}
         routeStackKeys={chatsRouteStackKeys}
         onRouteStackChange={onChatsRouteStackChange}
         onOpenChat={onOpenChat}
+        onOpenPrivateChat={onOpenPrivateChat}
         onClose={onClose}
       />
     );
@@ -237,6 +262,16 @@ export function MapPageContent({
         onMarkAll={onMarkNotificationsRead}
         onOpenNotification={onOpenNotification}
         onClose={onClose}
+      />
+    );
+  }
+
+  if (pageScreen === "novidades") {
+    return (
+      <NovidadesPage
+        bottomInset={bottomInset}
+        onClose={onClose}
+        onInboxMarked={onAppNewsInboxOpened}
       />
     );
   }
@@ -292,6 +327,22 @@ export function MapPageContent({
         onClose={onClose}
       />
     );
+  }
+
+  if (pageScreen === "nearby_players") {
+    return (
+      <NearbyPlayersPage
+        profile={profile}
+        bottomInset={bottomInset}
+        onClose={onClose}
+        onOpenPlayerProfile={onOpenPlayerProfile}
+        onOpenProPaywall={onOpenProPaywall}
+      />
+    );
+  }
+
+  if (pageScreen === "feedback") {
+    return <FeedbackPage bottomInset={bottomInset} onClose={onClose} />;
   }
 
   if (pageScreen === "friends") {
@@ -359,6 +410,11 @@ export function MapPageContent({
       onRemoveFriend={onRemoveFriend}
       onReportUser={onReportUser}
       onBlockUser={onBlockUser}
+      onOpenPrivateChat={
+        viewedPlayerProfile && viewedPlayerProfile.userId !== profile.userId
+          ? onOpenPrivateChatFromViewedProfile
+          : undefined
+      }
     />
   );
 }

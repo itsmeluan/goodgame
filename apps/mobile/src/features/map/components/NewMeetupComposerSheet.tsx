@@ -14,8 +14,10 @@ import {
   NewMeetupComposerInlineNotice,
   NewMeetupComposerSectionBlock,
 } from "@/features/map/components/NewMeetupComposerPrimitives";
+import { FormatDetailTagBlock } from "@/features/map/components/FormatDetailTagBlock";
 import { NewMeetupCalendarOverlay } from "@/features/map/components/NewMeetupCalendarOverlay";
 import { NewMeetupTimeOverlay } from "@/features/map/components/NewMeetupTimeOverlay";
+import type { FormatDetailKind } from "@/lib/formatDetailTags";
 import type { HostModeOption } from "@/features/map/mapConfig";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 import { triggerHaptic } from "@/lib/haptics";
@@ -62,6 +64,9 @@ export type NewMeetupComposerSheetProps = {
   formatOptions: CatalogFormat[];
   selectedFormatId: string | null;
   onSelectFormat: (formatId: string) => void;
+  formatDetailKind: FormatDetailKind;
+  formatDetailSelected: string[];
+  onToggleFormatDetail: (value: string) => void;
   hostModeOptions: readonly HostModeOption[];
   hostMode: string;
   onSelectHostMode: (value: string) => void;
@@ -119,6 +124,9 @@ export function NewMeetupComposerSheet({
   formatOptions,
   selectedFormatId,
   onSelectFormat,
+  formatDetailKind,
+  formatDetailSelected,
+  onToggleFormatDetail,
   hostModeOptions,
   hostMode,
   onSelectHostMode,
@@ -235,6 +243,16 @@ export function NewMeetupComposerSheet({
                   />
                 ))}
               </HorizontalChipRail>
+            </NewMeetupComposerSectionBlock>
+          ) : null}
+
+          {showFormatSection && selectedFormatId && formatDetailKind ? (
+            <NewMeetupComposerSectionBlock title="Preferências de formato" gap={spacing.xs}>
+              <FormatDetailTagBlock
+                kind={formatDetailKind}
+                selected={formatDetailSelected}
+                onToggle={onToggleFormatDetail}
+              />
             </NewMeetupComposerSectionBlock>
           ) : null}
 

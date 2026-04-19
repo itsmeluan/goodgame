@@ -14,40 +14,54 @@ import type { FriendProfile } from "@/types/domain";
 type DrawerRootPanelProps = {
   mapActive: boolean;
   gamesActive: boolean;
+  novidadesActive: boolean;
   alertsActive: boolean;
   chatsActive: boolean;
   placesActive: boolean;
   historyActive: boolean;
+  nearbyPlayersActive: boolean;
+  feedbackActive: boolean;
   unreadChatCount: number;
   unreadAlertCount: number;
+  unreadNovidadesCount: number;
   onlineFriends: FriendProfile[];
   appVersion: string;
   onOpenMap: () => void;
   onOpenGames: () => void;
+  onOpenNovidades: () => void;
   onOpenChats: () => void;
   onOpenAlerts: () => void;
   onOpenPlaces: () => void;
   onOpenHistory: () => void;
+  onOpenNearbyPlayers: () => void;
+  onOpenFeedback: () => void;
   onOpenPlayerProfile: (userId: string) => void;
 };
 
 export function DrawerRootPanel({
   mapActive,
   gamesActive,
+  novidadesActive,
   alertsActive,
   chatsActive,
   placesActive,
   historyActive,
+  nearbyPlayersActive,
+  feedbackActive,
   unreadChatCount,
   unreadAlertCount,
+  unreadNovidadesCount,
   onlineFriends,
   appVersion,
   onOpenMap,
   onOpenGames,
+  onOpenNovidades,
   onOpenChats,
   onOpenAlerts,
   onOpenPlaces,
   onOpenHistory,
+  onOpenNearbyPlayers,
+  onOpenFeedback,
   onOpenPlayerProfile,
 }: DrawerRootPanelProps) {
   return (
@@ -67,6 +81,22 @@ export function DrawerRootPanel({
             label="Jogos"
             onPress={onOpenGames}
             tone={gamesActive ? "accent" : "default"}
+            size="compact"
+          />
+          <AppleListRow
+            separator
+            icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
+            label="Locais"
+            onPress={onOpenPlaces}
+            tone={placesActive ? "accent" : "default"}
+            size="compact"
+          />
+          <AppleListRow
+            separator
+            icon={{ iosName: "location.magnifyingglass", fallbackName: "travel-explore" }}
+            label="Jogadores próximos"
+            onPress={onOpenNearbyPlayers}
+            tone={nearbyPlayersActive ? "accent" : "default"}
             size="compact"
           />
           <AppleListRow
@@ -92,11 +122,11 @@ export function DrawerRootPanel({
           />
           <AppleListRow
             separator
-            icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
-            label="Locais"
-            onPress={onOpenPlaces}
-
-            tone={placesActive ? "accent" : "default"}
+            icon={{ iosName: "sparkles", fallbackName: "auto-awesome" }}
+            label="Novidades"
+            showUnreadDot={unreadNovidadesCount > 0}
+            onPress={onOpenNovidades}
+            tone={novidadesActive || unreadNovidadesCount > 0 ? "accent" : "default"}
             size="compact"
           />
           <AppleListRow
@@ -104,8 +134,15 @@ export function DrawerRootPanel({
             icon={{ iosName: "clock.arrow.circlepath", fallbackName: "history" }}
             label="Histórico"
             onPress={onOpenHistory}
-
             tone={historyActive ? "accent" : "default"}
+            size="compact"
+          />
+          <AppleListRow
+            separator
+            icon={{ iosName: "envelope.open.fill", fallbackName: "mail-outline" }}
+            label="Feedback"
+            onPress={onOpenFeedback}
+            tone={feedbackActive ? "accent" : "default"}
             size="compact"
           />
         </AppleListGroup>
@@ -127,7 +164,12 @@ export function DrawerRootPanel({
                   pressed ? styles.pressed : null,
                 ]}
               >
-                <Avatar name={friend.displayName} uri={friend.avatarUrl} size={42} />
+                <Avatar
+                  name={friend.displayName}
+                  uri={friend.avatarUrl}
+                  size={42}
+                  isPro={Boolean(friend.isPro)}
+                />
                 <View style={styles.onlineFriendCopy}>
                   <Text style={styles.onlineFriendName}>{friend.displayName}</Text>
                   <Text style={styles.onlineFriendMeta}>@{friend.handle}</Text>

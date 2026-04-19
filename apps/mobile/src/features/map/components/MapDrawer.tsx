@@ -20,12 +20,16 @@ export type MapDrawerProps = {
   panel: "root" | "chats";
   mapActive: boolean;
   gamesActive: boolean;
+  novidadesActive: boolean;
   alertsActive: boolean;
   chatsActive: boolean;
   placesActive: boolean;
   historyActive: boolean;
+  nearbyPlayersActive: boolean;
+  feedbackActive: boolean;
   unreadChatCount: number;
   unreadAlertCount: number;
+  unreadNovidadesCount: number;
   onlineFriends: FriendProfile[];
   appVersion: string;
   chatGroups: DrawerChatGameGroup[];
@@ -36,10 +40,13 @@ export type MapDrawerProps = {
   onClose: () => void;
   onOpenMap: () => void;
   onOpenGames: () => void;
+  onOpenNovidades: () => void;
   onOpenChats: () => void;
   onOpenAlerts: () => void;
   onOpenPlaces: () => void;
   onOpenHistory: () => void;
+  onOpenNearbyPlayers: () => void;
+  onOpenFeedback: () => void;
   onOpenPlayerProfile: (userId: string) => void;
   onBackToRoot: () => void;
   onToggleChatGroup: (groupId: string) => void;
@@ -55,12 +62,16 @@ export function MapDrawer({
   panel,
   mapActive,
   gamesActive,
+  novidadesActive,
   alertsActive,
   chatsActive,
   placesActive,
   historyActive,
+  nearbyPlayersActive,
+  feedbackActive,
   unreadChatCount,
   unreadAlertCount,
+  unreadNovidadesCount,
   onlineFriends,
   appVersion,
   chatGroups,
@@ -71,10 +82,13 @@ export function MapDrawer({
   onClose,
   onOpenMap,
   onOpenGames,
+  onOpenNovidades,
   onOpenChats,
   onOpenAlerts,
   onOpenPlaces,
   onOpenHistory,
+  onOpenNearbyPlayers,
+  onOpenFeedback,
   onOpenPlayerProfile,
   onBackToRoot,
   onToggleChatGroup,
@@ -155,20 +169,27 @@ export function MapDrawer({
               <DrawerRootPanel
                 mapActive={mapActive}
                 gamesActive={gamesActive}
+                novidadesActive={novidadesActive}
                 alertsActive={alertsActive}
                 chatsActive={chatsActive}
                 placesActive={placesActive}
                 historyActive={historyActive}
+                nearbyPlayersActive={nearbyPlayersActive}
+                feedbackActive={feedbackActive}
                 unreadChatCount={unreadChatCount}
                 unreadAlertCount={unreadAlertCount}
+                unreadNovidadesCount={unreadNovidadesCount}
                 onlineFriends={onlineFriends}
                 appVersion={appVersion}
                 onOpenMap={onOpenMap}
                 onOpenGames={onOpenGames}
+                onOpenNovidades={onOpenNovidades}
                 onOpenChats={onOpenChats}
                 onOpenAlerts={onOpenAlerts}
                 onOpenPlaces={onOpenPlaces}
                 onOpenHistory={onOpenHistory}
+                onOpenNearbyPlayers={onOpenNearbyPlayers}
+                onOpenFeedback={onOpenFeedback}
                 onOpenPlayerProfile={onOpenPlayerProfile}
               />
             </Animated.View>

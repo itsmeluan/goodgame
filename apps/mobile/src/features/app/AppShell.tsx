@@ -32,9 +32,14 @@ import {
   registerPushDevice,
   signOut,
 } from "@/lib/api";
+import { LiveLocationProvider } from "@/features/app/LiveLocationContext";
 import { appInfo } from "@/lib/appInfo";
 import { clearMonitoringUser, setMonitoringUser } from "@/lib/monitoring";
 import { registerForPushNotificationsAsync } from "@/lib/notifications";
+import {
+  clearPendingAppNewsMapOverlayAfterSignIn,
+  requestAppNewsMapOverlayAfterSignIn,
+} from "@/lib/appNewsOverlayAfterSignIn";
 import { supabase } from "@/lib/supabase";
 import { palette, spacing } from "@/theme/tokens";
 import type { CatalogFormat, CatalogGame, LegalDocument, PlayerProfile } from "@/types/domain";
@@ -67,7 +72,13 @@ export function AppShell() {
       setBooting(false);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === "SIGNED_IN") {
+        requestAppNewsMapOverlayAfterSignIn();
+      }
+      if (event === "SIGNED_OUT") {
+        clearPendingAppNewsMapOverlayAfterSignIn();
+      }
       startTransition(() => {
         setSession(nextSession ?? null);
       });
@@ -146,17 +157,32 @@ export function AppShell() {
         await ensureMyProfileExists();
       }
 
-      const [nextProfile, nextGames, nextFormats, nextLegalDocuments] = await Promise.all([
+      const [profileResult, gamesResult, formatsResult, legalResult] = await Promise.allSettled([
         getMyProfile(),
         getCatalogGames(),
         getCatalogFormats(),
         getCurrentLegalDocuments(),
       ]);
 
-      setProfile(nextProfile);
-      setGames(nextGames);
-      setFormats(nextFormats);
-      setLegalDocuments(nextLegalDocuments);
+      if (profileResult.status === "fulfilled") {
+        setProfile(profileResult.value);
+      }
+
+      if (gamesResult.status === "fulfilled") {
+        setGames(gamesResult.value);
+      } else if (__DEV__) {
+        console.warn("[loadProfileBundle] getCatalogGames failed", gamesResult.reason);
+      }
+
+      if (formatsResult.status === "fulfilled") {
+        setFormats(formatsResult.value);
+      } else if (__DEV__) {
+        console.warn("[loadProfileBundle] getCatalogFormats failed", formatsResult.reason);
+      }
+
+      if (legalResult.status === "fulfilled") {
+        setLegalDocuments(legalResult.value);
+      }
     } finally {
       if (!options?.silent) {
         setLoadingProfile(false);
@@ -198,6 +224,20 @@ export function AppShell() {
       active = false;
     };
   }, [session]);
+
+  const refreshProfileSilent = useCallback(() => loadProfileBundle({ silent: true }), [loadProfileBundle]);
+
+  /** Só `getMyProfile` — evita re-baixar catálogo/legal a cada sync de GPS (Supabase free). */
+  const refreshMyProfileOnly = useCallback(async () => {
+    try {
+      const next = await getMyProfile();
+      if (next) {
+        setProfile(next);
+      }
+    } catch {
+      // silencioso: coordenada já foi gravada no servidor
+    }
+  }, []);
 
   useEffect(() => {
     const nextScreen = booting || loadingProfile
@@ -304,6 +344,7 @@ export function AppShell() {
         ) : editingProfile || isProfileIncomplete(profile) ? (
           <ProfileSetupScreen
             profile={profile}
+            accountEmail={session?.user?.email ?? null}
             games={games}
             formats={formats}
             canCancel={editingProfile}
@@ -314,24 +355,31 @@ export function AppShell() {
                   }
                 : undefined
             }
-            onSaved={async () => {
+            onSaved={async (profileAfterSave) => {
+              if (profileAfterSave) {
+                setProfile(profileAfterSave);
+              }
               await loadProfileBundle({ silent: true });
               setEditingProfile(false);
             }}
           />
         ) : profile ? (
-          <MapHomeScreen
-            profile={profile}
-            onProfileEdit={() => {
-              setEditingProfile(true);
-            }}
-          />
+          <LiveLocationProvider enabled onApproximateLocationPersisted={refreshMyProfileOnly}>
+            <MapHomeScreen
+              profile={profile}
+              onProfileEdit={() => {
+                setEditingProfile(true);
+              }}
+              onProfileRefresh={refreshProfileSilent}
+            />
+          </LiveLocationProvider>
         ) : null}
       </AppErrorBoundary>
     </SafeAreaProvider>
   );
 }
 
+/** Só força a configuração inicial quando ainda não existe linha de perfil. Contas antigas vão direto ao mapa. */
 function isProfileIncomplete(profile: PlayerProfile | null) {
   return !profile;
 }

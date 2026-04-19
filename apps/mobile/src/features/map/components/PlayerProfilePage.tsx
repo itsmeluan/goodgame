@@ -24,6 +24,7 @@ type PlayerProfilePageProps = {
   onRemoveFriend: (userId: string) => void;
   onReportUser: (profile: PublicPlayerProfile) => void;
   onBlockUser: (profile: PublicPlayerProfile) => void;
+  onOpenPrivateChat?: () => void;
 };
 
 export function PlayerProfilePage({
@@ -38,6 +39,7 @@ export function PlayerProfilePage({
   onRemoveFriend,
   onReportUser,
   onBlockUser,
+  onOpenPrivateChat,
 }: PlayerProfilePageProps) {
   return (
     <View style={styles.wrap}>
@@ -45,6 +47,7 @@ export function PlayerProfilePage({
         profile={profile}
         loading={loading}
         error={error}
+        onOpenPrivateChat={onOpenPrivateChat}
         actions={
           profile ? (
             <View style={styles.actions}>

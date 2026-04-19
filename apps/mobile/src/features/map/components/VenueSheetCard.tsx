@@ -39,6 +39,8 @@ type VenueSheetCardProps = {
   venueKindOptions: readonly (readonly [VenueKind, string])[];
   venueGameOptions: VenueGameOption[];
   onFocusVenueOnMap: () => void;
+  /** Detail — mesmo fluxo que partilha de jogos (overlay chat / sistema). */
+  onShareVenue?: () => void;
   onCreateMeetupAtVenue: () => void;
   /** Detail only — abre a rota de edição na pilha do menu de jogos. */
   onToggleManage?: () => void;
@@ -76,6 +78,7 @@ export function VenueSheetCard({
   venueKindOptions,
   venueGameOptions,
   onFocusVenueOnMap,
+  onShareVenue,
   onCreateMeetupAtVenue,
   onToggleManage,
   onManageVenueNameChange,
@@ -234,6 +237,29 @@ export function VenueSheetCard({
 
         <View style={styles.actionRow}>
           <View style={styles.actionCluster}>
+            {onShareVenue ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Compartilhar local"
+                onPress={() => {
+                  triggerHaptic("selection");
+                  onShareVenue();
+                }}
+                style={({ pressed }) => [
+                  styles.circleActionButton,
+                  styles.circleActionButtonGlass,
+                  pressed ? styles.circleActionButtonPressed : null,
+                ]}
+              >
+                <AppIcon
+                  iosName="square.and.arrow.up"
+                  fallbackName="share"
+                  size={20}
+                  color={palette.sand}
+                />
+              </Pressable>
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Ver no mapa"

@@ -4,16 +4,23 @@ import { Image as ExpoImage } from "expo-image";
 
 import { palette } from "@/theme/tokens";
 
+const proPlayerFramePng = require("../../assets/profile/pro-player-frame.png");
+
 type AvatarProps = {
   name: string;
   uri?: string | null;
   size?: number;
+  isPro?: boolean;
+  /** Borda clara fina ao redor da foto (desligar quando há moldura externa, ex. Pro no mapa). */
+  ring?: boolean;
 };
 
-export function Avatar({ name, uri, size = 44 }: AvatarProps) {
+export function Avatar({ name, uri, size = 44, isPro = false, ring = true }: AvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
-  const frameInset = 1.5;
-  const innerSize = Math.max(size - frameInset * 2, 0);
+  const showProFrame = isPro;
+  const frameInset = ring && !showProFrame ? 1.5 : 0;
+  const avatarSize = size;
+  const innerSize = Math.max(avatarSize - frameInset * 2, 0);
   const initials = name
     .trim()
     .split(/\s+/)
@@ -27,14 +34,56 @@ export function Avatar({ name, uri, size = 44 }: AvatarProps) {
 
   const shouldShowImage = !!uri && !imageFailed;
 
+  /** Pro: moldura PNG não é um círculo perfeito (medalha embaixo) — não pode haver `overflow: hidden` no wrapper externo. */
+  if (showProFrame) {
+    return (
+      <View style={[styles.proRoot, { width: avatarSize, height: avatarSize }]}>
+        <View
+          style={[
+            styles.proPhotoClip,
+            {
+              width: innerSize,
+              height: innerSize,
+              borderRadius: innerSize / 2,
+            },
+          ]}
+        >
+          {shouldShowImage ? (
+            <ExpoImage
+              source={uri}
+              onError={() => setImageFailed(true)}
+              cachePolicy="memory-disk"
+              contentFit="cover"
+              transition={120}
+              style={StyleSheet.absoluteFillObject}
+            />
+          ) : (
+            <View style={[styles.fallback, StyleSheet.absoluteFillObject, styles.proFallbackCenter]}>
+              <Text style={[styles.initials, { fontSize: Math.max(12, avatarSize * 0.28) }]}>
+                {initials || "GG"}
+              </Text>
+            </View>
+          )}
+        </View>
+        <ExpoImage
+          source={proPlayerFramePng}
+          contentFit="contain"
+          style={styles.proFrame}
+          pointerEvents="none"
+        />
+      </View>
+    );
+  }
+
   return (
     <View
       style={[
         styles.frame,
+        ring ? null : styles.frameNoRing,
         {
-          width: size,
-          height: size,
-          borderRadius: size / 2,
+          width: avatarSize,
+          height: avatarSize,
+          borderRadius: avatarSize / 2,
         },
       ]}
     >
@@ -62,7 +111,7 @@ export function Avatar({ name, uri, size = 44 }: AvatarProps) {
             },
           ]}
         >
-          <Text style={[styles.initials, { fontSize: Math.max(12, size * 0.28) }]}>
+          <Text style={[styles.initials, { fontSize: Math.max(12, avatarSize * 0.28) }]}>
             {initials || "GG"}
           </Text>
         </View>
@@ -72,6 +121,17 @@ export function Avatar({ name, uri, size = 44 }: AvatarProps) {
 }
 
 const styles = StyleSheet.create({
+  proRoot: {
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  proPhotoClip: {
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(42,42,42,0.94)",
+  },
   frame: {
     alignItems: "center",
     justifyContent: "center",
@@ -79,6 +139,18 @@ const styles = StyleSheet.create({
     borderWidth: 0.75,
     borderColor: "rgba(255,255,255,0.18)",
     backgroundColor: "rgba(42,42,42,0.94)",
+  },
+  frameNoRing: {
+    borderWidth: 0,
+    borderColor: "transparent",
+    backgroundColor: "transparent",
+  },
+  proFrame: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  proFallbackCenter: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   fallback: {
     alignItems: "center",

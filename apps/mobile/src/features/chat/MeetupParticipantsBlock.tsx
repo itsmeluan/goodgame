@@ -133,7 +133,12 @@ export function ParticipantAvatar({
   return (
     <View style={styles.participantAvatarWrap}>
       <View style={[styles.participantAvatarFrame, { borderColor: visuals.borderColor }]}>
-        <Avatar name={member.displayName} uri={member.avatarUrl} size={54} />
+        <Avatar
+          name={member.displayName}
+          uri={member.avatarUrl}
+          size={54}
+          isPro={Boolean(member.isPro)}
+        />
       </View>
       {showRemoveControl && onRemovePress ? (
         <Pressable

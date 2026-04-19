@@ -36,6 +36,7 @@ export type MapScreenLayerProps<
     onOpenAccount: () => void;
     onOpenFriends: () => void;
     onOpenComposer: () => void;
+    profileIsPro: boolean;
   };
   gamesSheet: {
     onDismissPinCallout?: () => void;

@@ -5,11 +5,11 @@ import { palette, radius, screenEdgeGlassBleed, spacing } from "@/theme/tokens";
 export const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: palette.sheetBaseChrome,
   },
   loadingSafeArea: {
     flex: 1,
-    backgroundColor: palette.loadingScreen,
+    backgroundColor: palette.sheetBaseChrome,
   },
   loadingState: {
     flex: 1,
@@ -63,10 +63,23 @@ export const styles = StyleSheet.create({
     shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 6,
+    overflow: "hidden",
+  },
+  /** Moldura Pro tem parte não circular (medalha); não cortar fora do círculo. */
+  avatarButtonPro: {
+    overflow: "visible",
   },
   avatarButtonSurface: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: 28,
+  },
+  /** Conteúdo do avatar no botão superior direito. */
+  avatarButtonInner: {
+    width: 56,
+    height: 56,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
   },
   topBanner: {
     alignSelf: "center",

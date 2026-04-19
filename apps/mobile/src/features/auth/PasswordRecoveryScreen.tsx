@@ -151,7 +151,7 @@ function toMessage(error: unknown) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: palette.sheetBaseChrome,
   },
   flex: {
     flex: 1,

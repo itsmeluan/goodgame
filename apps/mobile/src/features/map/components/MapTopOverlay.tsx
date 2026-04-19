@@ -26,6 +26,7 @@ export type MapTopOverlayProps = {
   onOpenAccount: () => void;
   onOpenFriends: () => void;
   onOpenComposer: () => void;
+  profileIsPro: boolean;
 };
 
 export function MapTopOverlay({
@@ -44,6 +45,7 @@ export function MapTopOverlay({
   onOpenAccount,
   onOpenFriends,
   onOpenComposer,
+  profileIsPro,
 }: MapTopOverlayProps) {
   const insets = useSafeAreaInsets();
 
@@ -86,14 +88,22 @@ export function MapTopOverlay({
               triggerHaptic("selection");
               onOpenAccount();
             }}
-            style={({ pressed }) => [styles.avatarButton, pressed ? styles.circleButtonPressed : null]}
+            style={({ pressed }) => [
+              styles.avatarButton,
+              profileIsPro ? styles.avatarButtonPro : null,
+              pressed ? styles.circleButtonPressed : null,
+            ]}
           >
-            <AppleGlassSurface
-              pointerEvents="none"
-              variant="light"
-              style={styles.avatarButtonSurface}
-            />
-            <Avatar name={profileName} uri={profileAvatarUrl} size={48} />
+            {!profileIsPro ? (
+              <AppleGlassSurface
+                pointerEvents="none"
+                variant="light"
+                style={styles.avatarButtonSurface}
+              />
+            ) : null}
+            <View style={styles.avatarButtonInner} pointerEvents="box-none">
+              <Avatar name={profileName} uri={profileAvatarUrl} size={56} isPro={profileIsPro} />
+            </View>
           </Pressable>
           <MapCircleActionButton
             icon="groups-2"

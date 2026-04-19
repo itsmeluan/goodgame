@@ -489,7 +489,7 @@ function toMessage(error: unknown) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#040F21",
+    backgroundColor: palette.sheetBaseChrome,
   },
   flex: {
     flex: 1,
@@ -634,7 +634,7 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     minHeight: 52,
     borderRadius: radius.pill,
-    backgroundColor: "#040F21",
+    backgroundColor: palette.ink,
     paddingHorizontal: spacing.md,
     alignItems: "center",
     justifyContent: "center",

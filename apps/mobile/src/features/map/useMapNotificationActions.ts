@@ -15,6 +15,7 @@ type UseMapNotificationActionsParams = {
   setMarkingNotificationsRead: Dispatch<SetStateAction<boolean>>;
   setNotificationError: Dispatch<SetStateAction<string | null>>;
   openChat: (meetupId: string) => void;
+  openPrivateChatById: (chatId: string) => void | Promise<void>;
   focusVenueOnMap: (venueId: string, openSheet?: boolean) => void;
   focusMeetupOnMap: (meetupId: string, openSheet?: boolean) => void;
   resetFilters: () => void;
@@ -30,6 +31,7 @@ export function useMapNotificationActions({
   setMarkingNotificationsRead,
   setNotificationError,
   openChat,
+  openPrivateChatById,
   focusVenueOnMap,
   focusMeetupOnMap,
   resetFilters,
@@ -102,6 +104,11 @@ export function useMapNotificationActions({
         return;
       }
 
+      if (notification.kind === "message_received" && notification.privateChatId) {
+        void openPrivateChatById(notification.privateChatId);
+        return;
+      }
+
       if (notification.kind === "nearby_venue_created" && notification.venueId) {
         resetFilters();
         focusVenueOnMap(notification.venueId, true);
@@ -113,7 +120,14 @@ export function useMapNotificationActions({
         focusMeetupOnMap(notification.meetupId, true);
       }
     },
-    [focusMeetupOnMap, focusVenueOnMap, handleMarkNotificationsRead, openChat, resetFilters]
+    [
+      focusMeetupOnMap,
+      focusVenueOnMap,
+      handleMarkNotificationsRead,
+      openChat,
+      openPrivateChatById,
+      resetFilters,
+    ]
   );
 
   /** Abre chat / mapa a partir do payload da push (toque na notificação). */
@@ -146,6 +160,18 @@ export function useMapNotificationActions({
         }
       }
 
+      const privateChatIdFromData =
+        typeof data.privateChatId === "string" && data.privateChatId.trim()
+          ? data.privateChatId.trim()
+          : typeof data.private_chat_id === "string" && data.private_chat_id.trim()
+            ? data.private_chat_id.trim()
+            : null;
+
+      if (kind === "message_received" && privateChatIdFromData) {
+        void openPrivateChatById(privateChatIdFromData);
+        return;
+      }
+
       if (kind === "message_received" && meetupId) {
         openChat(meetupId);
         return;
@@ -168,7 +194,7 @@ export function useMapNotificationActions({
         focusVenueOnMap(venueIdFromData, true);
       }
     },
-    [focusMeetupOnMap, focusVenueOnMap, openChat, resetFilters]
+    [focusMeetupOnMap, focusVenueOnMap, openChat, openPrivateChatById, resetFilters]
   );
 
   return {

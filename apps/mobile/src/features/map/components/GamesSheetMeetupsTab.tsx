@@ -73,6 +73,9 @@ type GamesSheetMeetupsTabProps<Item extends GamesSheetMeetupListItem> = {
   /** Open manage route from outside the sheet (e.g. chat “Editar”). */
   externalManageRequest?: { groupId: string; meetupId: string } | null;
   onConsumedExternalManageRequest?: () => void;
+  /** Open detail route from deep link / share (map + sheet preview). */
+  externalDetailRequest?: { groupId: string; meetupId: string } | null;
+  onConsumedExternalDetailRequest?: () => void;
   /** Resolve meetup when it may not appear in the current group list (filters). */
   resolveMeetupById?: (meetupId: string) => Item | null;
 };
@@ -128,6 +131,8 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
   emptyState,
   externalManageRequest = null,
   onConsumedExternalManageRequest = () => {},
+  externalDetailRequest = null,
+  onConsumedExternalDetailRequest = () => {},
   resolveMeetupById,
 }: GamesSheetMeetupsTabProps<Item>) {
   const [routeStack, setRouteStack] = useState<MeetupRoute[]>([]);
@@ -176,6 +181,32 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
     ]);
     onConsumedExternalManageRequest?.();
   }, [externalManageRequest, onConsumedExternalManageRequest, resolveMeetupForRoute]);
+
+  useEffect(() => {
+    if (!externalDetailRequest) {
+      return;
+    }
+
+    const meetup = resolveMeetupForRoute(
+      externalDetailRequest.groupId,
+      externalDetailRequest.meetupId
+    );
+
+    if (!meetup) {
+      onConsumedExternalDetailRequest?.();
+      return;
+    }
+
+    setRouteStack([
+      {
+        key: `detail:${externalDetailRequest.groupId}:${externalDetailRequest.meetupId}`,
+        type: "detail",
+        groupId: externalDetailRequest.groupId,
+        meetupId: externalDetailRequest.meetupId,
+      },
+    ]);
+    onConsumedExternalDetailRequest?.();
+  }, [externalDetailRequest, onConsumedExternalDetailRequest, resolveMeetupForRoute]);
 
   const pushGroupRoute = (groupId: string) => {
     setRouteStack((current) => {
@@ -320,13 +351,13 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
                       iosName="arrow.up.arrow.down"
                       fallbackName="swap-vert"
                       size={12}
-                      color={palette.ink}
+                      color={palette.sand}
                     />
                   </View>
                   <Text
                     style={[
                       styles.sortButtonLabel,
-                      sortMenuOpen ? styles.sortButtonLabelActive : null,
+                      sortMenuOpen ? styles.sortButtonLabelMenuOpen : null,
                     ]}
                   >
                     {currentSortLabel}
@@ -335,7 +366,7 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
                     iosName={sortMenuOpen ? "chevron.up" : "chevron.down"}
                     fallbackName={sortMenuOpen ? "keyboard-arrow-up" : "keyboard-arrow-down"}
                     size={14}
-                    color={sortMenuOpen ? palette.ink : palette.pine}
+                    color={sortMenuOpen ? palette.sand : palette.pine}
                   />
                 </Pressable>
               </View>
@@ -593,8 +624,10 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     fontWeight: "600",
   },
-  sortButtonLabelActive: {
-    color: palette.ink,
+  /** Com o menu aberto, manter texto claro sobre o vidro (evita `ink` ilegível). */
+  sortButtonLabelMenuOpen: {
+    color: palette.sand,
+    fontWeight: "700",
   },
   toggleButton: {
     alignSelf: "flex-end",

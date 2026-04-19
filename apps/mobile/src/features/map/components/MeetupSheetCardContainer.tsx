@@ -28,6 +28,7 @@ type MeetupSheetCardContainerProps = {
   manageAddressSuggestions: AddressSuggestion[];
   manageAddressLoading: boolean;
   onFocusMeetupOnMap: () => void;
+  onShareMeetup?: () => void;
   onOpenPlayerProfile: () => void;
   onJoinMeetup: () => void;
   onLeaveMeetup: () => void;
@@ -71,6 +72,7 @@ export function MeetupSheetCardContainer({
   manageAddressSuggestions,
   manageAddressLoading,
   onFocusMeetupOnMap,
+  onShareMeetup,
   onOpenPlayerProfile,
   onJoinMeetup,
   onLeaveMeetup,
@@ -126,6 +128,7 @@ export function MeetupSheetCardContainer({
       manageAddressSuggestions={manageAddressSuggestions}
       manageAddressLoading={manageAddressLoading}
       onFocusMeetupOnMap={onFocusMeetupOnMap}
+      onShareMeetup={onShareMeetup}
       onOpenPlayerProfile={onOpenPlayerProfile}
       onJoinMeetup={onJoinMeetup}
       onLeaveMeetup={onLeaveMeetup}

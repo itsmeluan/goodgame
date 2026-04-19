@@ -47,7 +47,18 @@ type UseMapVenueActionsArgs = {
     options?: { animate?: boolean; direction?: "left" | "right" | "none" }
   ) => void;
   setGamesSheetPreviewMode: (value: boolean) => void;
-  setActiveScreen: (value: "map" | "chats" | "alerts" | "places" | "account" | "friends" | "history" | "player") => void;
+  setActiveScreen: (
+    value:
+      | "map"
+      | "chats"
+      | "alerts"
+      | "places"
+      | "account"
+      | "friends"
+      | "history"
+      | "nearby_players"
+      | "player"
+  ) => void;
   setVenueSuggestionName: (value: string) => void;
   setVenueSuggestionDetails: (value: string) => void;
   setSelectedVenueKind: (value: VenueKind) => void;

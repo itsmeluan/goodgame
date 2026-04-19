@@ -30,11 +30,16 @@ import {
   ParticipantAvatar,
   sortMeetupParticipantsPresence,
 } from "@/features/chat/MeetupParticipantsBlock";
+import { MeetupShareBubble } from "@/features/chat/MeetupShareBubble";
+import { VenueShareBubble } from "@/features/chat/VenueShareBubble";
 import {
   formatAttendanceStatus,
   formatCompactAddress,
   formatMeetupStatus,
 } from "@/lib/formatting";
+import { parseMeetupSharePayload } from "@/lib/meetupShare";
+import { isUserPro } from "@/lib/proPlayer";
+import { parseVenueSharePayload } from "@/lib/venueShare";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type {
@@ -46,6 +51,16 @@ import type {
 
 type MeetupChatScreenProps = {
   currentUserId: string;
+  /** Direto entre jogadores: sem cabeçalho de partida nem cena de detalhes. */
+  threadKind?: "meetup" | "private";
+  privatePeer?: {
+    userId: string;
+    displayName: string;
+    handle: string;
+    avatarUrl: string | null;
+    isPro?: boolean;
+    proExpiresAt?: string | null;
+  } | null;
   meetup: MeetupPost | null;
   meetupPresence: MeetupMemberPresence[];
   messages: ChatMessage[];
@@ -76,9 +91,15 @@ type MeetupChatScreenProps = {
   onUpdateAttendanceStatus: (status: AttendanceStatus) => void;
   onUpdateMeetupStatus: (status: "closed" | "cancelled") => void;
   onRemoveParticipant: (userId: string) => void;
-  onRateMember: (reviewedUserId: string, attended: boolean, rating?: number) => void;
+  onRateMember: (reviewedUserId: string, attended: boolean, rating?: number) => void | Promise<void>;
   onPickChatImage: () => void;
   pickingChatImage: boolean;
+  /** Chat privado: atalho no canto superior direito para ir direto ao mapa. */
+  onOpenMapDirect?: () => void;
+  /** Toque no cartão de partida partilhado: mapa + sheet + detalhe. */
+  onOpenSharedMeetupDeepLink?: (meetupId: string) => void;
+  /** Toque no cartão de local partilhado: mapa + sheet + detalhe. */
+  onOpenSharedVenueDeepLink?: (venueId: string) => void;
 };
 
 const attendanceOrder: AttendanceStatus[] = [
@@ -89,6 +110,8 @@ const attendanceOrder: AttendanceStatus[] = [
 
 export function MeetupChatScreen({
   currentUserId,
+  threadKind = "meetup",
+  privatePeer = null,
   meetup,
   meetupPresence,
   messages,
@@ -120,12 +143,20 @@ export function MeetupChatScreen({
   onRateMember,
   onPickChatImage,
   pickingChatImage,
+  onOpenMapDirect,
+  onOpenSharedMeetupDeepLink,
+  onOpenSharedVenueDeepLink,
 }: MeetupChatScreenProps) {
   const insets = useSafeAreaInsets();
+  const isPrivateThread = threadKind === "private" && privatePeer !== null;
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [manageParticipantsAvatarsMode, setManageParticipantsAvatarsMode] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [ratingPanelExpanded, setRatingPanelExpanded] = useState(false);
+  /** Participantes já avaliados nesta sessão (após sucesso da API). */
+  const [submittedRatedUserIds, setSubmittedRatedUserIds] = useState(() => new Set<string>());
+  /** Mostrar thumbs de novo para reavaliar; não altera o banco até novo toque. */
+  const [revisingRatedUserIds, setRevisingRatedUserIds] = useState(() => new Set<string>());
   const messageListRef = useRef<FlatList<ChatMessage> | null>(null);
 
   useEffect(() => {
@@ -148,7 +179,15 @@ export function MeetupChatScreen({
 
   useEffect(() => {
     setRatingPanelExpanded(false);
-  }, [meetup?.id]);
+    setSubmittedRatedUserIds(new Set());
+    setRevisingRatedUserIds(new Set());
+  }, [meetup?.id, privatePeer?.userId]);
+
+  useEffect(() => {
+    if (isPrivateThread) {
+      setDetailsOpen(false);
+    }
+  }, [isPrivateThread]);
 
   useEffect(() => {
     const showSubscription = Keyboard.addListener("keyboardWillShow", () => {
@@ -194,8 +233,42 @@ export function MeetupChatScreen({
   );
 
   const showRatingBar =
-    canRateSelectedChatMeetup && !keyboardVisible && ratingTargets.length > 0;
+    !isPrivateThread &&
+    canRateSelectedChatMeetup &&
+    !keyboardVisible &&
+    ratingTargets.length > 0;
   const showRatingExpandedList = showRatingBar && ratingPanelExpanded;
+
+  const beginMemberRating = useCallback((memberUserId: string) => {
+    triggerHaptic("selection");
+    setRevisingRatedUserIds((prev) => {
+      const next = new Set(prev);
+      next.add(memberUserId);
+      return next;
+    });
+  }, []);
+
+  const submitMemberRating = useCallback(
+    async (memberUserId: string, attended: boolean, rating?: number) => {
+      triggerHaptic("soft");
+      try {
+        await Promise.resolve(onRateMember(memberUserId, attended, rating));
+        setSubmittedRatedUserIds((prev) => {
+          const next = new Set(prev);
+          next.add(memberUserId);
+          return next;
+        });
+        setRevisingRatedUserIds((prev) => {
+          const next = new Set(prev);
+          next.delete(memberUserId);
+          return next;
+        });
+      } catch {
+        // Erro já exibido em `messageError` pelo container.
+      }
+    },
+    [onRateMember]
+  );
 
   const renderMessage = useCallback(
     ({ item: message, index }: { item: ChatMessage; index: number }) => {
@@ -205,6 +278,9 @@ export function MeetupChatScreen({
       const showAuthor =
         !isMine && (!previousMessage || previousMessage.authorId !== message.authorId);
       const showAvatar = !isMine && (!nextMessage || nextMessage.authorId !== message.authorId);
+
+      const meetupSharePayload = parseMeetupSharePayload(message.body);
+      const venueSharePayload = parseVenueSharePayload(message.body);
 
       return (
         <ReplySwipeMessage
@@ -223,6 +299,10 @@ export function MeetupChatScreen({
                     name={message.authorName}
                     uri={message.authorAvatarUrl}
                     size={28}
+                    isPro={isUserPro({
+                      isPro: Boolean(message.authorIsPro),
+                      proExpiresAt: message.authorProExpiresAt ?? null,
+                    })}
                   />
                 </Pressable>
               ) : (
@@ -269,14 +349,28 @@ export function MeetupChatScreen({
                   </Text>
                 </View>
               ) : null}
-              <Text
-                style={[
-                  styles.messageText,
-                  isMine ? styles.messageTextMine : styles.messageTextOther,
-                ]}
-              >
-                {message.body}
-              </Text>
+              {meetupSharePayload && onOpenSharedMeetupDeepLink ? (
+                <MeetupShareBubble
+                  payload={meetupSharePayload}
+                  isMine={isMine}
+                  onOpenMeetup={onOpenSharedMeetupDeepLink}
+                />
+              ) : venueSharePayload && onOpenSharedVenueDeepLink ? (
+                <VenueShareBubble
+                  payload={venueSharePayload}
+                  isMine={isMine}
+                  onOpenVenue={onOpenSharedVenueDeepLink}
+                />
+              ) : (
+                <Text
+                  style={[
+                    styles.messageText,
+                    isMine ? styles.messageTextMine : styles.messageTextOther,
+                  ]}
+                >
+                  {message.body}
+                </Text>
+              )}
               <View style={styles.messageMetaRow}>
                 <Text
                   style={[
@@ -301,10 +395,17 @@ export function MeetupChatScreen({
         </ReplySwipeMessage>
       );
     },
-    [currentUserId, messages, onOpenPlayerProfile, onReplyToMessage]
+    [
+      currentUserId,
+      messages,
+      onOpenPlayerProfile,
+      onOpenSharedMeetupDeepLink,
+      onOpenSharedVenueDeepLink,
+      onReplyToMessage,
+    ]
   );
 
-  if (!meetup) {
+  if (!meetup && !isPrivateThread) {
     return (
       <View style={styles.emptyScreen}>
         <View style={[styles.chatHeaderBar, styles.chatHeaderBarEmpty]}>
@@ -340,60 +441,102 @@ export function MeetupChatScreen({
                 <View style={styles.chatHeaderBar}>
                   <SheetBackButton onPress={onBack} accessibilityLabel="Voltar ao mapa" iconCircle />
 
-                  <View style={styles.chatHeaderMainRow}>
-                    <Pressable
-                      accessibilityRole={meetup.isCreator ? "button" : undefined}
-                      accessibilityLabel={meetup.isCreator ? "Trocar foto do grupo" : undefined}
-                      onPress={meetup.isCreator ? onPickChatImage : undefined}
-                      style={({ pressed }) => [
-                        styles.chatAvatarButton,
-                        pressed ? styles.headerBackButtonPressed : null,
-                      ]}
-                    >
-                      {meetup.chatImageUrl ? (
-                        <Avatar name={meetup.title} uri={meetup.chatImageUrl} size={44} />
-                      ) : (
-                        <View style={styles.chatAvatarFallback}>
-                          <AppIcon
-                            iosName="bubble.left.and.bubble.right.fill"
-                            fallbackName="forum"
-                            size={22}
-                            color={palette.ember}
-                          />
-                        </View>
-                      )}
-                      {meetup.isCreator ? (
-                        <View style={styles.chatAvatarBadge}>
-                          <AppIcon
-                            iosName={
-                              pickingChatImage
-                                ? "arrow.triangle.2.circlepath"
-                                : "camera.fill"
-                            }
-                            fallbackName={pickingChatImage ? "sync" : "photo-camera"}
-                            size={11}
-                            color={palette.ink}
-                          />
-                        </View>
-                      ) : null}
-                    </Pressable>
+                  {isPrivateThread && privatePeer ? (
+                    <View style={styles.chatHeaderMainRow}>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Abrir perfil"
+                        onPress={() => onOpenPlayerProfile(privatePeer.userId)}
+                        style={({ pressed }) => [
+                          styles.chatAvatarButton,
+                          pressed ? styles.headerBackButtonPressed : null,
+                        ]}
+                      >
+                        <Avatar
+                          name={privatePeer.displayName}
+                          uri={privatePeer.avatarUrl}
+                          size={44}
+                          isPro={isUserPro(privatePeer)}
+                        />
+                      </Pressable>
 
-                    <View style={styles.chatHeaderTextBlock}>
-                      <Text style={styles.chatTitle} numberOfLines={2}>
-                        {meetup.title}
-                      </Text>
-                      <Text style={styles.chatSubtitle} numberOfLines={1}>
-                        {meetup.formatName}
-                      </Text>
+                      <View style={styles.chatHeaderTextBlock}>
+                        <Text style={styles.chatTitle} numberOfLines={2}>
+                          {privatePeer.displayName}
+                        </Text>
+                        <Text style={styles.chatSubtitle} numberOfLines={1}>
+                          @{privatePeer.handle}
+                        </Text>
+                      </View>
+                      {onOpenMapDirect ? (
+                        <SheetCircleIconButton
+                          accessibilityLabel="Ir para o mapa"
+                          iosName="map.fill"
+                          fallbackName="map"
+                          iconSize={15}
+                          diameter={SHEET_BACK_BUTTON_MIN_HEIGHT}
+                          onPress={onOpenMapDirect}
+                        />
+                      ) : (
+                        <View style={{ width: 36 }} />
+                      )}
                     </View>
-                    <SheetCircleIconButton
-                      accessibilityLabel="Abrir detalhes da partida"
-                      iosName="info"
-                      fallbackName="info"
-                      iconSize={14}
-                      onPress={() => setDetailsOpen(true)}
-                    />
-                  </View>
+                  ) : meetup ? (
+                    <View style={styles.chatHeaderMainRow}>
+                      <Pressable
+                        accessibilityRole={meetup.isCreator ? "button" : undefined}
+                        accessibilityLabel={meetup.isCreator ? "Trocar foto do grupo" : undefined}
+                        onPress={meetup.isCreator ? onPickChatImage : undefined}
+                        style={({ pressed }) => [
+                          styles.chatAvatarButton,
+                          pressed ? styles.headerBackButtonPressed : null,
+                        ]}
+                      >
+                        {meetup.chatImageUrl ? (
+                          <Avatar name={meetup.title} uri={meetup.chatImageUrl} size={44} />
+                        ) : (
+                          <View style={styles.chatAvatarFallback}>
+                            <AppIcon
+                              iosName="bubble.left.and.bubble.right.fill"
+                              fallbackName="forum"
+                              size={22}
+                              color={palette.ember}
+                            />
+                          </View>
+                        )}
+                        {meetup.isCreator ? (
+                          <View style={styles.chatAvatarBadge}>
+                            <AppIcon
+                              iosName={
+                                pickingChatImage
+                                  ? "arrow.triangle.2.circlepath"
+                                  : "camera.fill"
+                              }
+                              fallbackName={pickingChatImage ? "sync" : "photo-camera"}
+                              size={11}
+                              color={palette.ink}
+                            />
+                          </View>
+                        ) : null}
+                      </Pressable>
+
+                      <View style={styles.chatHeaderTextBlock}>
+                        <Text style={styles.chatTitle} numberOfLines={2}>
+                          {meetup.title}
+                        </Text>
+                        <Text style={styles.chatSubtitle} numberOfLines={1}>
+                          {meetup.formatName}
+                        </Text>
+                      </View>
+                      <SheetCircleIconButton
+                        accessibilityLabel="Abrir detalhes da partida"
+                        iosName="info"
+                        fallbackName="info"
+                        iconSize={14}
+                        onPress={() => setDetailsOpen(true)}
+                      />
+                    </View>
+                  ) : null}
                 </View>
 
                 <View style={styles.messagesArea}>
@@ -482,14 +625,26 @@ export function MeetupChatScreen({
                               <View style={styles.ratingActions}>
                                 {ratingActionId === member.userId ? (
                                   <ActivityIndicator color={palette.ember} size="small" />
+                                ) : submittedRatedUserIds.has(member.userId) &&
+                                  !revisingRatedUserIds.has(member.userId) ? (
+                                  <Pressable
+                                    accessibilityRole="button"
+                                    accessibilityLabel="Revisar avaliação"
+                                    onPress={() => beginMemberRating(member.userId)}
+                                    style={({ pressed }) => [
+                                      styles.ratingRevisarButton,
+                                      pressed ? styles.ratingRevisarButtonPressed : null,
+                                    ]}
+                                  >
+                                    <Text style={styles.ratingRevisarButtonLabel}>Revisar</Text>
+                                  </Pressable>
                                 ) : (
                                   <View style={styles.ratingIconRow}>
                                     <Pressable
                                       accessibilityRole="button"
                                       accessibilityLabel="Nota 5, compareceu"
                                       onPress={() => {
-                                        triggerHaptic("soft");
-                                        onRateMember(member.userId, true, 5);
+                                        void submitMemberRating(member.userId, true, 5);
                                       }}
                                       style={({ pressed }) => [
                                         styles.ratingThumbCircle,
@@ -509,8 +664,7 @@ export function MeetupChatScreen({
                                       accessibilityRole="button"
                                       accessibilityLabel="No-show, não compareceu"
                                       onPress={() => {
-                                        triggerHaptic("soft");
-                                        onRateMember(member.userId, false);
+                                        void submitMemberRating(member.userId, false);
                                       }}
                                       style={({ pressed }) => [
                                         styles.ratingThumbCircle,
@@ -625,15 +779,18 @@ export function MeetupChatScreen({
                     ]}
                   >
                     <Text style={styles.closedGroupNoticeText}>
-                      Esse grupo está {formatMeetupStatus(meetup.status).toLowerCase()} e não
-                      aceita novas mensagens.
+                      {isPrivateThread
+                        ? "Vocês não podem enviar mensagens enquanto houver bloqueio entre vocês."
+                        : meetup
+                          ? `Esse grupo está ${formatMeetupStatus(meetup.status).toLowerCase()} e não aceita novas mensagens.`
+                          : ""}
                     </Text>
                   </View>
                 )}
               </View>
             ),
           },
-          ...(detailsOpen
+          ...(meetup && !isPrivateThread && detailsOpen
             ? [
                 {
                   key: "details",
@@ -1364,6 +1521,24 @@ const styles = StyleSheet.create({
   ratingThumbPressed: {
     opacity: 0.88,
     transform: [{ scale: 0.96 }],
+  },
+  ratingRevisarButton: {
+    alignSelf: "center",
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 7,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: palette.line,
+  },
+  ratingRevisarButtonPressed: {
+    opacity: 0.88,
+  },
+  ratingRevisarButtonLabel: {
+    color: palette.sand,
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: "700",
   },
   composerWrap: {
     paddingHorizontal: spacing.lg,

@@ -13,7 +13,7 @@ import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { TextField } from "@/components/TextField";
-import { MapClosePageButton } from "@/features/map/components/MapClosePageButton";
+import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import {
   FriendStatusPill,
@@ -102,64 +102,63 @@ export function FriendsPage({
     {
       key: "root",
       content: (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.content,
-            { paddingBottom: bottomInset + spacing.xxl },
-          ]}
-        >
-          {friendError ? <MapInlineNotice tone="error" message={friendError} /> : null}
-          {friendSuccess ? <MapInlineNotice tone="success" message={friendSuccess} /> : null}
+        <View style={styles.rootWithFooter}>
+          <ScrollView
+            style={styles.rootScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.content, styles.rootScrollContent]}
+          >
+            {friendError ? <MapInlineNotice tone="error" message={friendError} /> : null}
+            {friendSuccess ? <MapInlineNotice tone="success" message={friendSuccess} /> : null}
 
-          <AppleListSection size="compact">
-            <AppleListGroup>
-              <AppleListRow
-                icon={{ iosName: "person.badge.plus", fallbackName: "person-add-alt-1" }}
-                label="Solicitações recebidas"
-                trailingValue={String(incomingFriendRequests.length)}
-                onPress={() => pushRoute("requests")}
-                tone={incomingFriendRequests.length ? "accent" : "default"}
-                size="compact"
-              />
-              <AppleListRow
-                separator
-                icon={{ iosName: "magnifyingglass", fallbackName: "search" }}
-                label="Buscar jogadores"
-                onPress={() => pushRoute("search")}
-                size="compact"
-              />
-              <AppleListRow
-                separator
-                icon={{ iosName: "clock.arrow.circlepath", fallbackName: "history" }}
-                label="Últimos jogadores"
-                trailingValue={String(recentPlayers.length)}
-                onPress={() => pushRoute("recent")}
-                size="compact"
-              />
-              <AppleListRow
-                separator
-                icon={{ iosName: "person.2.fill", fallbackName: "groups-2" }}
-                label="Seus amigos"
-                trailingValue={String(acceptedFriends.length)}
-                onPress={() => pushRoute("friends")}
-                size="compact"
-              />
-              {outgoingFriendRequests.length ? (
+            <AppleListSection size="compact">
+              <AppleListGroup>
                 <AppleListRow
-                  separator
-                  icon={{ iosName: "paperplane.fill", fallbackName: "send" }}
-                  label="Convites enviados"
-                  trailingValue={String(outgoingFriendRequests.length)}
-                  onPress={() => pushRoute("outgoing")}
+                  icon={{ iosName: "person.badge.plus", fallbackName: "person-add-alt-1" }}
+                  label="Solicitações recebidas"
+                  trailingValue={String(incomingFriendRequests.length)}
+                  onPress={() => pushRoute("requests")}
+                  tone={incomingFriendRequests.length ? "accent" : "default"}
                   size="compact"
                 />
-              ) : null}
-            </AppleListGroup>
-          </AppleListSection>
-
-          <MapClosePageButton onPress={onClose} />
-        </ScrollView>
+                <AppleListRow
+                  separator
+                  icon={{ iosName: "magnifyingglass", fallbackName: "search" }}
+                  label="Buscar jogadores"
+                  onPress={() => pushRoute("search")}
+                  size="compact"
+                />
+                <AppleListRow
+                  separator
+                  icon={{ iosName: "clock.arrow.circlepath", fallbackName: "history" }}
+                  label="Últimos jogadores"
+                  trailingValue={String(recentPlayers.length)}
+                  onPress={() => pushRoute("recent")}
+                  size="compact"
+                />
+                <AppleListRow
+                  separator
+                  icon={{ iosName: "person.2.fill", fallbackName: "groups-2" }}
+                  label="Seus amigos"
+                  trailingValue={String(acceptedFriends.length)}
+                  onPress={() => pushRoute("friends")}
+                  size="compact"
+                />
+                {outgoingFriendRequests.length ? (
+                  <AppleListRow
+                    separator
+                    icon={{ iosName: "paperplane.fill", fallbackName: "send" }}
+                    label="Convites enviados"
+                    trailingValue={String(outgoingFriendRequests.length)}
+                    onPress={() => pushRoute("outgoing")}
+                    size="compact"
+                  />
+                ) : null}
+              </AppleListGroup>
+            </AppleListSection>
+          </ScrollView>
+          <MapPageCloseFooter bottomInset={bottomInset} onClose={onClose} />
+        </View>
       ),
     },
     ...routeKeys.map((routeKey) => {
@@ -179,6 +178,7 @@ export function FriendsPage({
                       separator={index > 0}
                       name={friend.displayName}
                       avatarUrl={friend.avatarUrl}
+                      isPro={Boolean(friend.isPro)}
                       meta={friend.neighborhood ? `@${friend.handle} · ${friend.neighborhood}` : `@${friend.handle}`}
                       supporting={friend.isOnline ? "Online agora" : "Convite pendente"}
                       onPress={() => onOpenPlayerProfile(friend.userId)}
@@ -232,7 +232,7 @@ export function FriendsPage({
                   label="Buscar jogadores"
                   value={playerSearchQuery}
                   onChangeText={onChangePlayerSearchQuery}
-                  placeholder="Digite nome ou @handle"
+                  placeholder="Nome, @handle, bairro ou e-mail"
                   autoCapitalize="none"
                 />
                 <View style={styles.rowActions}>
@@ -253,6 +253,7 @@ export function FriendsPage({
                         separator={index > 0}
                         name={player.displayName}
                         avatarUrl={player.avatarUrl}
+                        isPro={Boolean(player.isPro)}
                         meta={
                           player.neighborhood
                             ? `@${player.handle} · ${player.neighborhood}`
@@ -348,6 +349,7 @@ export function FriendsPage({
                       separator={index > 0}
                       name={player.displayName}
                       avatarUrl={player.avatarUrl}
+                      isPro={Boolean(player.isPro)}
                       meta={
                         player.neighborhood
                           ? `@${player.handle} · ${player.neighborhood}`
@@ -402,6 +404,7 @@ export function FriendsPage({
                       separator={index > 0}
                       name={friend.displayName}
                       avatarUrl={friend.avatarUrl}
+                      isPro={Boolean(friend.isPro)}
                       meta={
                         friend.neighborhood
                           ? `@${friend.handle} · ${friend.neighborhood}`
@@ -459,6 +462,7 @@ export function FriendsPage({
                     separator={index > 0}
                     name={friend.displayName}
                     avatarUrl={friend.avatarUrl}
+                    isPro={Boolean(friend.isPro)}
                     meta={`@${friend.handle}`}
                     supporting="Aguardando resposta"
                     onPress={() => onOpenPlayerProfile(friend.userId)}
@@ -503,6 +507,7 @@ function FriendProfileCard({
   separator = false,
   name,
   avatarUrl,
+  isPro = false,
   meta,
   supporting,
   onPress,
@@ -511,6 +516,7 @@ function FriendProfileCard({
   separator?: boolean;
   name: string;
   avatarUrl: string | null;
+  isPro?: boolean;
   meta: string;
   supporting: string;
   onPress: () => void;
@@ -523,7 +529,7 @@ function FriendProfileCard({
         style={({ pressed }) => [styles.friendProfilePressable, pressed ? styles.pressed : null]}
       >
         <View style={styles.friendRow}>
-          <Avatar name={name} uri={avatarUrl} size={50} />
+          <Avatar name={name} uri={avatarUrl} size={50} isPro={isPro} />
           <View style={styles.friendCopy}>
             <Text style={styles.friendName}>{name}</Text>
             <Text style={styles.friendMeta}>{meta}</Text>
@@ -551,6 +557,8 @@ function friendToCandidate(friend: FriendProfile): FriendActionCandidate {
     bio: friend.bio,
     avatarPath: friend.avatarPath,
     avatarUrl: friend.avatarUrl,
+    isPro: friend.isPro,
+    proExpiresAt: friend.proExpiresAt,
     isOnline: friend.isOnline,
     lastSeenAt: friend.lastSeenAt,
   };
@@ -565,6 +573,8 @@ function playerToCandidate(player: PlayerSearchResult): FriendActionCandidate {
     bio: player.bio,
     avatarPath: player.avatarPath,
     avatarUrl: player.avatarUrl,
+    isPro: player.isPro,
+    proExpiresAt: player.proExpiresAt,
     isOnline: player.isOnline,
     lastSeenAt: null,
   };
@@ -579,12 +589,23 @@ function recentPlayerToCandidate(player: RecentPlayerCard): FriendActionCandidat
     bio: player.bio,
     avatarPath: player.avatarPath,
     avatarUrl: player.avatarUrl,
+    isPro: player.isPro,
+    proExpiresAt: player.proExpiresAt,
     isOnline: player.isOnline,
     lastSeenAt: player.lastSeenAt,
   };
 }
 
 const styles = StyleSheet.create({
+  rootWithFooter: {
+    flex: 1,
+  },
+  rootScroll: {
+    flex: 1,
+  },
+  rootScrollContent: {
+    paddingBottom: spacing.lg,
+  },
   content: {
     paddingTop: spacing.sm,
     gap: 12,

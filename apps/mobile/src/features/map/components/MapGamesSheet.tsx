@@ -72,6 +72,8 @@ export type MapGamesSheetProps<
   renderMeetupParticipants: (item: MeetupItem) => ReactElement;
   externalMeetupManageRequest?: { groupId: string; meetupId: string } | null;
   onConsumedExternalMeetupManageRequest?: () => void;
+  externalMeetupDetailRequest?: { groupId: string; meetupId: string } | null;
+  onConsumedExternalMeetupDetailRequest?: () => void;
   resolveMeetupById?: (meetupId: string) => MeetupItem | null;
   renderVenueListItem: (
     item: VenueItem,
@@ -80,6 +82,9 @@ export type MapGamesSheetProps<
   ) => ReactElement;
   renderVenueDetail: (item: VenueItem, openManage: () => void) => ReactElement;
   renderVenueManage: (item: VenueItem) => ReactElement;
+  externalVenueDetailRequest?: { venueId: string } | null;
+  onConsumedExternalVenueDetailRequest?: () => void;
+  resolveVenueById?: (venueId: string) => VenueItem | null;
 };
 
 export function MapGamesSheet<
@@ -128,10 +133,15 @@ export function MapGamesSheet<
   renderMeetupParticipants,
   externalMeetupManageRequest = null,
   onConsumedExternalMeetupManageRequest = () => {},
+  externalMeetupDetailRequest = null,
+  onConsumedExternalMeetupDetailRequest = () => {},
   resolveMeetupById,
   renderVenueListItem,
   renderVenueDetail,
   renderVenueManage,
+  externalVenueDetailRequest = null,
+  onConsumedExternalVenueDetailRequest = () => {},
+  resolveVenueById,
 }: MapGamesSheetProps<MeetupItem, VenueItem>) {
   const [sheetWidth, setSheetWidth] = useState(0);
 
@@ -216,6 +226,8 @@ export function MapGamesSheet<
               renderMeetupParticipants={renderMeetupParticipants}
               externalManageRequest={externalMeetupManageRequest}
               onConsumedExternalManageRequest={onConsumedExternalMeetupManageRequest}
+              externalDetailRequest={externalMeetupDetailRequest}
+              onConsumedExternalDetailRequest={onConsumedExternalMeetupDetailRequest}
               resolveMeetupById={resolveMeetupById}
               emptyState={
                 <MapEmptyCard
@@ -238,6 +250,9 @@ export function MapGamesSheet<
               renderVenueListItem={renderVenueListItem}
               renderVenueDetail={renderVenueDetail}
               renderVenueManage={renderVenueManage}
+              externalVenueDetailRequest={externalVenueDetailRequest}
+              onConsumedExternalVenueDetailRequest={onConsumedExternalVenueDetailRequest}
+              resolveVenueById={resolveVenueById}
               emptyState={
                 <MapEmptyCard
                   title="Nenhum local encontrado"

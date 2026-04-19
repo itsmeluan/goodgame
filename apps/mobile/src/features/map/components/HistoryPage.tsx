@@ -3,7 +3,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/AppleListNavigation";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
-import { MapClosePageButton } from "@/features/map/components/MapClosePageButton";
+import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
 import {
   formatCompactAddress,
@@ -96,45 +96,42 @@ export function HistoryPage({
     {
       key: "root",
       content: (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingBottom: bottomInset + spacing.xxl,
-            },
-          ]}
-        >
-          {visibleRouteOptions.length ? (
-            <AppleListSection
-              title="Histórico"
-              subtitle={`${meetups.length} registro(s) · ${formatSyncLabel(lastDashboardSyncAt)}`}
-              size="compact"
-            >
-              <AppleListGroup>
-                {visibleRouteOptions.map((section, index) => (
-                  <AppleListRow
-                    key={section.key}
-                    icon={section.icon}
-                    leadingIconSize={15}
-                    label={section.label}
-                    trailingValue={String(section.items.length)}
-                    onPress={() => pushRoute(section.key)}
-                    separator={index > 0}
-                    size="compact"
-                  />
-                ))}
-              </AppleListGroup>
-            </AppleListSection>
-          ) : (
-            <MapEmptyCard
-              title="Nenhuma partida no histórico"
-              body="Partidas encerradas ou canceladas em que você participou vão aparecer aqui."
-            />
-          )}
-
-          <MapClosePageButton onPress={onClose} />
-        </ScrollView>
+        <View style={styles.rootWithFooter}>
+          <ScrollView
+            style={styles.rootScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.content, styles.rootScrollContent]}
+          >
+            {visibleRouteOptions.length ? (
+              <AppleListSection
+                title="Histórico"
+                subtitle={`${meetups.length} registro(s) · ${formatSyncLabel(lastDashboardSyncAt)}`}
+                size="compact"
+              >
+                <AppleListGroup>
+                  {visibleRouteOptions.map((section, index) => (
+                    <AppleListRow
+                      key={section.key}
+                      icon={section.icon}
+                      leadingIconSize={15}
+                      label={section.label}
+                      trailingValue={String(section.items.length)}
+                      onPress={() => pushRoute(section.key)}
+                      separator={index > 0}
+                      size="compact"
+                    />
+                  ))}
+                </AppleListGroup>
+              </AppleListSection>
+            ) : (
+              <MapEmptyCard
+                title="Nenhuma partida no histórico"
+                body="Partidas encerradas ou canceladas em que você participou vão aparecer aqui."
+              />
+            )}
+          </ScrollView>
+          <MapPageCloseFooter bottomInset={bottomInset} onClose={onClose} />
+        </View>
       ),
     },
     ...routeKeys.map((routeKey) => {
@@ -214,6 +211,15 @@ function HistoryScene({
 }
 
 const styles = StyleSheet.create({
+  rootWithFooter: {
+    flex: 1,
+  },
+  rootScroll: {
+    flex: 1,
+  },
+  rootScrollContent: {
+    paddingBottom: spacing.lg,
+  },
   content: {
     paddingTop: spacing.sm,
     gap: spacing.md,

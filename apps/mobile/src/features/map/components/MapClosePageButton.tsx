@@ -4,7 +4,14 @@ import { AppIcon } from "@/components/AppIcon";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 
-export function MapClosePageButton({ onPress }: { onPress: () => void }) {
+export function MapClosePageButton({
+  onPress,
+  variant = "default",
+}: {
+  onPress: () => void;
+  /** `footer`: sem margem superior, largura total (barra fixa no rodapé). */
+  variant?: "default" | "footer";
+}) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -13,7 +20,11 @@ export function MapClosePageButton({ onPress }: { onPress: () => void }) {
         triggerHaptic("selection");
         onPress();
       }}
-      style={({ pressed }) => [styles.button, pressed ? styles.buttonPressed : null]}
+      style={({ pressed }) => [
+        styles.button,
+        variant === "footer" ? styles.buttonFooter : null,
+        pressed ? styles.buttonPressed : null,
+      ]}
     >
       <AppIcon iosName="xmark" fallbackName="close" size={18} color={palette.parchment} />
       <Text style={styles.buttonLabel}>Voltar ao mapa</Text>
@@ -34,6 +45,10 @@ const styles = StyleSheet.create({
     backgroundColor: palette.mapSurface,
     paddingHorizontal: spacing.xl,
     paddingVertical: 14,
+  },
+  buttonFooter: {
+    marginTop: 0,
+    alignSelf: "stretch",
   },
   buttonPressed: {
     opacity: 0.92,

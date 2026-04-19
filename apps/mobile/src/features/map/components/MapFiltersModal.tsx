@@ -9,7 +9,9 @@ import { GroupedSectionContent } from "@/features/map/components/GroupedSectionC
 import { HorizontalChipRail } from "@/features/map/components/HorizontalChipRail";
 import { MapCircleActionButton } from "@/features/map/components/MapCircleActionButton";
 import { MapFilterCalendarCard } from "@/features/map/components/MapFilterCalendarCard";
+import { FormatDetailTagBlock } from "@/features/map/components/FormatDetailTagBlock";
 import { triggerHaptic } from "@/lib/haptics";
+import type { FormatDetailKind } from "@/lib/formatDetailTags";
 import type {
   DistanceFilter,
   MapEntityFilter,
@@ -31,6 +33,12 @@ type VisibleFormatGroup = {
   id: string;
   label: string;
   formats: FilterFormat[];
+};
+
+type FilterDetailSection = {
+  kind: FormatDetailKind;
+  selected: string[];
+  onToggle: (value: string) => void;
 };
 
 type CalendarCell = {
@@ -55,6 +63,7 @@ type MapFiltersModalProps = {
   visibleFormatGroups: VisibleFormatGroup[];
   selectedFormatFilterIds: string[];
   onToggleFormatFilter: (formatId: string) => void;
+  filterDetailSections: FilterDetailSection[];
   distanceOptions: readonly (readonly [DistanceFilter, string])[];
   distanceFilter: DistanceFilter;
   onSelectDistanceFilter: (value: DistanceFilter) => void;
@@ -94,6 +103,7 @@ export function MapFiltersModal({
   visibleFormatGroups,
   selectedFormatFilterIds,
   onToggleFormatFilter,
+  filterDetailSections,
   distanceOptions,
   distanceFilter,
   onSelectDistanceFilter,
@@ -216,6 +226,19 @@ export function MapFiltersModal({
                           </HorizontalChipRail>
                         </View>
                       </GroupedSectionContent>
+                    ))}
+                  </SectionBlock>
+                ) : null}
+
+                {filterDetailSections.length ? (
+                  <SectionBlock title="Detalhes do formato">
+                    {filterDetailSections.map((section) => (
+                      <FormatDetailTagBlock
+                        key={section.kind}
+                        kind={section.kind}
+                        selected={section.selected}
+                        onToggle={section.onToggle}
+                      />
                     ))}
                   </SectionBlock>
                 ) : null}

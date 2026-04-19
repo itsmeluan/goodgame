@@ -56,6 +56,8 @@ type MeetupSheetCardProps = {
   manageAddressSuggestions: AddressSuggestion[];
   manageAddressLoading: boolean;
   onFocusMeetupOnMap: () => void;
+  /** Partilhar convite (sempre visível nos detalhes). */
+  onShareMeetup?: () => void;
   onOpenPlayerProfile: () => void;
   onJoinMeetup: () => void;
   onLeaveMeetup: () => void;
@@ -103,6 +105,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
     manageAddressSuggestions,
     manageAddressLoading,
     onFocusMeetupOnMap,
+    onShareMeetup,
     onOpenPlayerProfile,
     onJoinMeetup,
     onLeaveMeetup,
@@ -320,6 +323,29 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
           <View style={styles.actionCluster}>
             {meetup.isCreator ? (
               <>
+                {onShareMeetup ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Compartilhar partida"
+                    onPress={() => {
+                      triggerHaptic("selection");
+                      onShareMeetup();
+                    }}
+                    style={({ pressed }) => [
+                      styles.circleActionButton,
+                      styles.circleActionButtonGlass,
+                      pressed ? styles.circleActionButtonPressed : null,
+                    ]}
+                  >
+                    <AppIcon
+                      iosName="square.and.arrow.up"
+                      fallbackName="share"
+                      size={20}
+                      color={palette.sand}
+                    />
+                  </Pressable>
+                ) : null}
+
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Ver no mapa"
@@ -388,6 +414,29 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
               </>
             ) : meetup.isMember ? (
               <>
+                {onShareMeetup ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Compartilhar partida"
+                    onPress={() => {
+                      triggerHaptic("selection");
+                      onShareMeetup();
+                    }}
+                    style={({ pressed }) => [
+                      styles.circleActionButton,
+                      styles.circleActionButtonGlass,
+                      pressed ? styles.circleActionButtonPressed : null,
+                    ]}
+                  >
+                    <AppIcon
+                      iosName="square.and.arrow.up"
+                      fallbackName="share"
+                      size={20}
+                      color={palette.sand}
+                    />
+                  </Pressable>
+                ) : null}
+
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Sair da partida"
@@ -459,6 +508,29 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
               </>
             ) : (
               <>
+                {onShareMeetup ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Compartilhar partida"
+                    onPress={() => {
+                      triggerHaptic("selection");
+                      onShareMeetup();
+                    }}
+                    style={({ pressed }) => [
+                      styles.circleActionButton,
+                      styles.circleActionButtonGlass,
+                      pressed ? styles.circleActionButtonPressed : null,
+                    ]}
+                  >
+                    <AppIcon
+                      iosName="square.and.arrow.up"
+                      fallbackName="share"
+                      size={20}
+                      color={palette.sand}
+                    />
+                  </Pressable>
+                ) : null}
+
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel={joinDisabled ? "Partida indisponível" : "Entrar na partida"}

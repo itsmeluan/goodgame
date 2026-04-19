@@ -67,7 +67,7 @@ export class AppErrorBoundary extends Component<
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: palette.ink,
+    backgroundColor: palette.sheetBaseChrome,
   },
   content: {
     flex: 1,

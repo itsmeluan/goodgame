@@ -1,4 +1,12 @@
-import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -7,7 +15,9 @@ import {
   InteractionManager,
   Keyboard,
   type KeyboardEvent,
+  Linking,
   Platform,
+  Share,
   Text,
   View,
   useWindowDimensions,
@@ -22,8 +32,11 @@ import { StatusBar } from "expo-status-bar";
 
 import { buildDemoBundle, buildEmptyDemoBundle } from "@/features/demo/demoData";
 import type { ChatListSection } from "@/features/map/components/ChatsPage";
+import { ProPlayerPaywallModal } from "@/features/monetization/ProPlayerPaywallModal";
 import { MapHomeSurface } from "@/features/map/components/MapHomeSurface";
 import { MapCircleActionButton } from "@/features/map/components/MapCircleActionButton";
+import { AppNewsDetailOverlay } from "@/features/map/components/AppNewsDetailOverlay";
+import { MeetupShareOverlay } from "@/features/map/components/MeetupShareOverlay";
 import { MeetupSheetCardContainer } from "@/features/map/components/MeetupSheetCardContainer";
 import { MeetupSheetParticipantsScene } from "@/features/map/components/MeetupSheetParticipantsScene";
 import { MeetupSheetListRowContainer } from "@/features/map/components/MeetupSheetListRowContainer";
@@ -91,6 +104,25 @@ import {
   type ViewportFeedBounds,
 } from "@/features/map/viewport";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
+import {
+  buildDetailTagFilterForBoundsRpc,
+  deriveFilterDetailKindsFromFormats,
+  detailTagsSatisfiedForFormat,
+  getFormatDetailKind,
+  pruneFilterDetailTagsForSelectedFormats,
+  pruneFormatDetailTagsForFormat,
+  type FormatDetailTags,
+} from "@/lib/formatDetailTags";
+import {
+  buildExternalShareContent,
+  buildMeetupShareMessageBody,
+  parseMeetupIdFromIncomingUrl,
+} from "@/lib/meetupShare";
+import {
+  buildExternalVenueShareContent,
+  buildVenueShareMessageBody,
+  parseVenueIdFromIncomingUrl,
+} from "@/lib/venueShare";
 import { useMapFriendActions } from "@/features/map/useMapFriendActions";
 import { useMapNotificationActions } from "@/features/map/useMapNotificationActions";
 import { useMapVenueActions } from "@/features/map/useMapVenueActions";
@@ -99,12 +131,15 @@ import {
   useGamesSheetSectionPanResponder,
   usePageDismissPanResponder,
 } from "@/features/map/useMapPanResponders";
+import { toggleMultiValue } from "@/features/map/components/FormatDetailTagBlock";
 import { useAddressSuggestionSearch } from "@/features/map/useAddressSuggestionSearch";
 import {
   blockUser,
+  countUnreadAppNews,
   createMeetup,
   deleteMyMeetup,
   deleteMyAccount,
+  dismissAppNewsColdStart,
   getDashboardData,
   getDashboardFeedInBounds,
   getMyBlockedUsers,
@@ -112,16 +147,23 @@ import {
   getFriendOverview,
   getMeetupMessages,
   getMeetupMemberPresence,
+  getOrCreatePrivateChat,
+  getPrivateMessages,
+  getPrivateMessagesAfter,
   getMyNotifications,
   getMyReputationSummary,
+  getAppNewsColdStartCandidate,
   getMyVenueSuggestions,
   getPublicPlayerProfile,
   joinMeetup,
+  listPrivateChats,
   leaveMeetup,
   removeMeetupMember,
   reportUser,
   rateMeetupPlayer,
   sendMeetupMessage,
+  sendPrivateMessage,
+  startProTrial,
   setMyAttendanceStatus,
   signOut,
   unblockUser,
@@ -129,7 +171,8 @@ import {
   updateMyMeetup,
   updateMyMeetupLocation,
 } from "@/lib/api";
-import { analyticsScreen } from "@/lib/analytics";
+import { consumePendingAppNewsMapOverlayAfterSignIn } from "@/lib/appNewsOverlayAfterSignIn";
+import { analyticsCapture, analyticsScreen } from "@/lib/analytics";
 import { appInfo } from "@/lib/appInfo";
 import { env } from "@/lib/env";
 import {
@@ -138,10 +181,12 @@ import {
   toLocalDateTimeInput,
 } from "@/lib/formatting";
 import { triggerHaptic } from "@/lib/haptics";
+import { isUserPro } from "@/lib/proPlayer";
 import { resolveTypedAddress, type AddressSuggestion } from "@/lib/placeSearch";
 import { supabase } from "@/lib/supabase";
 import { palette, spacing } from "@/theme/tokens";
 import type {
+  AppNewsItem,
   AttendanceStatus,
   BlockedUserProfile,
   CatalogFormat,
@@ -155,6 +200,7 @@ import type {
   MeetupStatus,
   PlayerProfile,
   PlayerSearchResult,
+  PrivateChatSummary,
   PublicPlayerProfile,
   ReputationSummary,
   VenueCard,
@@ -165,6 +211,7 @@ import type {
 type MapHomeScreenProps = {
   profile: PlayerProfile;
   onProfileEdit: () => void;
+  onProfileRefresh?: () => void | Promise<void>;
 };
 
 // O backend ainda exige um smallint entre 2 e 12, mas a capacidade não é mais
@@ -178,18 +225,24 @@ type AppScreen =
   | "map"
   | "chats"
   | "alerts"
+  | "novidades"
   | "places"
   | "account"
   | "friends"
   | "history"
+  | "nearby_players"
+  | "feedback"
   | "player";
 type PageScreen =
   | "chats"
   | "alerts"
+  | "novidades"
   | "places"
   | "account"
   | "friends"
   | "history"
+  | "nearby_players"
+  | "feedback"
   | "player";
 type ChatViewMode = "list" | "room";
 
@@ -210,7 +263,7 @@ const venueKindOptions = [
 ] as const;
 const COMPOSER_OPEN_OFFSET = 28;
 
-export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
+export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapHomeScreenProps) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
@@ -221,6 +274,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   /** Nested ChatsPage routes (game group → meetup list). Lifted so it survives chat room overlay / remounts. */
   const [chatsRouteStackKeys, setChatsRouteStackKeys] = useState<string[]>([]);
   const chatReturnSnapshotRef = useRef<ChatReturnSnapshot | null>(null);
+  const [proPaywallVisible, setProPaywallVisible] = useState(false);
+  const [proTrialStarting, setProTrialStarting] = useState(false);
   useEffect(() => {
     if (pageScreen !== "chats") {
       setChatsRouteStackKeys([]);
@@ -239,6 +294,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [mapFeedVenues, setMapFeedVenues] = useState<VenueCard[] | null>(null);
   const [mapFeedMeetups, setMapFeedMeetups] = useState<MeetupPost[] | null>(null);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
+  const [unreadAppNewsCount, setUnreadAppNewsCount] = useState(0);
+  const [coldStartAppNews, setColdStartAppNews] = useState<AppNewsItem | null>(null);
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [meetupPresence, setMeetupPresence] = useState<MeetupMemberPresence[]>([]);
   const [reputationSummary, setReputationSummary] = useState<ReputationSummary>({
@@ -269,6 +326,18 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [selectedMapGroup, setSelectedMapGroup] = useState<MapSelectionGroup | null>(null);
   const [pinCalloutDismissNonce, setPinCalloutDismissNonce] = useState(0);
   const [selectedChatMeetupId, setSelectedChatMeetupId] = useState<string | null>(null);
+  const [selectedPrivateChatId, setSelectedPrivateChatId] = useState<string | null>(null);
+  const [privateChatPeer, setPrivateChatPeer] = useState<{
+    userId: string;
+    displayName: string;
+    handle: string;
+    avatarUrl: string | null;
+    isPro?: boolean;
+    proExpiresAt?: string | null;
+    canSendMessages: boolean;
+  } | null>(null);
+  const [privateChatsList, setPrivateChatsList] = useState<PrivateChatSummary[]>([]);
+  const [loadingPrivateChats, setLoadingPrivateChats] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [mapViewportRegion, setMapViewportRegion] = useState<Region | null>(null);
   const [messageBody, setMessageBody] = useState("");
@@ -302,6 +371,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [meetupDescription, setMeetupDescription] = useState("");
   const [selectedComposerGameId, setSelectedComposerGameId] = useState<string | null>(null);
   const [selectedFormatId, setSelectedFormatId] = useState<string | null>(null);
+  const [composerFormatDetailTags, setComposerFormatDetailTags] = useState<FormatDetailTags>({});
   const [hostMode, setHostMode] = useState<ComposerMeetupMode>(
     "public_place"
   );
@@ -357,6 +427,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const [entityFilters, setEntityFilters] = useState<MapEntityFilter[]>(["meetups", "venues"]);
   const [selectedGameFilterIds, setSelectedGameFilterIds] = useState<string[]>([]);
   const [selectedFormatFilterIds, setSelectedFormatFilterIds] = useState<string[]>([]);
+  const [filterDetailTags, setFilterDetailTags] = useState<FormatDetailTags>({});
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>("all");
   const [periodFilters, setPeriodFilters] = useState<PeriodFilter[]>([]);
   const [filterDateFrom, setFilterDateFrom] = useState<string | null>(null);
@@ -400,6 +471,22 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     groupId: string;
     meetupId: string;
   } | null>(null);
+  const [externalMeetupDetailRequest, setExternalMeetupDetailRequest] = useState<{
+    groupId: string;
+    meetupId: string;
+  } | null>(null);
+  const [externalVenueDetailRequest, setExternalVenueDetailRequest] = useState<{
+    venueId: string;
+  } | null>(null);
+  type MapShareOverlayTarget =
+    | { kind: "meetup"; meetup: MeetupPost }
+    | { kind: "venue"; venue: VenueCard };
+  const [mapShareOverlayTarget, setMapShareOverlayTarget] = useState<MapShareOverlayTarget | null>(
+    null
+  );
+  const pendingMapShareTargetRef = useRef<MapShareOverlayTarget | null>(null);
+  const openMeetupFromShareLinkRef = useRef<(meetupId: string) => void>(() => {});
+  const openVenueFromShareLinkRef = useRef<(venueId: string) => void>(() => {});
   const [, setExpandedVenueInfoId] = useState<string | null>(null);
   const [expandedVenueManageId, setExpandedVenueManageId] = useState<string | null>(null);
   const [deletingEntityId, setDeletingEntityId] = useState<string | null>(null);
@@ -436,9 +523,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const loadNotificationsRef = useRef<() => Promise<void>>(async () => {});
   const loadFriendsRef = useRef<() => Promise<void>>(async () => {});
   const loadAccountDataRef = useRef<() => Promise<void>>(async () => {});
-  const syncMessagesRef = useRef<
-    (meetupId: string, mode?: "full" | "incremental") => Promise<void>
-  >(async () => {});
+  const syncMessagesRef = useRef<(mode?: "full" | "incremental") => Promise<void>>(async () => {});
+  const openPrivateChatByIdRef = useRef<(chatId: string) => Promise<void>>(async () => {});
   const messagesRef = useRef<ChatMessage[]>([]);
   const snapGamesSheetToNearestRef = useRef<(targetValue: number, velocity?: number) => void>(
     () => {}
@@ -463,6 +549,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   const deferredEntityFilters = useDeferredValue(entityFilters);
   const deferredGameFilterIds = useDeferredValue(selectedGameFilterIds);
   const deferredFormatFilterIds = useDeferredValue(selectedFormatFilterIds);
+  const deferredFilterDetailTags = useDeferredValue(filterDetailTags);
   const deferredDistanceFilter = useDeferredValue(distanceFilter);
   const deferredPeriodFilters = useDeferredValue(periodFilters);
   const demoBundle = useMemo(
@@ -606,6 +693,84 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
 
     return formats.filter((format) => format.gameId === selectedComposerGameId);
   }, [formats, selectedComposerGameId]);
+
+  const composerFormat = useMemo(
+    () => formats.find((item) => item.id === selectedFormatId),
+    [formats, selectedFormatId]
+  );
+
+  const composerGameSlug = useMemo(
+    () => games.find((item) => item.id === selectedComposerGameId)?.slug,
+    [games, selectedComposerGameId]
+  );
+
+  const composerDetailKind = useMemo(
+    () => getFormatDetailKind(composerGameSlug, composerFormat?.slug, composerFormat?.name),
+    [composerFormat?.name, composerFormat?.slug, composerGameSlug]
+  );
+
+  const composerDetailSelected = useMemo(() => {
+    if (!composerDetailKind) {
+      return [];
+    }
+
+    const tags = composerFormatDetailTags;
+    if (composerDetailKind === "magic_commander") {
+      return tags.magic_brackets ?? [];
+    }
+    if (composerDetailKind === "magic_match") {
+      return tags.magic_match_types ?? [];
+    }
+    if (composerDetailKind === "yugioh") {
+      return tags.yugioh_power_levels ?? [];
+    }
+    if (composerDetailKind === "pokemon") {
+      return tags.pokemon_deck_tiers ?? [];
+    }
+
+    return [];
+  }, [composerDetailKind, composerFormatDetailTags]);
+
+  const handleToggleComposerFormatDetail = useCallback(
+    (value: string) => {
+      setComposerFormatDetailTags((prev) => {
+        const fmt = formats.find((f) => f.id === selectedFormatId);
+        const kind = getFormatDetailKind(
+          games.find((g) => g.id === selectedComposerGameId)?.slug,
+          fmt?.slug,
+          fmt?.name
+        );
+        if (!kind) {
+          return prev;
+        }
+
+        const next: FormatDetailTags = { ...prev };
+        if (kind === "magic_commander") {
+          next.magic_brackets = toggleMultiValue(prev.magic_brackets ?? [], value);
+        } else if (kind === "magic_match") {
+          next.magic_match_types = toggleMultiValue(prev.magic_match_types ?? [], value);
+        } else if (kind === "yugioh") {
+          next.yugioh_power_levels = toggleMultiValue(prev.yugioh_power_levels ?? [], value);
+        } else {
+          next.pokemon_deck_tiers = toggleMultiValue(prev.pokemon_deck_tiers ?? [], value);
+        }
+
+        return next;
+      });
+    },
+    [formats, games, selectedComposerGameId, selectedFormatId]
+  );
+
+  const composerDetailTagsSatisfied = useMemo(
+    () =>
+      detailTagsSatisfiedForFormat(
+        composerGameSlug,
+        composerFormat?.slug,
+        composerFormatDetailTags,
+        composerFormat?.name
+      ),
+    [composerFormat?.name, composerFormat?.slug, composerFormatDetailTags, composerGameSlug]
+  );
 
   const availableComposerVenues = useMemo(() => {
     if (hostMode === "specialty_store") {
@@ -825,6 +990,41 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     [formats, selectedGameFilterIds, venueGameOptions]
   );
 
+  useEffect(() => {
+    setFilterDetailTags((prev) =>
+      pruneFilterDetailTagsForSelectedFormats(prev, selectedFormatFilterIds, formats, games)
+    );
+  }, [formats, games, selectedFormatFilterIds]);
+
+  const mapFilterDetailSections = useMemo(() => {
+    const kinds = deriveFilterDetailKindsFromFormats(selectedFormatFilterIds, formats, games);
+    return kinds.map((kind) => ({
+      kind,
+      selected:
+        kind === "magic_commander"
+          ? filterDetailTags.magic_brackets ?? []
+          : kind === "magic_match"
+            ? filterDetailTags.magic_match_types ?? []
+            : kind === "yugioh"
+              ? filterDetailTags.yugioh_power_levels ?? []
+              : filterDetailTags.pokemon_deck_tiers ?? [],
+      onToggle: (value: string) => {
+        setFilterDetailTags((prev) => {
+          const key =
+            kind === "magic_commander"
+              ? "magic_brackets"
+              : kind === "magic_match"
+                ? "magic_match_types"
+                : kind === "yugioh"
+                  ? "yugioh_power_levels"
+                  : "pokemon_deck_tiers";
+          const cur = (prev[key] as string[] | undefined) ?? [];
+          return { ...prev, [key]: toggleMultiValue(cur, value) };
+        });
+      },
+    }));
+  }, [filterDetailTags, formats, games, selectedFormatFilterIds]);
+
   const filteredMeetups = useMemo(
     () =>
       deferredEntityFilters.includes("meetups")
@@ -837,6 +1037,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
             periods: deferredPeriodFilters,
             dateFrom: filterDateFrom,
             dateTo: filterDateTo,
+            detailTagFilter: deferredFilterDetailTags,
+            formatsCatalog: formats,
           })
             .filter((meetup) => {
               const effectiveStatus = resolveMeetupEffectiveStatus(meetup, nowTimestamp);
@@ -846,9 +1048,11 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     [
       deferredEntityFilters,
       deferredDistanceFilter,
+      deferredFilterDetailTags,
       deferredPeriodFilters,
       filterDateFrom,
       filterDateTo,
+      formats,
       profile.lat,
       profile.lng,
       selectedFormatFilterNames,
@@ -891,6 +1095,10 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   );
 
   const selectedChatMeetup = useMemo(() => {
+    if (selectedPrivateChatId) {
+      return null;
+    }
+
     const explicitSelection =
       selectedChatMeetupId === null
         ? null
@@ -907,7 +1115,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     }
 
     return effectiveChatMeetups[0] ?? null;
-  }, [effectiveChatMeetups, selectedChatMeetupId, selectedMeetup]);
+  }, [effectiveChatMeetups, selectedChatMeetupId, selectedMeetup, selectedPrivateChatId]);
 
   const effectiveSelectedChatMeetup = useMemo(
     () =>
@@ -921,11 +1129,14 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   );
 
   const selectedChatAllowsMessages =
-    effectiveSelectedChatMeetup !== null &&
-    effectiveSelectedChatMeetup.status !== "closed" &&
-    effectiveSelectedChatMeetup.status !== "cancelled";
+    selectedPrivateChatId && privateChatPeer
+      ? privateChatPeer.canSendMessages
+      : effectiveSelectedChatMeetup !== null &&
+        effectiveSelectedChatMeetup.status !== "closed" &&
+        effectiveSelectedChatMeetup.status !== "cancelled";
 
   const canRateSelectedChatMeetup =
+    !selectedPrivateChatId &&
     effectiveSelectedChatMeetup !== null &&
     new Date(effectiveSelectedChatMeetup.startsAt).getTime() <= Date.now() - 15 * 60 * 1000;
   const selectedChatIsDemo = isDemoId(effectiveSelectedChatMeetup?.id);
@@ -1050,9 +1261,25 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
             (item) =>
               item.kind === "message_received" &&
               item.readAt === null &&
-              typeof item.meetupId === "string"
+              typeof item.meetupId === "string" &&
+              item.meetupId.length > 0
           )
           .map((item) => item.meetupId as string)
+      ),
+    [effectiveNotifications]
+  );
+  const unreadPrivateChatIds = useMemo(
+    () =>
+      new Set(
+        effectiveNotifications
+          .filter(
+            (item) =>
+              item.kind === "message_received" &&
+              item.readAt === null &&
+              typeof item.privateChatId === "string" &&
+              item.privateChatId.length > 0
+          )
+          .map((item) => item.privateChatId as string)
       ),
     [effectiveNotifications]
   );
@@ -1063,7 +1290,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       ).length,
     [effectiveNotifications]
   );
-  const hasUnreadMenuIndicator = unreadChatCount > 0 || unreadAlertCount > 0;
+  const hasUnreadMenuIndicator =
+    unreadChatCount > 0 || unreadAlertCount > 0 || unreadAppNewsCount > 0;
 
   const onlineFriends = useMemo(
     () => effectiveFriends.filter((friend) => friend.state === "friend" && friend.isOnline),
@@ -1572,6 +1800,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       manageAddressSuggestions={manageAddressSuggestions}
       manageAddressLoading={manageAddressLoading}
       onFocusMeetupOnMap={() => focusMeetupOnMap(meetup.id)}
+      onShareMeetup={() => setMapShareOverlayTarget({ kind: "meetup", meetup })}
       onOpenPlayerProfile={() => openPlayerProfile(meetup.creatorUserId)}
       onJoinMeetup={() => void handleJoinMeetup(meetup.id)}
       onLeaveMeetup={() => void handleLeaveMeetup(meetup.id)}
@@ -1763,6 +1992,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       venueKindOptions={venueKindOptions}
       venueGameOptions={venueGameOptions}
       onFocusVenueOnMap={() => focusVenueOnMap(venue.id)}
+      onShareVenue={() => setMapShareOverlayTarget({ kind: "venue", venue })}
       onCreateMeetupAtVenue={() => {
         setSelectedVenueId(venue.id);
         openComposerSheet();
@@ -2418,6 +2648,14 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   }, [availableComposerVenues, selectedVenueId]);
 
   useEffect(() => {
+    const gameSlug = games.find((g) => g.id === selectedComposerGameId)?.slug;
+    const fmt = formats.find((f) => f.id === selectedFormatId);
+    setComposerFormatDetailTags((prev) =>
+      pruneFormatDetailTagsForFormat(gameSlug, fmt?.slug, prev, fmt?.name)
+    );
+  }, [formats, games, selectedComposerGameId, selectedFormatId]);
+
+  useEffect(() => {
     if (!composerOpen || !selectedVenueId) {
       return;
     }
@@ -2454,7 +2692,18 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       }
 
       try {
-        const feed = await getDashboardFeedInBounds(bounds);
+        const rpcDetailFilter = buildDetailTagFilterForBoundsRpc(
+          deferredFilterDetailTags,
+          games,
+          formats,
+          deferredGameFilterIds,
+          deferredFormatFilterIds
+        );
+
+        const feed = await getDashboardFeedInBounds({
+          ...bounds,
+          detailTagFilter: rpcDetailFilter,
+        });
         lastViewportFeedBoundsRef.current = bounds;
         setMapFeedMeetups(feed.meetups);
         setMapFeedVenues(feed.venues);
@@ -2476,7 +2725,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
         return null;
       }
     },
-    []
+    [deferredFilterDetailTags, deferredFormatFilterIds, deferredGameFilterIds, formats, games]
   );
 
   async function syncMapEntities(closeExpired = false) {
@@ -2509,10 +2758,11 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       }
 
       setError(null);
-      const [data, nextNotifications, nextFriends] = await Promise.all([
+      const [data, nextNotifications, nextFriends, nextUnreadNews] = await Promise.all([
         getDashboardData({ closeExpired: true }),
         getMyNotifications(),
         getFriendOverview(),
+        countUnreadAppNews().catch(() => 0),
       ]);
       setGames(data.games);
       setFormats(data.formats);
@@ -2523,6 +2773,9 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       lastViewportFeedBoundsRef.current = null;
       setNotifications(nextNotifications);
       setFriends(nextFriends);
+      setUnreadAppNewsCount(
+        typeof nextUnreadNews === "number" && !Number.isNaN(nextUnreadNews) ? nextUnreadNews : 0
+      );
       setLastDashboardSyncAt(new Date());
       setLastNotificationSyncAt(new Date());
       setLastFriendSyncAt(new Date());
@@ -2536,7 +2789,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     }
   }
 
-  async function syncMessages(meetupId: string, mode: "full" | "incremental" = "full") {
+  async function syncMeetupMessages(meetupId: string, mode: "full" | "incremental" = "full") {
     try {
       if (mode === "full") {
         setLoadingMessages(true);
@@ -2569,6 +2822,41 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       }
     }
   }
+
+  async function syncPrivateMessages(chatId: string, mode: "full" | "incremental" = "full") {
+    try {
+      if (mode === "full") {
+        setLoadingMessages(true);
+      }
+
+      setMessageError(null);
+      const latestSentAt =
+        mode === "incremental"
+          ? messagesRef.current[messagesRef.current.length - 1]?.sentAt ?? null
+          : null;
+      const result =
+        mode === "incremental" && latestSentAt
+          ? await getPrivateMessagesAfter(chatId, latestSentAt)
+          : await getPrivateMessages(chatId);
+
+      if (mode === "incremental" && latestSentAt) {
+        if (result.length) {
+          setMessages((current) => mergeChatMessages(current, result));
+        }
+      } else {
+        setMessages(result);
+      }
+
+      setLastMessageSyncAt(new Date());
+    } catch (fetchError) {
+      setMessageError(toMessage(fetchError));
+    } finally {
+      if (mode === "full") {
+        setLoadingMessages(false);
+      }
+    }
+  }
+
 
   async function syncMeetupPresence(meetupId: string) {
     try {
@@ -2605,6 +2893,45 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       setLoadingBlockedUsers(false);
     }
   }
+
+  const refreshAppNewsUnreadCount = useCallback(async () => {
+    try {
+      const n = await countUnreadAppNews();
+      setUnreadAppNewsCount(n);
+    } catch {
+      setUnreadAppNewsCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (loading || activeScreen !== "map") {
+      return;
+    }
+    if (!consumePendingAppNewsMapOverlayAfterSignIn()) {
+      return;
+    }
+    void (async () => {
+      try {
+        const item = await getAppNewsColdStartCandidate();
+        if (item) {
+          setColdStartAppNews(item);
+        }
+      } catch {
+        // RPC pode não existir no backend ainda
+      }
+    })();
+  }, [loading, activeScreen]);
+
+  const handleDismissColdStartAppNews = useCallback(() => {
+    const id = coldStartAppNews?.id;
+    setColdStartAppNews(null);
+    if (!id) {
+      return;
+    }
+    void dismissAppNewsColdStart(id)
+      .then(() => refreshAppNewsUnreadCount())
+      .catch(() => {});
+  }, [coldStartAppNews, refreshAppNewsUnreadCount]);
 
   useEffect(() => {
     if (activeScreen !== "map" || !mapViewportRegion || !viewportFeedSupportedRef.current) {
@@ -2662,14 +2989,14 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     }, delay);
   }, []);
 
-  const scheduleMessagesSync = useCallback((meetupId: string, delay = 140) => {
+  const scheduleMessagesSync = useCallback((delay = 140) => {
     if (messagesRefreshTimerRef.current) {
       clearTimeout(messagesRefreshTimerRef.current);
     }
 
     messagesRefreshTimerRef.current = setTimeout(() => {
       messagesRefreshTimerRef.current = null;
-      void syncMessagesRef.current(meetupId, "incremental");
+      void syncMessagesRef.current("incremental");
     }, delay);
   }, []);
 
@@ -2683,6 +3010,26 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       void syncMeetupPresence(meetupId);
     }, delay);
   }, []);
+
+  const refreshPrivateChatsList = useCallback(async () => {
+    try {
+      setLoadingPrivateChats(true);
+      const rows = await listPrivateChats();
+      setPrivateChatsList(rows);
+    } catch {
+      // RPC pode não existir em ambientes antigos; lista fica vazia.
+    } finally {
+      setLoadingPrivateChats(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeScreen !== "chats" || chatViewMode !== "list") {
+      return;
+    }
+
+    void refreshPrivateChatsList();
+  }, [activeScreen, chatViewMode, refreshPrivateChatsList]);
 
   loadDashboardRef.current = syncDashboard;
   loadMapEntitiesRef.current = async () => {
@@ -2712,7 +3059,15 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       setFriendError(toMessage(fetchError));
     }
   };
-  syncMessagesRef.current = syncMessages;
+  syncMessagesRef.current = async (mode: "full" | "incremental" = "full") => {
+    if (selectedPrivateChatId) {
+      await syncPrivateMessages(selectedPrivateChatId, mode);
+      return;
+    }
+    if (selectedChatMeetupId) {
+      await syncMeetupMessages(selectedChatMeetupId, mode);
+    }
+  };
   loadAccountDataRef.current = syncAccountData;
 
   useEffect(() => {
@@ -2797,6 +3152,45 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   ]);
 
   useEffect(() => {
+    if (!selectedPrivateChatId) {
+      return;
+    }
+
+    let channel: RealtimeChannel | null = null;
+    setMeetupPresence([]);
+
+    void syncMessagesRef.current("full");
+
+    channel = supabase
+      .channel(`private-chat:${selectedPrivateChatId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "private_messages",
+          filter: `chat_id=eq.${selectedPrivateChatId}`,
+        },
+        () => {
+          scheduleMessagesSync();
+          scheduleNotificationsRefresh();
+        }
+      )
+      .subscribe(() => {});
+
+    return () => {
+      setMessages([]);
+      if (channel) {
+        void supabase.removeChannel(channel);
+      }
+    };
+  }, [scheduleMessagesSync, scheduleNotificationsRefresh, selectedPrivateChatId]);
+
+  useEffect(() => {
+    if (selectedPrivateChatId) {
+      return;
+    }
+
     const activeMeetup = selectedChatMeetup;
 
     if (!activeMeetup?.isMember && !activeMeetup?.isCreator) {
@@ -2815,7 +3209,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     const activeMeetupId = activeMeetup.id;
     let channel: RealtimeChannel | null = null;
 
-    void syncMessagesRef.current(activeMeetupId, "full");
+    void syncMessagesRef.current("full");
     void syncMeetupPresence(activeMeetupId);
 
     channel = supabase
@@ -2829,7 +3223,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
           filter: `meetup_id=eq.${activeMeetupId}`,
         },
         () => {
-          scheduleMessagesSync(activeMeetupId);
+          scheduleMessagesSync();
           scheduleNotificationsRefresh();
         }
       )
@@ -2863,14 +3257,31 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     scheduleMessagesSync,
     scheduleNotificationsRefresh,
     selectedChatMeetup,
+    selectedPrivateChatId,
   ]);
 
   useEffect(() => {
-    if (
-      activeScreen !== "chats" ||
-      chatViewMode !== "room" ||
-      !selectedChatMeetupId
-    ) {
+    if (activeScreen !== "chats" || chatViewMode !== "room") {
+      return;
+    }
+
+    if (selectedPrivateChatId) {
+      const unreadIds = effectiveNotifications
+        .filter(
+          (item) =>
+            item.kind === "message_received" &&
+            item.privateChatId === selectedPrivateChatId &&
+            item.readAt === null
+        )
+        .map((item) => item.id);
+
+      if (unreadIds.length) {
+        void handleMarkNotificationsReadRef.current(unreadIds);
+      }
+      return;
+    }
+
+    if (!selectedChatMeetupId) {
       return;
     }
 
@@ -2888,7 +3299,13 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     }
 
     void handleMarkNotificationsReadRef.current(unreadChatNotificationIds);
-  }, [activeScreen, chatViewMode, effectiveNotifications, selectedChatMeetupId]);
+  }, [
+    activeScreen,
+    chatViewMode,
+    effectiveNotifications,
+    selectedChatMeetupId,
+    selectedPrivateChatId,
+  ]);
 
   async function handleCreateMeetup() {
     try {
@@ -2938,6 +3355,15 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
         throw new Error(`O título pode ter no máximo ${MEETUP_TITLE_MAX_LENGTH} caracteres.`);
       }
 
+      const selectedFormatForCreate = formats.find((item) => item.id === selectedFormatId);
+      const selectedGameForCreate = games.find((item) => item.id === selectedComposerGameId);
+      const prunedComposerDetailTags = pruneFormatDetailTagsForFormat(
+        selectedGameForCreate?.slug,
+        selectedFormatForCreate?.slug,
+        composerFormatDetailTags,
+        selectedFormatForCreate?.name
+      );
+
       const createdMeetupId = await createMeetup({
         title: trimmedMeetupTitle,
         description: meetupDescription,
@@ -2949,9 +3375,10 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
         lng: venue ? null : chosenCoordinate?.longitude ?? null,
         venueId: venue?.id ?? null,
         addressLabel: venue ? venue.address ?? venue.name : composerSelectedAddress?.fullLabel ?? null,
+        formatDetailTags: prunedComposerDetailTags,
       });
 
-      const selectedFormat = formats.find((item) => item.id === selectedFormatId);
+      const selectedFormat = selectedFormatForCreate;
       const selectedFormatName = selectedFormat?.name ?? "Casual";
       const optimisticMeetup: MeetupPost = {
         id: createdMeetupId,
@@ -2959,6 +3386,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
         description: meetupDescription.trim(),
         formatName: selectedFormatName,
         gameSlug: selectedFormat?.gameSlug ?? "",
+        formatDetailTags: prunedComposerDetailTags,
         startsAt,
         hostMode: resolvedHostMode,
         status: "open",
@@ -2999,6 +3427,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       setMeetupDescription("");
       setSelectedComposerGameId(null);
       setSelectedFormatId(null);
+      setComposerFormatDetailTags({});
       setHostMode("public_place");
       setSelectedVenueId(null);
       setComposerAddressQuery("");
@@ -3239,6 +3668,29 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   }
 
   async function handleSendMessage() {
+    if (selectedPrivateChatId && privateChatPeer) {
+      try {
+        setSendingMessage(true);
+        setMessageError(null);
+
+        await sendPrivateMessage(selectedPrivateChatId, messageBody, replyingToMessageId);
+        setMessageBody("");
+        setReplyingToMessageId(null);
+        await syncMessagesRef.current("incremental");
+        try {
+          const rows = await listPrivateChats();
+          setPrivateChatsList(rows);
+        } catch {
+          // best-effort refresh da lista de conversas
+        }
+      } catch (sendError) {
+        setMessageError(toMessage(sendError));
+      } finally {
+        setSendingMessage(false);
+      }
+      return;
+    }
+
     if (!selectedChatMeetup) {
       return;
     }
@@ -3287,7 +3739,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       await sendMeetupMessage(selectedChatMeetup.id, messageBody, replyingToMessageId);
       setMessageBody("");
       setReplyingToMessageId(null);
-      await syncMessagesRef.current(selectedChatMeetup.id, "incremental");
+      await syncMessagesRef.current("incremental");
     } catch (sendError) {
       setMessageError(toMessage(sendError));
     } finally {
@@ -3406,6 +3858,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       setEntityActionSuccess(attended ? "Avaliação registrada." : "No-show registrado.");
     } catch (ratingError) {
       setMessageError(toMessage(ratingError));
+      throw ratingError;
     } finally {
       setRatingActionId(null);
     }
@@ -3576,6 +4029,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     setEntityFilters(["meetups", "venues"]);
     setSelectedGameFilterIds([]);
     setSelectedFormatFilterIds([]);
+    setFilterDetailTags({});
     setDistanceFilter("all");
     setPeriodFilters([]);
     setFilterDateFrom(null);
@@ -3885,6 +4339,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     setMarkingNotificationsRead,
     setNotificationError,
     openChat,
+    openPrivateChatById: (chatId: string) => void openPrivateChatByIdRef.current(chatId),
     focusVenueOnMap,
     focusMeetupOnMap,
     resetFilters,
@@ -4114,6 +4569,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   function closeComposer(animated = true) {
     Keyboard.dismiss();
     setComposerError(null);
+    setComposerFormatDetailTags({});
     setCalendarOpen(false);
     setTimePickerOpen(false);
     setComposerAddressFocused(false);
@@ -4270,6 +4726,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
   function openChat(meetupId?: string) {
     Keyboard.dismiss();
     closeComposer(false);
+    setSelectedPrivateChatId(null);
+    setPrivateChatPeer(null);
     const targetMeetup =
       meetupId === undefined
         ? selectedChatMeetup
@@ -4346,8 +4804,182 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     }
   }
 
+  function openPrivateChatRoom(thread: PrivateChatSummary) {
+    Keyboard.dismiss();
+    closeComposer(false);
+    setSelectedChatMeetupId(null);
+    setSelectedPrivateChatId(thread.chatId);
+    setPrivateChatPeer({
+      userId: thread.otherUserId,
+      displayName: thread.otherDisplayName,
+      handle: thread.otherHandle,
+      avatarUrl: thread.otherAvatarUrl,
+      isPro: thread.otherIsPro,
+      proExpiresAt: thread.otherProExpiresAt ?? null,
+      canSendMessages: thread.canSendMessages,
+    });
+
+    const openChatFromChatList = activeScreen === "chats" && chatViewMode === "list";
+
+    chatReturnSnapshotRef.current = {
+      activeScreen,
+      pageScreen,
+      chatViewMode,
+    };
+
+    if (openChatFromChatList) {
+      chatRoomTranslateX.setValue(width);
+    } else {
+      chatRoomTranslateX.setValue(0);
+    }
+
+    setDrawerOpen(false);
+    setChatViewMode("room");
+
+    const unreadPrivateIds = effectiveNotifications
+      .filter(
+        (item) =>
+          item.kind === "message_received" &&
+          item.privateChatId === thread.chatId &&
+          item.readAt === null
+      )
+      .map((item) => item.id);
+
+    if (unreadPrivateIds.length) {
+      void handleMarkNotificationsRead(unreadPrivateIds);
+    }
+
+    setPageScreen("chats");
+
+    if (activeScreen === "map") {
+      pageTranslateY.setValue(18);
+      currentPageTranslateYRef.current = 18;
+      setActiveScreen("chats");
+      animatePageIn();
+      return;
+    }
+
+    pageTranslateY.setValue(0);
+    currentPageTranslateYRef.current = 0;
+    setActiveScreen("chats");
+
+    if (openChatFromChatList) {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          Animated.spring(chatRoomTranslateX, {
+            toValue: 0,
+            damping: 28,
+            stiffness: 300,
+            mass: 0.88,
+            overshootClamping: true,
+            useNativeDriver: true,
+          }).start();
+        });
+      });
+    }
+  }
+
+  function openChatThenMaybeSendShare(meetupId: string) {
+    const pending = pendingMapShareTargetRef.current;
+    openChat(meetupId);
+
+    if (!pending) {
+      return;
+    }
+
+    pendingMapShareTargetRef.current = null;
+
+    InteractionManager.runAfterInteractions(() => {
+      void (async () => {
+        try {
+          const body =
+            pending.kind === "meetup"
+              ? buildMeetupShareMessageBody(pending.meetup)
+              : buildVenueShareMessageBody(pending.venue);
+          await sendMeetupMessage(meetupId, body);
+        } catch (shareError) {
+          setMessageError(toMessage(shareError));
+        }
+      })();
+    });
+  }
+
+  function openPrivateChatRoomThenMaybeSendShare(thread: PrivateChatSummary) {
+    const pending = pendingMapShareTargetRef.current;
+    openPrivateChatRoom(thread);
+
+    if (!pending) {
+      return;
+    }
+
+    pendingMapShareTargetRef.current = null;
+
+    InteractionManager.runAfterInteractions(() => {
+      void (async () => {
+        try {
+          const body =
+            pending.kind === "meetup"
+              ? buildMeetupShareMessageBody(pending.meetup)
+              : buildVenueShareMessageBody(pending.venue);
+          await sendPrivateMessage(thread.chatId, body);
+        } catch (shareError) {
+          setMessageError(toMessage(shareError));
+        }
+      })();
+    });
+  }
+
+  async function handleOpenPrivateChatFromViewedProfile() {
+    if (!viewedPlayerProfile || viewedPlayerProfile.userId === profile.userId) {
+      return;
+    }
+
+    try {
+      const { chatId, canSendMessages } = await getOrCreatePrivateChat(viewedPlayerProfile.userId);
+      openPrivateChatRoom({
+        chatId,
+        otherUserId: viewedPlayerProfile.userId,
+        otherDisplayName: viewedPlayerProfile.displayName,
+        otherHandle: viewedPlayerProfile.handle,
+        otherAvatarPath: viewedPlayerProfile.avatarPath,
+        otherAvatarUrl: viewedPlayerProfile.avatarUrl,
+        otherIsPro: viewedPlayerProfile.isPro,
+        otherProExpiresAt: viewedPlayerProfile.proExpiresAt ?? null,
+        lastMessageBody: null,
+        lastMessageAt: null,
+        canSendMessages,
+      });
+      try {
+        const rows = await listPrivateChats();
+        setPrivateChatsList(rows);
+      } catch {
+        // best-effort
+      }
+    } catch (fetchError) {
+      setError(toMessage(fetchError));
+    }
+  }
+
+  async function openPrivateChatById(chatId: string) {
+    let row = privateChatsList.find((item) => item.chatId === chatId) ?? null;
+    if (!row) {
+      try {
+        const rows = await listPrivateChats();
+        setPrivateChatsList(rows);
+        row = rows.find((item) => item.chatId === chatId) ?? null;
+      } catch {
+        return;
+      }
+    }
+    if (row) {
+      openPrivateChatRoom(row);
+    }
+  }
+
   function closeChatScreen() {
     Keyboard.dismiss();
+    setSelectedPrivateChatId(null);
+    setPrivateChatPeer(null);
 
     const snap = chatReturnSnapshotRef.current;
     chatReturnSnapshotRef.current = null;
@@ -4391,6 +5023,14 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     setActiveScreen(snap.activeScreen);
     pageTranslateY.setValue(0);
     currentPageTranslateYRef.current = 0;
+  }
+
+  function handleOpenMapFromPrivateChat() {
+    Keyboard.dismiss();
+    setSelectedPrivateChatId(null);
+    setPrivateChatPeer(null);
+    setChatViewMode("list");
+    closeCurrentPageToMap();
   }
 
   function promptRemoveMeetupMember(member: MeetupMemberPresence, meetup: MeetupPost) {
@@ -4447,6 +5087,34 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     runFromDrawer(() => {
       openPageScreenFromMap(screen);
     });
+  }
+
+  function openProPaywall(source: string) {
+    analyticsCapture("paywall_opened", { source });
+    setProPaywallVisible(true);
+  }
+
+  async function handleStartProTrial() {
+    setProTrialStarting(true);
+    try {
+      await startProTrial();
+      analyticsCapture("trial_started", {});
+      setProPaywallVisible(false);
+      await onProfileRefresh?.();
+    } catch (trialError: unknown) {
+      const message =
+        trialError && typeof trialError === "object" && "message" in trialError
+          ? String((trialError as { message?: string }).message)
+          : String(trialError);
+
+      if (message.toLowerCase().includes("trial")) {
+        Alert.alert("Teste indisponível", "O teste grátis já foi usado nesta conta.");
+      } else {
+        Alert.alert("Não foi possível ativar", "Tente novamente em instantes.");
+      }
+    } finally {
+      setProTrialStarting(false);
+    }
   }
 
   function openAccount() {
@@ -4731,6 +5399,14 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     setExternalMeetupManageRequest(null);
   }, []);
 
+  const consumeExternalMeetupDetailRequest = useCallback(() => {
+    setExternalMeetupDetailRequest(null);
+  }, []);
+
+  const consumeExternalVenueDetailRequest = useCallback(() => {
+    setExternalVenueDetailRequest(null);
+  }, []);
+
   const openMeetupManageEditorFromChat = useCallback(() => {
     const meetup = effectiveSelectedChatMeetup;
     if (!meetup?.isCreator) {
@@ -4764,6 +5440,77 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
 
     apply();
   }, [activeScreen, effectiveSelectedChatMeetup]);
+
+  useLayoutEffect(() => {
+    openMeetupFromShareLinkRef.current = (meetupId: string) => {
+      const meetup = allMeetups.find((item) => item.id === meetupId) ?? null;
+
+      if (!meetup) {
+        setError("Não encontramos essa partida.");
+        return;
+      }
+
+      Keyboard.dismiss();
+      closeComposer(false);
+      setDrawerOpen(false);
+      setExpandedMeetupInfoId(meetupId);
+      handleSelectMeetupFromMap(meetupId);
+      const groupId = slugifyGameLabel(inferGameNameFromMeetup(meetup));
+      setExternalMeetupDetailRequest({ groupId, meetupId });
+    };
+
+    openVenueFromShareLinkRef.current = (venueId: string) => {
+      const venue = allVenues.find((item) => item.id === venueId) ?? null;
+
+      if (!venue) {
+        setError("Não encontramos esse local.");
+        return;
+      }
+
+      Keyboard.dismiss();
+      closeComposer(false);
+      setDrawerOpen(false);
+      handleSelectVenueFromMap(venueId);
+      setExternalVenueDetailRequest({ venueId });
+    };
+  });
+
+  useEffect(() => {
+    const handleUrl = (url: string | null) => {
+      if (!url) {
+        return;
+      }
+
+      const meetupId = parseMeetupIdFromIncomingUrl(url);
+      if (meetupId) {
+        openMeetupFromShareLinkRef.current(meetupId);
+        return;
+      }
+
+      const venueId = parseVenueIdFromIncomingUrl(url);
+      if (venueId) {
+        openVenueFromShareLinkRef.current(venueId);
+      }
+    };
+
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      handleUrl(url);
+    });
+
+    void Linking.getInitialURL().then((url) => {
+      handleUrl(url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (pageScreen !== "chats") {
+      pendingMapShareTargetRef.current = null;
+    }
+  }, [pageScreen]);
 
   if (loading) {
     return (
@@ -4822,6 +5569,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       onOpenAccount: openAccount,
       onOpenFriends: openFriends,
       onOpenComposer: openComposerSheet,
+      profileIsPro: isUserPro(profile),
     },
     gamesSheet: {
       onDismissPinCallout: dismissPinCallout,
@@ -4898,8 +5646,13 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       renderMeetupParticipants: renderMeetupSheetParticipants,
       externalMeetupManageRequest,
       onConsumedExternalMeetupManageRequest: consumeExternalMeetupManageRequest,
+      externalMeetupDetailRequest,
+      onConsumedExternalMeetupDetailRequest: consumeExternalMeetupDetailRequest,
       resolveMeetupById: (meetupId: string) =>
         allMeetups.find((item) => item.id === meetupId) ?? null,
+      externalVenueDetailRequest,
+      onConsumedExternalVenueDetailRequest: consumeExternalVenueDetailRequest,
+      resolveVenueById: (venueId: string) => allVenues.find((item) => item.id === venueId) ?? null,
       renderVenueListItem: renderVenueSheetListItem,
       renderVenueDetail: renderVenueSheetDetail,
       renderVenueManage: renderVenueSheetManage,
@@ -4916,10 +5669,13 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     chatViewMode,
     profileName: profile.displayName,
     profileAvatarUrl: profile.avatarUrl,
+    profileIsPro: isUserPro(profile),
     showUnreadMenuIndicator: hasUnreadMenuIndicator,
     dismissPanHandlers: pageDismissPanResponder.panHandlers,
     chatScreenProps: {
       currentUserId: profile.userId,
+      threadKind: (selectedPrivateChatId ? "private" : "meetup") as "meetup" | "private",
+      privatePeer: privateChatPeer,
       meetup: effectiveSelectedChatMeetup,
       meetupPresence: effectiveMeetupPresence,
       messages: effectiveMessages,
@@ -4974,13 +5730,20 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
             )
           : undefined,
       onRateMember: (reviewedUserId: string, attended: boolean, rating?: number) =>
-        void handleRateMember(
+        handleRateMember(
           reviewedUserId,
           attended,
           attended ? (rating ?? 5) : undefined
         ),
       onPickChatImage: () => void handlePickChatImage(),
       pickingChatImage: uploadingChatImage,
+      onOpenMapDirect: selectedPrivateChatId ? handleOpenMapFromPrivateChat : undefined,
+      onOpenSharedMeetupDeepLink: (meetupId: string) => {
+        openMeetupFromShareLinkRef.current(meetupId);
+      },
+      onOpenSharedVenueDeepLink: (venueId: string) => {
+        openVenueFromShareLinkRef.current(venueId);
+      },
     },
     pageContentProps: {
       pageScreen,
@@ -4989,6 +5752,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       profile,
       reputationSummary,
       chatSections: chatListSections,
+      privateChats: privateChatsList,
+      loadingPrivateChats,
       chatsRouteStackKeys,
       onChatsRouteStackChange: setChatsRouteStackKeys,
       lastDashboardSyncAt,
@@ -4996,6 +5761,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       lastFriendSyncAt,
       markingNotificationsRead,
       unreadChatMeetupIds,
+      unreadPrivateChatIds,
       notifications: effectiveNotifications,
       notificationError,
       venues: sortedFilteredVenues,
@@ -5117,10 +5883,14 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
                 .map((item) => item.id)
             : undefined
         ),
-      onOpenChat: (meetupId: string) => openChat(meetupId),
+      onOpenChat: openChatThenMaybeSendShare,
+      onOpenPrivateChat: openPrivateChatRoomThenMaybeSendShare,
+      onOpenPrivateChatFromViewedProfile: handleOpenPrivateChatFromViewedProfile,
       onOpenNotification: (notification: InAppNotification) => {
         void handleOpenNotification(notification);
       },
+      onOpenProPaywall: openProPaywall,
+      onAppNewsInboxOpened: refreshAppNewsUnreadCount,
       onClose: closeCurrentPageToMap,
     },
     onOpenMenu: openDrawer,
@@ -5138,12 +5908,16 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     panel: drawerPanel,
     mapActive: activeScreen === "map" && !gamesSheetExpanded,
     gamesActive: activeScreen === "map" && gamesSheetExpanded && gamesSheetSection === "meetups",
+    novidadesActive: activeScreen === "novidades",
     alertsActive: activeScreen === "alerts",
     chatsActive: activeScreen === "chats",
     placesActive: activeScreen === "map" && gamesSheetExpanded && gamesSheetSection === "venues",
     historyActive: activeScreen === "history",
+    nearbyPlayersActive: activeScreen === "nearby_players",
+    feedbackActive: activeScreen === "feedback",
     unreadChatCount,
     unreadAlertCount,
+    unreadNovidadesCount: unreadAppNewsCount,
     onlineFriends,
     appVersion: appInfo.version,
     chatGroups: memberMeetupsByGame,
@@ -5157,10 +5931,13 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     },
     onOpenMap: openMap,
     onOpenGames: openGames,
+    onOpenNovidades: () => openScreen("novidades"),
     onOpenChats: openChatsPage,
     onOpenAlerts: () => openScreen("alerts"),
     onOpenPlaces: () => openScreen("places"),
     onOpenHistory: () => openScreen("history"),
+    onOpenNearbyPlayers: () => openScreen("nearby_players"),
+    onOpenFeedback: () => openScreen("feedback"),
     onOpenPlayerProfile: openPlayerProfile,
     onBackToRoot: openDrawerRootPanel,
     onToggleChatGroup: (groupId: string) =>
@@ -5168,7 +5945,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
         ...current,
         [groupId]: !(current[groupId] ?? true),
       })),
-    onOpenChat: openChat,
+    onOpenChat: openChatThenMaybeSendShare,
   };
 
   const modalLayerProps = {
@@ -5214,6 +5991,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
             ? current.filter((item) => item !== formatId)
             : [...current, formatId]
         ),
+      filterDetailSections: mapFilterDetailSections,
       distanceOptions,
       distanceFilter,
       onSelectDistanceFilter: setDistanceFilter,
@@ -5318,6 +6096,9 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       formatOptions: composerFormatOptions,
       selectedFormatId,
       onSelectFormat: setSelectedFormatId,
+      formatDetailKind: composerDetailKind,
+      formatDetailSelected: composerDetailSelected,
+      onToggleFormatDetail: handleToggleComposerFormatDetail,
       hostModeOptions,
       hostMode,
       onSelectHostMode: (value: string) => {
@@ -5370,6 +6151,7 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
       publishDisabled:
         !selectedComposerGameId ||
         !selectedFormatId ||
+        !composerDetailTagsSatisfied ||
         meetupTitle.trim().length < MEETUP_TITLE_MIN_LENGTH ||
         meetupTitle.trim().length > MEETUP_TITLE_MAX_LENGTH,
       onPublish: () => void handleCreateMeetup(),
@@ -5446,6 +6228,8 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
     },
   };
 
+  openPrivateChatByIdRef.current = openPrivateChatById;
+
   return (
     <>
       <StatusBar style="light" />
@@ -5454,6 +6238,77 @@ export function MapHomeScreen({ profile, onProfileEdit }: MapHomeScreenProps) {
         pageLayerProps={pageLayerProps}
         drawerProps={drawerProps}
         modalLayerProps={modalLayerProps}
+      />
+      <ProPlayerPaywallModal
+        visible={proPaywallVisible}
+        onClose={() => {
+          setProPaywallVisible(false);
+        }}
+        onStartTrial={() => {
+          void handleStartProTrial();
+        }}
+        startingTrial={proTrialStarting}
+      />
+      <MeetupShareOverlay
+        visible={mapShareOverlayTarget !== null}
+        headline={
+          mapShareOverlayTarget?.kind === "meetup"
+            ? mapShareOverlayTarget.meetup.title
+            : mapShareOverlayTarget?.kind === "venue"
+              ? mapShareOverlayTarget.venue.name
+              : ""
+        }
+        onClose={() => setMapShareOverlayTarget(null)}
+        onShareInChat={() => {
+          if (!mapShareOverlayTarget) {
+            return;
+          }
+
+          const next = mapShareOverlayTarget;
+          setMapShareOverlayTarget(null);
+          pendingMapShareTargetRef.current = next;
+          openChatsPage();
+        }}
+        onShareExternal={() => {
+          if (!mapShareOverlayTarget) {
+            return;
+          }
+
+          const next = mapShareOverlayTarget;
+          setMapShareOverlayTarget(null);
+
+          const { message } =
+            next.kind === "meetup"
+              ? buildExternalShareContent(next.meetup.id)
+              : buildExternalVenueShareContent(next.venue.id);
+
+          const runShare = () => {
+            void Share.share(
+              Platform.OS === "ios"
+                ? {
+                    title: "Good Game",
+                    message,
+                  }
+                : {
+                    title: "Good Game",
+                    message: `${message}`,
+                  }
+            ).catch((shareError: unknown) => {
+              if (__DEV__) {
+                console.warn("[share]", shareError);
+              }
+            });
+          };
+
+          InteractionManager.runAfterInteractions(() => {
+            setTimeout(runShare, Platform.OS === "ios" ? 350 : 0);
+          });
+        }}
+      />
+      <AppNewsDetailOverlay
+        visible={coldStartAppNews !== null}
+        item={coldStartAppNews}
+        onClose={handleDismissColdStartAppNews}
       />
     </>
   );

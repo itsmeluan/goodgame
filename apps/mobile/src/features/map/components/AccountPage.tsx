@@ -5,12 +5,12 @@ import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/App
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { Avatar } from "@/components/Avatar";
 import { GlassCard } from "@/components/GlassCard";
-import { PrimaryButton } from "@/components/PrimaryButton";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
+import { AccountOwnPublicProfileScene } from "@/features/map/components/AccountOwnPublicProfileScene";
 import { BlockedUsersPage } from "@/features/map/components/BlockedUsersPage";
-import { MapClosePageButton } from "@/features/map/components/MapClosePageButton";
-import { ProfileSummaryCard } from "@/features/profile/ProfileSummaryCard";
+import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { formatAverageRating, formatSyncLabel } from "@/lib/formatting";
+import { isUserPro } from "@/lib/proPlayer";
 import { palette, spacing } from "@/theme/tokens";
 import type { BlockedUserProfile, PlayerProfile, ReputationSummary } from "@/types/domain";
 
@@ -70,16 +70,13 @@ export function AccountPage({
     {
       key: "root",
       content: (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingBottom: bottomInset + spacing.xxl,
-            },
-          ]}
-        >
-          <GlassCard style={styles.accountHeroCard}>
+        <View style={styles.rootWithFooter}>
+          <ScrollView
+            style={styles.rootScroll}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.content, styles.rootScrollContent]}
+          >
+            <GlassCard style={styles.accountHeroCard}>
             <View style={styles.accountHero}>
               <Pressable
                 accessibilityRole="button"
@@ -96,7 +93,12 @@ export function AccountPage({
                   intensity="clear"
                   style={styles.accountAvatarButtonSurface}
                 />
-                <Avatar name={profile.displayName} uri={profile.avatarUrl} size={54} />
+                <Avatar
+                  name={profile.displayName}
+                  uri={profile.avatarUrl}
+                  size={54}
+                  isPro={isUserPro(profile)}
+                />
               </Pressable>
               <View style={styles.accountHeroCopy}>
                 <Text style={styles.accountName}>{profile.displayName}</Text>
@@ -163,9 +165,9 @@ export function AccountPage({
               />
             </AppleListGroup>
           </AppleListSection>
-
-          <MapClosePageButton onPress={onClose} />
-        </ScrollView>
+          </ScrollView>
+          <MapPageCloseFooter bottomInset={bottomInset} onClose={onClose} />
+        </View>
       ),
     },
     ...routeKeys.map((routeKey) => {
@@ -173,18 +175,7 @@ export function AccountPage({
         return {
           key: routeKey,
           content: (
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
-              <View style={styles.sceneLead}>
-                <Text style={styles.sceneLeadTitle}>Perfil</Text>
-                <Text style={styles.sceneLeadSubtitle}>Sua visão pública no GG</Text>
-              </View>
-              <ProfileSummaryCard profile={profile} />
-              <View style={styles.rowActions}>
-                <View style={styles.rowActionCell}>
-                  <PrimaryButton label="Editar perfil e foto" onPress={onProfileEdit} />
-                </View>
-              </View>
-            </ScrollView>
+            <AccountOwnPublicProfileScene profile={profile} onEditProfile={onProfileEdit} />
           ),
         };
       }
@@ -270,6 +261,15 @@ export function AccountPage({
 }
 
 const styles = StyleSheet.create({
+  rootWithFooter: {
+    flex: 1,
+  },
+  rootScroll: {
+    flex: 1,
+  },
+  rootScrollContent: {
+    paddingBottom: spacing.lg,
+  },
   content: {
     paddingTop: spacing.sm,
     gap: 12,
@@ -337,12 +337,5 @@ const styles = StyleSheet.create({
     color: palette.pine,
     fontSize: 12,
     lineHeight: 17,
-  },
-  rowActions: {
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-  rowActionCell: {
-    flex: 1,
   },
 });

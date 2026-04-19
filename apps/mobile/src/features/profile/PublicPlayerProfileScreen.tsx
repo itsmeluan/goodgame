@@ -5,6 +5,7 @@ import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/App
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { Avatar } from "@/components/Avatar";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
+import { isUserPro } from "@/lib/proPlayer";
 import { palette, radius, spacing } from "@/theme/tokens";
 import { formatAverageRating, formatRelativeTimestamp, summarizeAvailabilityPeriods } from "@/lib/formatting";
 import type { PublicPlayerProfile } from "@/types/domain";
@@ -13,6 +14,8 @@ type PublicPlayerProfileScreenProps = {
   profile: PublicPlayerProfile | null;
   loading: boolean;
   error: string | null;
+  /** Primeiro item do resumo: abrir chat direto com o jogador. */
+  onOpenPrivateChat?: () => void;
   actions?: React.ReactNode;
 };
 
@@ -20,6 +23,7 @@ export function PublicPlayerProfileScreen({
   profile,
   loading,
   error,
+  onOpenPrivateChat,
   actions,
 }: PublicPlayerProfileScreenProps) {
   const [detailScene, setDetailScene] = useState<
@@ -69,14 +73,24 @@ export function PublicPlayerProfileScreen({
       >
         <View style={styles.heroCard}>
           <View style={styles.heroIdentityRow}>
-            <View style={styles.heroAvatarWrap}>
+            <View
+              style={[
+                styles.heroAvatarWrap,
+                isUserPro(profile) ? styles.heroAvatarWrapProFrame : null,
+              ]}
+            >
               <AppleGlassSurface
                 pointerEvents="none"
                 variant="dark"
                 intensity="clear"
                 style={styles.heroAvatarSurface}
               />
-              <Avatar name={profile.displayName} uri={profile.avatarUrl} size={88} />
+              <Avatar
+                name={profile.displayName}
+                uri={profile.avatarUrl}
+                size={88}
+                isPro={isUserPro(profile)}
+              />
             </View>
             <View style={styles.heroCopy}>
               <View style={styles.heroNameBlock}>
@@ -112,7 +126,18 @@ export function PublicPlayerProfileScreen({
 
         <AppleListSection title="Resumo" size="compact">
           <AppleListGroup>
+            {onOpenPrivateChat ? (
+              <AppleListRow
+                icon={{ iosName: "bubble.left.and.bubble.right.fill", fallbackName: "chat" }}
+                label="Chat"
+                subtitle="Conversa direta"
+                onPress={onOpenPrivateChat}
+                showChevron
+                size="compact"
+              />
+            ) : null}
             <AppleListRow
+              separator={Boolean(onOpenPrivateChat)}
               icon={{ iosName: "star.fill", fallbackName: "grade" }}
               label="Nota média"
               trailingValue={formatAverageRating(profile.averageRating)}
@@ -363,6 +388,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(233,226,215,0.16)",
     overflow: "hidden",
+  },
+  /** Moldura Pro tem detalhe fora do círculo; `overflow: hidden` cortaria a arte. */
+  heroAvatarWrapProFrame: {
+    overflow: "visible",
+    borderWidth: 0,
   },
   heroAvatarSurface: {
     ...StyleSheet.absoluteFillObject,

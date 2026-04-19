@@ -11,10 +11,13 @@ import { styles } from "@/features/map/MapHomeScreen.styles";
 type PageScreen =
   | "chats"
   | "alerts"
+  | "novidades"
   | "places"
   | "account"
   | "friends"
   | "history"
+  | "nearby_players"
+  | "feedback"
   | "player";
 type ChatViewMode = "list" | "room";
 type AnimatedScalar = Animated.Value | Animated.AnimatedInterpolation<number | string>;
@@ -30,6 +33,7 @@ export type MapPageLayerProps = {
   chatViewMode: ChatViewMode;
   profileName: string;
   profileAvatarUrl: string | null;
+  profileIsPro: boolean;
   showUnreadMenuIndicator: boolean;
   dismissPanHandlers?: object;
   chatScreenProps: ComponentProps<typeof ChatRoomPage>["chatScreenProps"];
@@ -50,6 +54,7 @@ export function MapPageLayer({
   chatViewMode,
   profileName,
   profileAvatarUrl,
+  profileIsPro,
   showUnreadMenuIndicator,
   dismissPanHandlers,
   chatScreenProps,
@@ -76,6 +81,7 @@ export function MapPageLayer({
         pageScreen={pageScreen}
         profileName={profileName}
         profileAvatarUrl={profileAvatarUrl}
+        profileIsPro={profileIsPro}
         showUnreadMenuIndicator={showUnreadMenuIndicator}
         onOpenMenu={onOpenMenu}
         onOpenAccount={onOpenAccount}

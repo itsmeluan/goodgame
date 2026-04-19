@@ -12,6 +12,9 @@ export type AttendanceStatus =
 export type LegalDocumentKind = "privacy_policy" | "terms_of_service";
 export type VenueSuggestionStatus = "pending" | "approved" | "rejected";
 export type VenueKind = "public_place" | "specialty_store";
+
+/** Valores aceitos por `submit_app_feedback` / coluna `app_feedback.feedback_type`. */
+export type AppFeedbackType = "bug" | "suggestion" | "praise" | "question";
 export type NotificationKind =
   | "member_joined"
   | "message_received"
@@ -44,6 +47,8 @@ export interface CatalogFormat {
   gameId: string;
   /** Slug do jogo em `public.games` (ex.: magic-the-gathering). */
   gameSlug: string;
+  /** Slug do formato em `public.formats` (ex.: commander). */
+  slug: string;
 }
 
 export interface PlayerProfile {
@@ -62,7 +67,25 @@ export interface PlayerProfile {
   gameNames: string[];
   formatIds: string[];
   formatNames: string[];
+  /** Preferências por formato (bracket, power level, etc.). */
+  formatPreferenceDetails?: Record<string, import("@/lib/formatDetailTags").FormatDetailTags>;
   availability: AvailabilitySlot[];
+  /** Pro Player (MVP: lógica simulada sem App Store). */
+  isPro: boolean;
+  /** ISO8601; quando expira, o backend define `isPro` como false. */
+  proExpiresAt: string | null;
+  trialUsed: boolean;
+}
+
+export interface NearbyPlayer {
+  userId: string;
+  displayName: string;
+  handle: string;
+  avatarUrl: string | null;
+  distanceKm: number;
+  isOnline: boolean;
+  isPro?: boolean;
+  proExpiresAt?: string | null;
 }
 
 export interface PublicPlayerProfile {
@@ -80,6 +103,8 @@ export interface PublicPlayerProfile {
   relationshipState: "friend" | "incoming" | "outgoing" | "none";
   isOnline: boolean;
   lastSeenAt: string | null;
+  isPro?: boolean;
+  proExpiresAt?: string | null;
   averageRating: number;
   ratingsCount: number;
   attendedCount: number;
@@ -109,6 +134,8 @@ export interface MeetupPost {
   formatName: string;
   /** Slug do jogo (`games.slug`); vazio se o formato não tiver jogo ligado. */
   gameSlug: string;
+  /** Bracket Commander, power level Yu-Gi-Oh!, etc. */
+  formatDetailTags?: import("@/lib/formatDetailTags").FormatDetailTags | null;
   startsAt: string;
   hostMode: HostMode;
   status: MeetupStatus;
@@ -142,6 +169,8 @@ export interface MeetupMemberPresence {
   attendanceStatus: AttendanceStatus;
   role: "creator" | "participant";
   joinedAt: string;
+  isPro?: boolean;
+  proExpiresAt?: string | null;
 }
 
 export interface ChatMessage {
@@ -155,6 +184,19 @@ export interface ChatMessage {
   replyToMessageId: string | null;
   replyPreviewAuthorName: string | null;
   replyPreviewBody: string | null;
+  authorIsPro?: boolean;
+  authorProExpiresAt?: string | null;
+}
+
+/** Mensagem editorial em Novidades (configurada no Supabase, sem update da loja). */
+export interface AppNewsItem {
+  id: string;
+  title: string;
+  body: string;
+  imageUrl: string | null;
+  publishedAt: string;
+  sortKey: number;
+  showOnMapColdStart: boolean;
 }
 
 export interface InAppNotification {
@@ -163,10 +205,27 @@ export interface InAppNotification {
   title: string;
   body: string;
   meetupId: string | null;
+  /** Present when `kind === "message_received"` for direct messages (metadata.private_chat_id). */
+  privateChatId: string | null;
   venueId: string | null;
   metadata: Record<string, unknown>;
   readAt: string | null;
   createdAt: string;
+}
+
+/** 1:1 private conversation row for the chats list. */
+export interface PrivateChatSummary {
+  chatId: string;
+  otherUserId: string;
+  otherDisplayName: string;
+  otherHandle: string;
+  otherAvatarPath: string | null;
+  otherAvatarUrl: string | null;
+  lastMessageBody: string | null;
+  lastMessageAt: string | null;
+  canSendMessages: boolean;
+  otherIsPro?: boolean;
+  otherProExpiresAt?: string | null;
 }
 
 export interface DashboardData {
@@ -190,6 +249,8 @@ export interface FriendProfile {
   avatarUrl: string | null;
   isOnline: boolean;
   lastSeenAt: string | null;
+  isPro?: boolean;
+  proExpiresAt?: string | null;
 }
 
 export interface BlockedUserProfile {
@@ -202,6 +263,8 @@ export interface BlockedUserProfile {
   avatarUrl: string | null;
   blockedAt: string;
   reason: string;
+  isPro?: boolean;
+  proExpiresAt?: string | null;
 }
 
 export interface PlayerSearchResult {
@@ -214,6 +277,8 @@ export interface PlayerSearchResult {
   avatarUrl: string | null;
   relationshipState: "friend" | "incoming" | "outgoing" | "none";
   isOnline: boolean;
+  isPro?: boolean;
+  proExpiresAt?: string | null;
 }
 
 export interface LegalDocument {

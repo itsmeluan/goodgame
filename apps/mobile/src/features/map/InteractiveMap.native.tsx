@@ -19,7 +19,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Location from "expo-location";
 import MapView, { Callout, Circle, Marker, Polygon, Region } from "react-native-maps";
 
 import type {
@@ -32,11 +31,8 @@ import {
   formatShortAddress,
   formatVenueKind,
 } from "@/lib/formatting";
-import {
-  ensureForegroundLocationPermission,
-  getDeviceCoordinate,
-  resolveHeading,
-} from "@/lib/location";
+import { getDeviceCoordinate } from "@/lib/location";
+import { useLiveLocation } from "@/features/app/LiveLocationContext";
 import { inferGameNameFromLabels, meetupMarkerVisualFromMeetup } from "@/features/map/gameLabels";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { MapCoordinate } from "@/types/domain";
@@ -101,8 +97,10 @@ type OverlayPinSnapshot = {
 };
 
 const OVERDUE_MEETUP_AFTER_MS = 60 * 60 * 1000;
-const PROJECTED_CLUSTER_ENABLE_AT_ZOOM = 0.038;
-const PROJECTED_CLUSTER_DISABLE_AT_ZOOM = 0.03;
+/** Below this latitude/longitude delta, map is zoomed in enough to show individual pins (no screen-space clustering). */
+const PROJECTED_CLUSTER_ZOOM_IN_CUTOFF = 0.0075;
+/** Hysteresis: slightly lower cutoff while clustering is already on to avoid flicker at the boundary. */
+const PROJECTED_CLUSTER_ZOOM_IN_CUTOFF_ACTIVE = 0.006;
 const MARKER_IMAGE_SOURCES = {
   meetupMagic: require("../../../assets/map/marker-meetup-magic.png"),
   meetupMagic2: require("../../../assets/map/marker-meetup-magic-2.png"),
@@ -234,9 +232,8 @@ export function InteractiveMap({
   const selectedDisplayedOverlayPinRef = useRef<{ id: string; coordinate: MapCoordinate } | null>(null);
   const markerPressLockUntilRef = useRef(0);
   const projectedClusteringEnabledRef = useRef(false);
-  const [liveUserCoordinate, setLiveUserCoordinate] = useState<MapCoordinate | null>(null);
-  const [liveUserHeading, setLiveUserHeading] = useState<number | null>(null);
-  const [liveUserAccuracy, setLiveUserAccuracy] = useState<number | null>(null);
+  const { coordinate: liveUserCoordinate, accuracy: liveUserAccuracy, heading: liveUserHeading } =
+    useLiveLocation();
   const [mapReady, setMapReady] = useState(false);
   const [selectedPinScreenPoint, setSelectedPinScreenPoint] = useState<{
     x: number;
@@ -926,81 +923,6 @@ export function InteractiveMap({
     [mapReady, mapSize]
   );
 
-  useEffect(() => {
-    let active = true;
-    let positionSubscription: Location.LocationSubscription | null = null;
-    let headingSubscription: Location.LocationSubscription | null = null;
-
-    async function startWatching() {
-      try {
-        await ensureForegroundLocationPermission();
-
-        const currentCoordinate = await getDeviceCoordinate();
-
-        if (active) {
-          setLiveUserCoordinate(currentCoordinate);
-          setLiveUserAccuracy(42);
-        }
-
-        positionSubscription = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.High,
-            distanceInterval: 3,
-            timeInterval: 1500,
-          },
-          (location) => {
-            if (!active) {
-              return;
-            }
-
-            setLiveUserCoordinate({
-              latitude: location.coords.latitude,
-              longitude: location.coords.longitude,
-            });
-            setLiveUserAccuracy(location.coords.accuracy ?? null);
-
-            const nextHeading = resolveHeading({
-              coordsHeading: location.coords.heading,
-            });
-
-            if (nextHeading !== null) {
-              setLiveUserHeading(nextHeading);
-            }
-          }
-        );
-
-        headingSubscription = await Location.watchHeadingAsync((heading) => {
-          if (!active) {
-            return;
-          }
-
-          const nextHeading = resolveHeading({
-            trueHeading: heading.trueHeading,
-            magHeading: heading.magHeading,
-          });
-
-          if (nextHeading !== null) {
-            setLiveUserHeading(nextHeading);
-          }
-        });
-      } catch {
-        if (active) {
-          setLiveUserCoordinate(null);
-          setLiveUserHeading(null);
-          setLiveUserAccuracy(null);
-        }
-      }
-    }
-
-    void startWatching();
-
-    return () => {
-      active = false;
-      positionSubscription?.remove();
-      headingSubscription?.remove();
-    };
-  }, []);
-
   return (
     <View style={[styles.wrapper, immersive ? styles.wrapperImmersive : null]}>
       <View style={[styles.mapViewport, immersive ? styles.mapViewportImmersive : null]}>
@@ -1227,8 +1149,6 @@ function handleMapLayout(event: LayoutChangeEvent) {
 
     try {
       const coordinate = liveUserCoordinate ?? (await getDeviceCoordinate());
-
-      setLiveUserCoordinate(coordinate);
 
       mapRef.current.animateToRegion(
         {
@@ -1562,22 +1482,22 @@ function buildVenueCollisionOffsets(groups: OverlayPinGroup[]) {
  * near venues. At wide zoom, 0 so pins can overlap; when zoomed in, enough to separate from venue art.
  */
 function resolveMeetupVenueAvoidancePixelMagnitude(zoomLevel: number): number {
-  if (zoomLevel >= 0.11) {
+  if (zoomLevel >= 0.1) {
     return 0;
   }
   if (zoomLevel >= 0.055) {
-    return 10;
+    return 4;
   }
   if (zoomLevel >= 0.032) {
-    return 18;
+    return 7;
   }
   if (zoomLevel >= 0.022) {
-    return 26;
+    return 10;
   }
   if (zoomLevel >= 0.016) {
-    return 34;
+    return 12;
   }
-  return 40;
+  return 14;
 }
 
 function buildMeetupVenueAvoidanceOffsets(groups: OverlayPinGroup[], region: Region) {
@@ -1585,6 +1505,8 @@ function buildMeetupVenueAvoidanceOffsets(groups: OverlayPinGroup[], region: Reg
   const venueGroups = groups.filter((group) => group.venueIds.length > 0);
   const meetupGroups = groups.filter((group) => group.meetupIds.length > 0);
   const zoomLevel = Math.max(region.latitudeDelta, region.longitudeDelta);
+  /** Only nudge when a meetup is almost on top of an app venue (wide radius caused a “ring” far from real coords). */
+  const nearbyVenueRadiusMeters = 22;
 
   meetupGroups.forEach((group) => {
     const nearbyVenueGroups = venueGroups
@@ -1592,7 +1514,7 @@ function buildMeetupVenueAvoidanceOffsets(groups: OverlayPinGroup[], region: Reg
         group: candidate,
         distanceMeters: distanceBetweenCoordinatesMeters(group.coordinate, candidate.coordinate),
       }))
-      .filter((candidate) => candidate.distanceMeters <= 42);
+      .filter((candidate) => candidate.distanceMeters <= nearbyVenueRadiusMeters);
 
     if (!nearbyVenueGroups.length) {
       offsets.set(group.key, { x: 0, y: 0 });
@@ -1632,13 +1554,13 @@ function buildMeetupVenueAvoidanceOffsets(groups: OverlayPinGroup[], region: Reg
     }
 
     const distanceFactor =
-      nearestDistanceMeters <= 8
+      nearestDistanceMeters <= 6
         ? 1
-        : nearestDistanceMeters <= 16
-          ? 0.9
-          : nearestDistanceMeters <= 28
-            ? 0.78
-            : 0.65;
+        : nearestDistanceMeters <= 12
+          ? 0.82
+          : nearestDistanceMeters <= 18
+            ? 0.62
+            : 0.45;
     const magnitude = baseMagnitude * distanceFactor;
     const vectorLength = Math.max(Math.sqrt(eastMeters * eastMeters + northMeters * northMeters), 0.0001);
     const normalizedEastMeters = (eastMeters / vectorLength) * magnitude;
@@ -1737,12 +1659,9 @@ function resolveProjectedClusteringEnabled({
   }
 
   const zoomLevel = Math.max(region.latitudeDelta, region.longitudeDelta);
+  const cutoff = previousEnabled ? PROJECTED_CLUSTER_ZOOM_IN_CUTOFF_ACTIVE : PROJECTED_CLUSTER_ZOOM_IN_CUTOFF;
 
-  if (previousEnabled) {
-    return zoomLevel > PROJECTED_CLUSTER_DISABLE_AT_ZOOM;
-  }
-
-  return zoomLevel > PROJECTED_CLUSTER_ENABLE_AT_ZOOM;
+  return zoomLevel > cutoff;
 }
 
 function buildProjectedPinClusters({
@@ -1877,18 +1796,22 @@ function resolveClusterRadius(region: Region) {
   const zoomLevel = Math.max(region.latitudeDelta, region.longitudeDelta);
 
   if (zoomLevel >= 0.16) {
-    return 64;
+    return 72;
   }
 
   if (zoomLevel >= 0.08) {
-    return 56;
+    return 64;
   }
 
   if (zoomLevel >= 0.04) {
-    return 48;
+    return 56;
   }
 
-  return 42;
+  if (zoomLevel >= 0.018) {
+    return 52;
+  }
+
+  return 48;
 }
 
 function shouldPinParticipateInProjectedClustering(pin: ProjectedOverlayPin) {
@@ -2258,6 +2181,7 @@ const OverlayMarkers = memo(function OverlayMarkers({
           anchor={{ x: 0.5, y: 0.5 }}
           coordinate={item.coordinate}
           image={resolveMarkerImageSource(item)}
+          style={{ transform: [{ scale: MAP_BALLOON_SCALE }] }}
           tracksViewChanges={false}
           zIndex={item.kind === "venue" ? 7 : item.kind === "cluster" ? 6 : 5}
           onPress={(event) => {
@@ -2302,6 +2226,7 @@ function areOverlayMarkersEqual(left: OverlayMarkersProps, right: OverlayMarkers
 
 const LIVE_USER_DOT_OUTER_SIZE = 14;
 const MAP_VIEW_HEIGHT = 340;
+const MAP_BALLOON_SCALE = 0.75;
 
 const styles = StyleSheet.create({
   wrapper: {

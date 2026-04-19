@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/AppleListNavigation";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
-import { MapClosePageButton } from "@/features/map/components/MapClosePageButton";
+import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import { formatNotificationKind, formatRelativeTimestamp } from "@/lib/formatting";
 import { palette, spacing } from "@/theme/tokens";
@@ -52,49 +52,46 @@ export function AlertsPage({
     {
       key: "root",
       content: (
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingBottom: bottomInset + spacing.xxl,
-            },
-          ]}
-        >
-          <AppleListSection
-            size="compact"
+        <View style={styles.rootWithFooter}>
+          <ScrollView
+            style={styles.rootScroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[styles.content, styles.rootScrollContent]}
           >
-            <AppleListGroup>
-              <AppleListRow
-                icon={{
-                  iosName: "bell.badge.fill",
-                  fallbackName: "notifications-active",
-                }}
-                label="Não lidos"
-                trailingValue={String(unreadNotifications.length)}
-                onPress={() => pushRoute("unread")}
-                tone={unreadNotifications.length ? "accent" : "default"}
-                size="compact"
-              />
-              <AppleListRow
-                separator
-                icon={{
-                  iosName: "tray.full.fill",
-                  fallbackName: "inbox",
-                }}
-                label="Todos os avisos"
-                trailingValue={String(notifications.length)}
-                onPress={() => pushRoute("all")}
-                size="compact"
-              />
-            </AppleListGroup>
-          </AppleListSection>
+            <AppleListSection
+              size="compact"
+            >
+              <AppleListGroup>
+                <AppleListRow
+                  icon={{
+                    iosName: "bell.badge.fill",
+                    fallbackName: "notifications-active",
+                  }}
+                  label="Não lidos"
+                  trailingValue={String(unreadNotifications.length)}
+                  onPress={() => pushRoute("unread")}
+                  tone={unreadNotifications.length ? "accent" : "default"}
+                  size="compact"
+                />
+                <AppleListRow
+                  separator
+                  icon={{
+                    iosName: "tray.full.fill",
+                    fallbackName: "inbox",
+                  }}
+                  label="Todos os avisos"
+                  trailingValue={String(notifications.length)}
+                  onPress={() => pushRoute("all")}
+                  size="compact"
+                />
+              </AppleListGroup>
+            </AppleListSection>
 
-          {notificationError ? <MapInlineNotice tone="error" message={notificationError} /> : null}
-
-          <MapClosePageButton onPress={onClose} />
-        </ScrollView>
+            {notificationError ? <MapInlineNotice tone="error" message={notificationError} /> : null}
+          </ScrollView>
+          <MapPageCloseFooter bottomInset={bottomInset} onClose={onClose} />
+        </View>
       ),
     },
     ...routeKeys.map((routeKey) => {
@@ -211,6 +208,15 @@ function NotificationScene({
 }
 
 const styles = StyleSheet.create({
+  rootWithFooter: {
+    flex: 1,
+  },
+  rootScroll: {
+    flex: 1,
+  },
+  rootScrollContent: {
+    paddingBottom: spacing.lg,
+  },
   content: {
     paddingTop: spacing.sm,
     gap: spacing.md,

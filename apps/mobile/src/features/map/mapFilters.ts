@@ -1,6 +1,13 @@
 import { inferGameLabelsFromVenue, inferGameNameFromMeetup } from "@/features/map/gameLabels";
 import { calculateDistanceKm } from "@/lib/formatting";
-import type { MeetupPost, VenueCard } from "@/types/domain";
+import {
+  isNonEmptyDetailTagFilter,
+  meetupPassesDetailTagFilter,
+  pruneDetailFilterForMeetupKind,
+  resolveFormatSlugForMeetup,
+  type FormatDetailTags,
+} from "@/lib/formatDetailTags";
+import type { CatalogFormat, MeetupPost, VenueCard } from "@/types/domain";
 
 export type DistanceFilter = "all" | 2 | 5 | 10 | 25;
 export type PeriodFilter = "morning" | "afternoon" | "night";
@@ -12,6 +19,9 @@ type FilterOptions = {
   userLat: number | null;
   userLng: number | null;
   distanceKm: DistanceFilter;
+  detailTagFilter?: FormatDetailTags | null;
+  /** Usado para interpretar o formato do meetup nos detalhes (slug). */
+  formatsCatalog?: CatalogFormat[];
 };
 
 export function filterMeetups(
@@ -43,7 +53,26 @@ export function filterMeetups(
       return false;
     }
 
-    return passesPeriodFilter(meetup.startsAt, options.periods);
+    if (!passesPeriodFilter(meetup.startsAt, options.periods)) {
+      return false;
+    }
+
+    if (options.detailTagFilter && isNonEmptyDetailTagFilter(options.detailTagFilter)) {
+      const formatSlug = options.formatsCatalog?.length
+        ? resolveFormatSlugForMeetup(meetup, options.formatsCatalog)
+        : undefined;
+      const pruned = pruneDetailFilterForMeetupKind(
+        options.detailTagFilter,
+        meetup.gameSlug,
+        formatSlug,
+        meetup.formatName
+      );
+      if (!meetupPassesDetailTagFilter(meetup.formatDetailTags, pruned)) {
+        return false;
+      }
+    }
+
+    return true;
   });
 }
 

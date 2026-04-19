@@ -36,6 +36,8 @@ type AppleListRowProps = {
   leading?: ReactNode;
   /** Overrides default leading icon size (compact 16, default 19). */
   leadingIconSize?: number;
+  /** Red badge on the leading icon (e.g. unread in a grouping). */
+  showUnreadDot?: boolean;
   label: string;
   subtitle?: string;
   trailingValue?: string | null;
@@ -117,6 +119,7 @@ export function AppleListRow({
   icon,
   leading,
   leadingIconSize,
+  showUnreadDot = false,
   label,
   subtitle,
   trailingValue = null,
@@ -151,43 +154,63 @@ export function AppleListRow({
       ]}
     >
       {leading ? (
-        <View style={[styles.leadingIconWrap, size === "compact" ? styles.leadingIconWrapCompact : null]}>
-          {leading}
+        <View
+          style={[
+            styles.leadingWithBadge,
+            size === "compact" ? styles.leadingWithBadgeCompact : null,
+          ]}
+        >
+          <View style={[styles.leadingIconWrap, size === "compact" ? styles.leadingIconWrapCompact : null]}>
+            {leading}
+          </View>
+          {showUnreadDot ? (
+            <View pointerEvents="none" style={[styles.unreadDot, size === "compact" ? styles.unreadDotCompact : null]} />
+          ) : null}
         </View>
       ) : icon ? (
-        <View style={[styles.leadingIconWrap, size === "compact" ? styles.leadingIconWrapCompact : null]}>
-          {tone === "danger" ? (
-            <View
-              pointerEvents="none"
-              style={[
-                styles.leadingIconSurface,
-                size === "compact" ? styles.leadingIconSurfaceCompact : null,
-                styles.leadingIconDangerSurface,
-              ]}
+        <View
+          style={[
+            styles.leadingWithBadge,
+            size === "compact" ? styles.leadingWithBadgeCompact : null,
+          ]}
+        >
+          <View style={[styles.leadingIconWrap, size === "compact" ? styles.leadingIconWrapCompact : null]}>
+            {tone === "danger" ? (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.leadingIconSurface,
+                  size === "compact" ? styles.leadingIconSurfaceCompact : null,
+                  styles.leadingIconDangerSurface,
+                ]}
+              />
+            ) : (
+              <AppleGlassSurface
+                pointerEvents="none"
+                variant={tone === "accent" ? "accent" : "dark"}
+                intensity="clear"
+                style={[
+                  styles.leadingIconSurface,
+                  size === "compact" ? styles.leadingIconSurfaceCompact : null,
+                ]}
+              />
+            )}
+            <AppIcon
+              iosName={icon.iosName}
+              fallbackName={icon.fallbackName}
+              size={resolvedLeadingIconSize}
+              color={
+                tone === "danger"
+                  ? "#FFF8F5"
+                  : tone === "accent"
+                    ? palette.ink
+                    : palette.ember
+              }
             />
-          ) : (
-            <AppleGlassSurface
-              pointerEvents="none"
-              variant={tone === "accent" ? "accent" : "dark"}
-              intensity="clear"
-              style={[
-                styles.leadingIconSurface,
-                size === "compact" ? styles.leadingIconSurfaceCompact : null,
-              ]}
-            />
-          )}
-          <AppIcon
-            iosName={icon.iosName}
-            fallbackName={icon.fallbackName}
-            size={resolvedLeadingIconSize}
-            color={
-              tone === "danger"
-                ? "#FFF8F5"
-                : tone === "accent"
-                  ? palette.ink
-                  : palette.ember
-            }
-          />
+          </View>
+          {showUnreadDot ? (
+            <View pointerEvents="none" style={[styles.unreadDot, size === "compact" ? styles.unreadDotCompact : null]} />
+          ) : null}
         </View>
       ) : null}
 
@@ -284,6 +307,35 @@ const styles = StyleSheet.create({
   },
   rowPressed: {
     backgroundColor: "rgba(255,255,255,0.03)",
+  },
+  leadingWithBadge: {
+    width: 42,
+    height: 42,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  leadingWithBadgeCompact: {
+    width: APPLE_LIST_COMPACT_ICON_SIZE,
+    height: APPLE_LIST_COMPACT_ICON_SIZE,
+  },
+  unreadDot: {
+    position: "absolute",
+    top: 1,
+    right: 1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: palette.watermelon,
+    borderWidth: 1.5,
+    borderColor: palette.pageChrome,
+    zIndex: 2,
+  },
+  unreadDotCompact: {
+    top: 0,
+    right: 0,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
   },
   leadingIconWrap: {
     width: 42,

@@ -30,6 +30,7 @@ type VenueSheetCardContainerProps = {
   venueKindOptions: readonly (readonly [VenueKind, string])[];
   venueGameOptions: VenueGameOption[];
   onFocusVenueOnMap: () => void;
+  onShareVenue?: () => void;
   onCreateMeetupAtVenue: () => void;
   onToggleManage?: () => void;
   onManageVenueNameChange: (value: string) => void;
@@ -65,6 +66,7 @@ export function VenueSheetCardContainer({
   venueKindOptions,
   venueGameOptions,
   onFocusVenueOnMap,
+  onShareVenue,
   onCreateMeetupAtVenue,
   onToggleManage,
   onManageVenueNameChange,
@@ -106,6 +108,7 @@ export function VenueSheetCardContainer({
       venueKindOptions={venueKindOptions}
       venueGameOptions={venueGameOptions}
       onFocusVenueOnMap={onFocusVenueOnMap}
+      onShareVenue={onShareVenue}
       onCreateMeetupAtVenue={onCreateMeetupAtVenue}
       onToggleManage={onToggleManage}
       onManageVenueNameChange={onManageVenueNameChange}

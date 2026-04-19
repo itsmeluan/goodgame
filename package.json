@@ -1,1 +1,15 @@
-{}
+{
+  "name": "good-game",
+  "private": true,
+  "scripts": {
+    "db:push": "supabase db push",
+    "db:pull": "supabase db pull",
+    "db:diff": "supabase db diff",
+    "db:status": "supabase migration list",
+    "seed:demo": "node scripts/seed-demo-world.mjs"
+  },
+  "devDependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "supabase": "^2.92.1"
+  }
+}

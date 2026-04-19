@@ -87,7 +87,12 @@ export function BlockedUsersPage({
                 ]}
               >
                 <View style={styles.identityRow}>
-                  <Avatar name={user.displayName} uri={user.avatarUrl} size={44} />
+                  <Avatar
+                    name={user.displayName}
+                    uri={user.avatarUrl}
+                    size={44}
+                    isPro={Boolean(user.isPro)}
+                  />
                   <View style={styles.copy}>
                     <Text style={styles.name}>{user.displayName}</Text>
                     <Text style={styles.meta}>@{user.handle}</Text>
