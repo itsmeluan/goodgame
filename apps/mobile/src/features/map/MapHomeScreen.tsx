@@ -2639,13 +2639,14 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   }, [formats, selectedComposerGameId, selectedFormatId]);
 
   useEffect(() => {
-    if (
-      selectedVenueId &&
-      !availableComposerVenues.some((venue) => venue.id === selectedVenueId)
-    ) {
+    if (!composerOpen || !selectedVenueId) {
+      return;
+    }
+
+    if (!availableComposerVenues.some((venue) => venue.id === selectedVenueId)) {
       setSelectedVenueId(null);
     }
-  }, [availableComposerVenues, selectedVenueId]);
+  }, [availableComposerVenues, composerOpen, selectedVenueId]);
 
   useEffect(() => {
     const gameSlug = games.find((g) => g.id === selectedComposerGameId)?.slug;
