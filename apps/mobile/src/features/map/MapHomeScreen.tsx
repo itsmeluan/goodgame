@@ -2344,7 +2344,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   });
 
   const animateDrawerVisibility = useCallback(
-    (open: boolean) => {
+    (open: boolean, onComplete?: () => void) => {
       Animated.parallel([
         Animated.spring(drawerTranslateX, {
           toValue: open ? 0 : -drawerWidth,
@@ -2360,7 +2360,11 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
           easing: open ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
           useNativeDriver: true,
         }),
-      ]).start();
+      ]).start(({ finished }) => {
+        if (finished) {
+          onComplete?.();
+        }
+      });
     },
     [drawerBackdropOpacity, drawerTranslateX, drawerWidth]
   );
@@ -2380,7 +2384,10 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     },
     onCloseDrawer: () => {
       dismissPinCallout();
-      setDrawerOpen(false);
+      animateDrawerVisibility(false, () => {
+        setDrawerOpen(false);
+        closeDrawerSubmenus();
+      });
     },
   });
 

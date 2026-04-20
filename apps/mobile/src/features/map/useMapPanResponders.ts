@@ -214,7 +214,7 @@ type DrawerPanRespondersParams = {
   drawerBackdropOpacity: Animated.Value;
   currentDrawerTranslateXRef: MutableRefObject<number>;
   drawerPanStartRef: MutableRefObject<number>;
-  animateDrawerVisibility: (open: boolean) => void;
+  animateDrawerVisibility: (open: boolean, onComplete?: () => void) => void;
   onOpenDrawer: () => void;
   onCloseDrawer: () => void;
 };

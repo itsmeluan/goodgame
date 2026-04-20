@@ -310,7 +310,11 @@ const styles = StyleSheet.create({
   },
   accountAvatarButton: {
     borderRadius: 999,
-    overflow: "hidden",
+    overflow: "visible",
+    paddingTop: 2,
+    paddingBottom: 8,
+    paddingHorizontal: 2,
+    alignSelf: "flex-start",
   },
   accountAvatarButtonSurface: {
     ...StyleSheet.absoluteFillObject,

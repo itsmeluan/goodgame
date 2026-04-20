@@ -3,8 +3,8 @@ import Constants from "expo-constants";
 
 export const appInfo = {
   version:
-    Application.nativeApplicationVersion ??
     Constants.expoConfig?.version ??
+    Application.nativeApplicationVersion ??
     "1.1.0",
   name: Constants.expoConfig?.name ?? "Good Game",
 } as const;
