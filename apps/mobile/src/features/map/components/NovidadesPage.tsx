@@ -33,7 +33,7 @@ export function NovidadesPage({ bottomInset, onClose, onInboxMarked }: Novidades
         if (!cancelled) {
           setItems(rows);
         }
-      } catch (e) {
+      } catch {
         if (!cancelled) {
           setFetchError("Não foi possível carregar as novidades agora.");
         }

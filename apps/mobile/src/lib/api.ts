@@ -1795,30 +1795,25 @@ type AppNewsColdStartRow = {
   body: string;
   image_path: string | null;
   published_at: string;
+  sort_key: number;
 };
 
-export async function getAppNewsColdStartCandidate(): Promise<AppNewsItem | null> {
-  const { data, error } = await supabase.rpc("get_app_news_cold_start_candidate");
+export async function listAppNewsColdStartQueue(): Promise<AppNewsItem[]> {
+  const { data, error } = await supabase.rpc("list_app_news_cold_start_queue");
 
   if (error) {
     throw error;
   }
 
-  const rows = (data ?? []) as AppNewsColdStartRow[];
-  const row = rows[0];
-  if (!row) {
-    return null;
-  }
-
-  return {
+  return ((data ?? []) as AppNewsColdStartRow[]).map((row) => ({
     id: row.id,
     title: row.title,
     body: row.body,
     imageUrl: resolveNewsImageUrl(row.image_path),
     publishedAt: row.published_at,
-    sortKey: 0,
+    sortKey: row.sort_key,
     showOnMapColdStart: true,
-  };
+  }));
 }
 
 export async function dismissAppNewsColdStart(newsId: string): Promise<void> {

@@ -24,8 +24,26 @@
           <a href="./support/">Suporte</a>
           <a href="./privacy/">Privacidade</a>
           <a href="./safety/">Segurança</a>
+          <a href="./terms/">Termos</a>
         </nav>
       </header>
+
+      <section class="hero hidden" id="share-hero">
+        <div class="eyebrow" id="share-eyebrow">Compartilhamento</div>
+        <h1 id="share-title">Abrir no Good Game</h1>
+        <p class="lead" id="share-lead">
+          Este link foi compartilhado pelo app. Se você já tiver o Good Game instalado,
+          use o botão abaixo para abrir diretamente no aplicativo.
+        </p>
+        <div class="hero-actions">
+          <a class="button-link primary" href="./" id="share-open-button">Abrir no app</a>
+          <a class="button-link" href="./support/">Precisa de ajuda?</a>
+        </div>
+        <div class="note" id="share-note">
+          Se o app ainda não estiver instalado neste aparelho, abra a App Store, instale o
+          Good Game e volte a tocar neste link.
+        </div>
+      </section>
 
       <section class="hero">
         <div class="eyebrow">Good Game</div>
@@ -38,6 +56,7 @@
           <a class="button-link primary" href="./support/">Abrir suporte</a>
           <a class="button-link" href="./privacy/">Ler política de privacidade</a>
           <a class="button-link" href="./safety/">Ver segurança e moderação</a>
+          <a class="button-link" href="./terms/">Ler termos de uso</a>
         </div>
       </section>
 
@@ -68,11 +87,48 @@
             e como tratamos incidentes de segurança e moderação.
           </p>
         </a>
+
+        <a class="card" href="./terms/">
+          <div class="eyebrow">Uso do serviço</div>
+          <h3>Termos</h3>
+          <p>
+            Consulte os termos de uso públicos do Good Game, com regras da comunidade,
+            responsabilidades e limites do serviço.
+          </p>
+        </a>
       </section>
 
       <footer class="footer">
         Good Game • Atualizado em 11 de abril de 2026
       </footer>
     </main>
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const meetupId = params.get("meetup");
+      const venueId = params.get("venue");
+      const shareHero = document.getElementById("share-hero");
+      const shareEyebrow = document.getElementById("share-eyebrow");
+      const shareTitle = document.getElementById("share-title");
+      const shareLead = document.getElementById("share-lead");
+      const shareOpenButton = document.getElementById("share-open-button");
+
+      if (shareHero && shareEyebrow && shareTitle && shareLead && shareOpenButton) {
+        if (meetupId) {
+          shareHero.classList.remove("hidden");
+          shareEyebrow.textContent = "Partida compartilhada";
+          shareTitle.textContent = "Abrir partida no Good Game";
+          shareLead.textContent =
+            "Este link aponta para uma partida compartilhada pelo app. Toque abaixo para abrir no Good Game.";
+          shareOpenButton.setAttribute("href", `goodgame://meetup/${encodeURIComponent(meetupId)}`);
+        } else if (venueId) {
+          shareHero.classList.remove("hidden");
+          shareEyebrow.textContent = "Local compartilhado";
+          shareTitle.textContent = "Abrir local no Good Game";
+          shareLead.textContent =
+            "Este link aponta para um local compartilhado pelo app. Toque abaixo para abrir no Good Game.";
+          shareOpenButton.setAttribute("href", `goodgame://venue/${encodeURIComponent(venueId)}`);
+        }
+      }
+    </script>
   </body>
 </html>

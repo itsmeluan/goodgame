@@ -12,6 +12,10 @@ const mapboxAccessToken = process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN ?? null;
 const mapboxPermanentGeocoding =
   process.env.EXPO_PUBLIC_MAPBOX_PERMANENT_GEOCODING === "true";
 const socialAuthEnabled = process.env.EXPO_PUBLIC_SOCIAL_AUTH_ENABLED === "true";
+const proPlayerPaywallEnabled = process.env.EXPO_PUBLIC_PRO_PLAYER_PAYWALL_ENABLED === "true";
+const meetupShareWebBase =
+  process.env.EXPO_PUBLIC_MEETUP_SHARE_WEB_BASE?.trim() ||
+  "https://itsmeluan.github.io/good-game-pages";
 
 if (!supabaseUrl) {
   throw new Error("EXPO_PUBLIC_SUPABASE_URL não foi definido.");
@@ -33,4 +37,6 @@ export const env = {
   mapboxAccessToken,
   mapboxPermanentGeocoding,
   socialAuthEnabled,
+  proPlayerPaywallEnabled,
+  meetupShareWebBase,
 } as const;

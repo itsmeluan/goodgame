@@ -1,3 +1,4 @@
+import { env } from "@/lib/env";
 import { formatCompactAddress } from "@/lib/formatting";
 import type { VenueCard, VenueKind } from "@/types/domain";
 
@@ -46,12 +47,12 @@ export function parseVenueSharePayload(body: string): VenueSharePayload | null {
 }
 
 function getShareWebBase(): string {
-  return process.env.EXPO_PUBLIC_MEETUP_SHARE_WEB_BASE?.trim() || "https://goodgame.app";
+  return env.meetupShareWebBase.replace(/\/+$/, "");
 }
 
 /** Public HTTPS link (Universal Links / landing → App Store or app). */
 export function buildVenueShareWebUrl(venueId: string): string {
-  return `${getShareWebBase()}/v/${venueId}`;
+  return `${getShareWebBase()}/?venue=${encodeURIComponent(venueId)}`;
 }
 
 /** Custom scheme fallback for in-app testing. */
@@ -77,6 +78,12 @@ export function parseVenueIdFromIncomingUrl(url: string): string | null {
     const schemeMatch = url.match(/goodgame:\/\/venue\/([^/?#]+)/i);
     if (schemeMatch?.[1]) {
       return schemeMatch[1];
+    }
+
+    const parsedUrl = new URL(url);
+    const queryVenueId = parsedUrl.searchParams.get("venue");
+    if (queryVenueId) {
+      return queryVenueId;
     }
 
     const webPathMatch = url.match(/\/v\/([a-f0-9-]{36})/i);

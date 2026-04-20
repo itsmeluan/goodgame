@@ -1,4 +1,4 @@
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, StyleSheet, Text, View, type ViewProps } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
@@ -51,6 +51,7 @@ export type MapDrawerProps = {
   onBackToRoot: () => void;
   onToggleChatGroup: (groupId: string) => void;
   onOpenChat: (meetupId: string) => void;
+  panHandlers?: ViewProps;
 };
 
 export function MapDrawer({
@@ -93,6 +94,7 @@ export function MapDrawer({
   onBackToRoot,
   onToggleChatGroup,
   onOpenChat,
+  panHandlers,
 }: MapDrawerProps) {
   return (
     <>
@@ -112,6 +114,7 @@ export function MapDrawer({
             transform: [{ translateX }],
           },
         ]}
+        {...panHandlers}
       >
         <AppleGlassSurface
           pointerEvents="none"

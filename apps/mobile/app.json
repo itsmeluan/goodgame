@@ -2,8 +2,7 @@
   "expo": {
     "name": "Good Game",
     "slug": "good-game",
-    "scheme": "goodgame",
-    "version": "1.0",
+    "version": "1.1.0",
     "owner": "good-game",
     "experiments": {
       "reactCompiler": true

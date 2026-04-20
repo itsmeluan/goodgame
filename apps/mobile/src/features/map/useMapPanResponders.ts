@@ -206,6 +206,234 @@ type PageDismissPanResponderParams = {
   closePlayerProfileRef: MutableRefObject<() => void>;
 };
 
+type DrawerPanRespondersParams = {
+  edgeSwipeEnabled: boolean;
+  drawerOpen: boolean;
+  drawerWidth: number;
+  drawerTranslateX: Animated.Value;
+  drawerBackdropOpacity: Animated.Value;
+  currentDrawerTranslateXRef: MutableRefObject<number>;
+  drawerPanStartRef: MutableRefObject<number>;
+  animateDrawerVisibility: (open: boolean) => void;
+  onOpenDrawer: () => void;
+  onCloseDrawer: () => void;
+};
+
+type ChatRoomBackPanResponderParams = {
+  enabled: boolean;
+  screenWidth: number;
+  chatRoomTranslateX: Animated.Value;
+  currentChatRoomTranslateXRef: MutableRefObject<number>;
+  chatRoomPanStartRef: MutableRefObject<number>;
+  onBack: () => void;
+};
+
+export function useDrawerPanResponders({
+  edgeSwipeEnabled,
+  drawerOpen,
+  drawerWidth,
+  drawerTranslateX,
+  drawerBackdropOpacity,
+  currentDrawerTranslateXRef,
+  drawerPanStartRef,
+  animateDrawerVisibility,
+  onOpenDrawer,
+  onCloseDrawer,
+}: DrawerPanRespondersParams) {
+  const edgePanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_event, gestureState) =>
+          edgeSwipeEnabled &&
+          gestureState.dx > 8 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) + 4,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => {
+          Keyboard.dismiss();
+          drawerTranslateX.stopAnimation((value) => {
+            currentDrawerTranslateXRef.current = value;
+            drawerPanStartRef.current = value;
+          });
+          drawerBackdropOpacity.stopAnimation();
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          const nextValue = clamp(-drawerWidth + gestureState.dx, -drawerWidth, 0);
+          const progress = 1 - Math.abs(nextValue) / drawerWidth;
+          currentDrawerTranslateXRef.current = nextValue;
+          drawerTranslateX.setValue(nextValue);
+          drawerBackdropOpacity.setValue(progress);
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          const projectedValue = clamp(
+            currentDrawerTranslateXRef.current + gestureState.vx * 180,
+            -drawerWidth,
+            0
+          );
+          const shouldOpen =
+            projectedValue > -drawerWidth * 0.52 || gestureState.dx > drawerWidth * 0.22;
+
+          if (shouldOpen) {
+            onOpenDrawer();
+            return;
+          }
+
+          animateDrawerVisibility(false);
+        },
+        onPanResponderTerminate: () => {
+          animateDrawerVisibility(false);
+        },
+      }),
+    [
+      animateDrawerVisibility,
+      currentDrawerTranslateXRef,
+      drawerBackdropOpacity,
+      drawerPanStartRef,
+      drawerTranslateX,
+      drawerWidth,
+      edgeSwipeEnabled,
+      onOpenDrawer,
+    ]
+  );
+
+  const drawerPanResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_event, gestureState) =>
+          drawerOpen &&
+          Math.abs(gestureState.dx) > 8 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) + 4,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => {
+          Keyboard.dismiss();
+          drawerTranslateX.stopAnimation((value) => {
+            currentDrawerTranslateXRef.current = value;
+            drawerPanStartRef.current = value;
+          });
+          drawerBackdropOpacity.stopAnimation();
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          const nextValue = clamp(drawerPanStartRef.current + gestureState.dx, -drawerWidth, 0);
+          const progress = 1 - Math.abs(nextValue) / drawerWidth;
+          currentDrawerTranslateXRef.current = nextValue;
+          drawerTranslateX.setValue(nextValue);
+          drawerBackdropOpacity.setValue(progress);
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          const projectedValue = clamp(
+            currentDrawerTranslateXRef.current + gestureState.vx * 180,
+            -drawerWidth,
+            0
+          );
+          const shouldClose =
+            projectedValue < -drawerWidth * 0.48 || gestureState.dx < -drawerWidth * 0.18;
+
+          if (shouldClose) {
+            onCloseDrawer();
+            return;
+          }
+
+          animateDrawerVisibility(true);
+        },
+        onPanResponderTerminate: () => {
+          animateDrawerVisibility(true);
+        },
+      }),
+    [
+      animateDrawerVisibility,
+      currentDrawerTranslateXRef,
+      drawerBackdropOpacity,
+      drawerOpen,
+      drawerPanStartRef,
+      drawerTranslateX,
+      drawerWidth,
+      onCloseDrawer,
+    ]
+  );
+
+  return {
+    edgePanResponder,
+    drawerPanResponder,
+  };
+}
+
+export function useChatRoomBackPanResponder({
+  enabled,
+  screenWidth,
+  chatRoomTranslateX,
+  currentChatRoomTranslateXRef,
+  chatRoomPanStartRef,
+  onBack,
+}: ChatRoomBackPanResponderParams) {
+  return useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_event, gestureState) =>
+          enabled &&
+          gestureState.dx > 8 &&
+          Math.abs(gestureState.dx) > Math.abs(gestureState.dy) + 4,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => {
+          Keyboard.dismiss();
+          chatRoomTranslateX.stopAnimation((value) => {
+            currentChatRoomTranslateXRef.current = value;
+            chatRoomPanStartRef.current = value;
+          });
+        },
+        onPanResponderMove: (_event, gestureState) => {
+          const nextValue = clamp(chatRoomPanStartRef.current + gestureState.dx, 0, screenWidth);
+          currentChatRoomTranslateXRef.current = nextValue;
+          chatRoomTranslateX.setValue(nextValue);
+        },
+        onPanResponderRelease: (_event, gestureState) => {
+          const projectedValue = clamp(
+            currentChatRoomTranslateXRef.current + gestureState.vx * 180,
+            0,
+            screenWidth
+          );
+          const shouldGoBack =
+            projectedValue > screenWidth * 0.42 ||
+            gestureState.dx > screenWidth * 0.22 ||
+            gestureState.vx > 0.58;
+
+          if (shouldGoBack) {
+            onBack();
+            return;
+          }
+
+          Animated.spring(chatRoomTranslateX, {
+            toValue: 0,
+            damping: 25,
+            stiffness: 260,
+            mass: 0.92,
+            overshootClamping: true,
+            useNativeDriver: true,
+          }).start();
+        },
+        onPanResponderTerminate: () => {
+          Animated.spring(chatRoomTranslateX, {
+            toValue: 0,
+            damping: 25,
+            stiffness: 260,
+            mass: 0.92,
+            overshootClamping: true,
+            useNativeDriver: true,
+          }).start();
+        },
+      }),
+    [
+      chatRoomPanStartRef,
+      chatRoomTranslateX,
+      currentChatRoomTranslateXRef,
+      enabled,
+      onBack,
+      screenWidth,
+    ]
+  );
+}
+
 export function usePageDismissPanResponder({
   activeScreen,
   height,

@@ -16,6 +16,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
 import { analyticsCapture } from "@/lib/analytics";
+import { env } from "@/lib/env";
 import { useLiveLocation } from "@/features/app/LiveLocationContext";
 import { listNearbyPlayers } from "@/lib/api";
 import { isUserPro } from "@/lib/proPlayer";
@@ -52,7 +53,7 @@ export function NearbyPlayersPage({
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [requestingPermission, setRequestingPermission] = useState(false);
-  const pro = isUserPro(profile);
+  const pro = !env.proPlayerPaywallEnabled || isUserPro(profile);
 
   const initialFetchScheduledRef = useRef(false);
 
@@ -223,7 +224,7 @@ export function NearbyPlayersPage({
       ) : (
         <View style={styles.list}>
           {players.map((player, index) => {
-            const locked = !pro && index >= FREE_PREVIEW_COUNT;
+            const locked = env.proPlayerPaywallEnabled && !pro && index >= FREE_PREVIEW_COUNT;
 
             const row = (
               <Pressable

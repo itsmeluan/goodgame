@@ -241,6 +241,10 @@ h3 {
   border: 1px solid rgba(247, 147, 90, 0.18);
 }
 
+.hidden {
+  display: none !important;
+}
+
 .footer {
   margin-top: 36px;
   padding-top: 20px;

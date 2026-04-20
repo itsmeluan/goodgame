@@ -70,7 +70,7 @@ export interface PlayerProfile {
   /** Preferências por formato (bracket, power level, etc.). */
   formatPreferenceDetails?: Record<string, import("@/lib/formatDetailTags").FormatDetailTags>;
   availability: AvailabilitySlot[];
-  /** Pro Player (MVP: lógica simulada sem App Store). */
+  /** Pro Player. O paywall fica desativado por padrão até a integração real com a App Store. */
   isPro: boolean;
   /** ISO8601; quando expira, o backend define `isPro` como false. */
   proExpiresAt: string | null;

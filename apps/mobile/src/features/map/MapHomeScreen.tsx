@@ -130,6 +130,8 @@ import {
   useGamesSheetPanResponder,
   useGamesSheetSectionPanResponder,
   usePageDismissPanResponder,
+  useDrawerPanResponders,
+  useChatRoomBackPanResponder,
 } from "@/features/map/useMapPanResponders";
 import { toggleMultiValue } from "@/features/map/components/FormatDetailTagBlock";
 import { useAddressSuggestionSearch } from "@/features/map/useAddressSuggestionSearch";
@@ -152,10 +154,10 @@ import {
   getPrivateMessagesAfter,
   getMyNotifications,
   getMyReputationSummary,
-  getAppNewsColdStartCandidate,
   getMyVenueSuggestions,
   getPublicPlayerProfile,
   joinMeetup,
+  listAppNewsColdStartQueue,
   listPrivateChats,
   leaveMeetup,
   removeMeetupMember,
@@ -295,7 +297,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const [mapFeedMeetups, setMapFeedMeetups] = useState<MeetupPost[] | null>(null);
   const [notifications, setNotifications] = useState<InAppNotification[]>([]);
   const [unreadAppNewsCount, setUnreadAppNewsCount] = useState(0);
-  const [coldStartAppNews, setColdStartAppNews] = useState<AppNewsItem | null>(null);
+  const [coldStartAppNewsQueue, setColdStartAppNewsQueue] = useState<AppNewsItem[]>([]);
+  const coldStartAppNews = coldStartAppNewsQueue[0] ?? null;
   const [friends, setFriends] = useState<FriendProfile[]>([]);
   const [meetupPresence, setMeetupPresence] = useState<MeetupMemberPresence[]>([]);
   const [reputationSummary, setReputationSummary] = useState<ReputationSummary>({
@@ -518,6 +521,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const drawerBackdropOpacity = useRef(new Animated.Value(0)).current;
   const drawerPanelProgress = useRef(new Animated.Value(0)).current;
   const previousDrawerWidthRef = useRef(drawerWidth);
+  const currentDrawerTranslateXRef = useRef(-drawerWidth);
+  const drawerPanStartRef = useRef(-drawerWidth);
   const loadDashboardRef = useRef<(mode?: "initial" | "refresh") => Promise<void>>(async () => {});
   const loadMapEntitiesRef = useRef<(mode?: "initial" | "refresh") => Promise<void>>(async () => {});
   const loadNotificationsRef = useRef<() => Promise<void>>(async () => {});
@@ -2132,6 +2137,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const pageTranslateY = useRef(new Animated.Value(height)).current;
   /** Horizontal slide for chat room when opened from chat list (right →). */
   const chatRoomTranslateX = useRef(new Animated.Value(0)).current;
+  const currentChatRoomTranslateXRef = useRef(0);
+  const chatRoomPanStartRef = useRef(0);
   const currentPageTranslateYRef = useRef(height);
   const pagePanStartRef = useRef(0);
   const pageLayerOpacity = useMemo(
@@ -2336,6 +2343,66 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     closePlayerProfileRef,
   });
 
+  const animateDrawerVisibility = useCallback(
+    (open: boolean) => {
+      Animated.parallel([
+        Animated.spring(drawerTranslateX, {
+          toValue: open ? 0 : -drawerWidth,
+          damping: 28,
+          stiffness: 250,
+          mass: 0.96,
+          overshootClamping: true,
+          useNativeDriver: true,
+        }),
+        Animated.timing(drawerBackdropOpacity, {
+          toValue: open ? 1 : 0,
+          duration: open ? 220 : 180,
+          easing: open ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    },
+    [drawerBackdropOpacity, drawerTranslateX, drawerWidth]
+  );
+
+  const drawerPanResponders = useDrawerPanResponders({
+    edgeSwipeEnabled:
+      activeScreen === "map" && !drawerOpen && !filtersOpen && !composerOpen && !venueComposerOpen,
+    drawerOpen,
+    drawerWidth,
+    drawerTranslateX,
+    drawerBackdropOpacity,
+    currentDrawerTranslateXRef,
+    drawerPanStartRef,
+    animateDrawerVisibility,
+    onOpenDrawer: () => {
+      openDrawer();
+    },
+    onCloseDrawer: () => {
+      dismissPinCallout();
+      setDrawerOpen(false);
+    },
+  });
+
+  const chatRoomBackPanResponder = useChatRoomBackPanResponder({
+    enabled: activeScreen === "chats" && chatViewMode === "room",
+    screenWidth: width,
+    chatRoomTranslateX,
+    currentChatRoomTranslateXRef,
+    chatRoomPanStartRef,
+    onBack: () => closeChatScreen({ animateRoomExit: true }),
+  });
+
+  useEffect(() => {
+    const translateListenerId = drawerTranslateX.addListener(({ value }) => {
+      currentDrawerTranslateXRef.current = value;
+    });
+
+    return () => {
+      drawerTranslateX.removeListener(translateListenerId);
+    };
+  }, [drawerTranslateX]);
+
   useEffect(() => {
     if (!drawerOpen && previousDrawerWidthRef.current !== drawerWidth) {
       drawerTranslateX.setValue(-drawerWidth);
@@ -2346,23 +2413,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   }, [drawerBackdropOpacity, drawerOpen, drawerTranslateX, drawerWidth]);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(drawerTranslateX, {
-        toValue: drawerOpen ? 0 : -drawerWidth,
-        damping: 28,
-        stiffness: 250,
-        mass: 0.96,
-        overshootClamping: true,
-        useNativeDriver: true,
-      }),
-      Animated.timing(drawerBackdropOpacity, {
-        toValue: drawerOpen ? 1 : 0,
-        duration: drawerOpen ? 220 : 180,
-        easing: drawerOpen ? Easing.out(Easing.cubic) : Easing.in(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [drawerBackdropOpacity, drawerOpen, drawerTranslateX, drawerWidth]);
+    animateDrawerVisibility(drawerOpen);
+  }, [animateDrawerVisibility, drawerOpen]);
 
   useEffect(() => {
     if (!drawerOpen) {
@@ -2475,10 +2527,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     const demoProfile = demoPublicProfilesByUserId[viewedPlayerUserId] ?? null;
 
     if (demoProfile) {
-      setViewedPlayerProfile({
-        ...demoProfile,
-        relationshipState: relationshipStateByUserId.get(viewedPlayerUserId) ?? "none",
-      });
+      setViewedPlayerProfile(demoProfile);
       setLoadingViewedPlayer(false);
       setViewedPlayerError(null);
       return;
@@ -2516,7 +2565,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     return () => {
       active = false;
     };
-  }, [demoPublicProfilesByUserId, profile.userId, relationshipStateByUserId, viewedPlayerUserId]);
+  }, [demoPublicProfilesByUserId, profile.userId, viewedPlayerUserId]);
 
   useEffect(() => {
     if (!expandedMeetupManageId) {
@@ -2913,9 +2962,9 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     }
     void (async () => {
       try {
-        const item = await getAppNewsColdStartCandidate();
-        if (item) {
-          setColdStartAppNews(item);
+        const items = await listAppNewsColdStartQueue();
+        if (items.length) {
+          setColdStartAppNewsQueue(items);
         }
       } catch {
         // RPC pode não existir no backend ainda
@@ -2925,7 +2974,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
   const handleDismissColdStartAppNews = useCallback(() => {
     const id = coldStartAppNews?.id;
-    setColdStartAppNews(null);
+    setColdStartAppNewsQueue((current) => current.slice(1));
     if (!id) {
       return;
     }
@@ -4977,7 +5026,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     }
   }
 
-  function closeChatScreen() {
+  function closeChatScreen(options?: { animateRoomExit?: boolean }) {
     Keyboard.dismiss();
     setSelectedPrivateChatId(null);
     setPrivateChatPeer(null);
@@ -4990,11 +5039,42 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       return;
     }
 
-    if (snap.activeScreen === "map") {
-      animatePageOutToMap(() => {
-        setChatViewMode(snap.chatViewMode);
-        setPageScreen(snap.pageScreen);
+    const finishClose = () => {
+      if (snap.activeScreen === "map") {
+        animatePageOutToMap(() => {
+          setChatViewMode(snap.chatViewMode);
+          setPageScreen(snap.pageScreen);
+          chatRoomTranslateX.setValue(0);
+          currentChatRoomTranslateXRef.current = 0;
+        });
+        return;
+      }
+
+      setChatViewMode(snap.chatViewMode);
+      setPageScreen(snap.pageScreen);
+      setActiveScreen(snap.activeScreen);
+      pageTranslateY.setValue(0);
+      currentPageTranslateYRef.current = 0;
+    };
+
+    if (options?.animateRoomExit) {
+      Animated.timing(chatRoomTranslateX, {
+        toValue: width,
+        duration: 220,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) {
+          return;
+        }
+        currentChatRoomTranslateXRef.current = width;
+        finishClose();
       });
+      return;
+    }
+
+    if (snap.activeScreen === "map") {
+      finishClose();
       return;
     }
 
@@ -5019,11 +5099,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       return;
     }
 
-    setChatViewMode(snap.chatViewMode);
-    setPageScreen(snap.pageScreen);
-    setActiveScreen(snap.activeScreen);
-    pageTranslateY.setValue(0);
-    currentPageTranslateYRef.current = 0;
+    finishClose();
   }
 
   function handleOpenMapFromPrivateChat() {
@@ -5091,6 +5167,10 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   }
 
   function openProPaywall(source: string) {
+    if (!env.proPlayerPaywallEnabled) {
+      return;
+    }
+
     analyticsCapture("paywall_opened", { source });
     setProPaywallVisible(true);
   }
@@ -5572,6 +5652,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       onOpenComposer: openComposerSheet,
       profileIsPro: isUserPro(profile),
     },
+    drawerEdgePanHandlers: drawerPanResponders.edgePanResponder.panHandlers,
     gamesSheet: {
       onDismissPinCallout: dismissPinCallout,
       top: gamesSheetTop,
@@ -5673,6 +5754,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     profileIsPro: isUserPro(profile),
     showUnreadMenuIndicator: hasUnreadMenuIndicator,
     dismissPanHandlers: pageDismissPanResponder.panHandlers,
+    chatRoomEdgePanHandlers: chatRoomBackPanResponder.panHandlers,
     chatScreenProps: {
       currentUserId: profile.userId,
       threadKind: (selectedPrivateChatId ? "private" : "meetup") as "meetup" | "private",
@@ -5695,7 +5777,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       ratingActionId,
       canRateSelectedChatMeetup,
       replyingToMessage,
-      onBack: closeChatScreen,
+      onBack: () => closeChatScreen(),
       onOpenPlayerProfile: openPlayerProfile,
       onReplyToMessage: (messageId: string) => setReplyingToMessageId(messageId),
       onClearReply: () => setReplyingToMessageId(null),
@@ -5947,6 +6029,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         [groupId]: !(current[groupId] ?? true),
       })),
     onOpenChat: openChatThenMaybeSendShare,
+    panHandlers: drawerPanResponders.drawerPanResponder.panHandlers,
   };
 
   const modalLayerProps = {
@@ -6240,16 +6323,18 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         drawerProps={drawerProps}
         modalLayerProps={modalLayerProps}
       />
-      <ProPlayerPaywallModal
-        visible={proPaywallVisible}
-        onClose={() => {
-          setProPaywallVisible(false);
-        }}
-        onStartTrial={() => {
-          void handleStartProTrial();
-        }}
-        startingTrial={proTrialStarting}
-      />
+      {env.proPlayerPaywallEnabled ? (
+        <ProPlayerPaywallModal
+          visible={proPaywallVisible}
+          onClose={() => {
+            setProPaywallVisible(false);
+          }}
+          onStartTrial={() => {
+            void handleStartProTrial();
+          }}
+          startingTrial={proTrialStarting}
+        />
+      ) : null}
       <MeetupShareOverlay
         visible={mapShareOverlayTarget !== null}
         headline={

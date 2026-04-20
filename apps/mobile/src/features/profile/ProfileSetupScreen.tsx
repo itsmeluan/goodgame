@@ -133,7 +133,7 @@ export function ProfileSetupScreen({
     if (profile?.formatPreferenceDetails) {
       setFormatPreferenceDetails(profile.formatPreferenceDetails);
     }
-  }, [profile?.userId]);
+  }, [profile?.formatPreferenceDetails, profile?.userId]);
 
   useEffect(() => {
     if (games.length > 0) {

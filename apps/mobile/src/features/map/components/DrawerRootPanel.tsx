@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
   AppleListGroup,
@@ -65,7 +65,13 @@ export function DrawerRootPanel({
   onOpenPlayerProfile,
 }: DrawerRootPanelProps) {
   return (
-    <View style={styles.content}>
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      bounces={false}
+      alwaysBounceVertical={false}
+      overScrollMode="never"
+      contentContainerStyle={styles.content}
+    >
       <AppleListSection size="compact">
         <AppleListGroup>
           <AppleListRow
@@ -188,8 +194,8 @@ export function DrawerRootPanel({
         )}
       </AppleListSection>
 
-      <Text style={styles.drawerVersionLabel}>versão {appVersion}</Text>
-    </View>
+      <Text style={styles.drawerVersionLabel}>Versão {appVersion}</Text>
+    </ScrollView>
   );
 }
 

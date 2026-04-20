@@ -66,6 +66,7 @@ Este `README` passa a funcionar como memória operacional de alto nível do proj
 
 ### Snapshots Git (referência)
 
+- `snapshot/app-store-review-prep-2026-04-19` — candidata `1.1.0` preparada para nova submissão: release hardening do paywall, links públicos/termos, fila de novidades no cold start, gestures de drawer/chat, ajustes de perfil público, drawer rolável e polimento do shell principal.
 - `snapshot/app-store-resubmit-2026-04-17` — preparação para nova submissão na App Store: ícones e assets de mapa (Magic/Dice, clusters, venues), ícones SVG em listas de jogos/locais, validação de título de meetup alinhada ao banco (4–80 caracteres), ajustes de auth/perfil público e documentação de revisão. Use `git checkout snapshot/app-store-resubmit-2026-04-17` para rollback ou ramificação.
 - `snapshot/app-2026-04-16` — estado consolidado anterior: mapa (games sheet, balões e coordenadas), stack de sheets com botão de voltar dedicado, chat de meetup com balões do próprio usuário na cor de marca (`palette.ember`) e bloco de participantes/pós-jogo.
 
@@ -128,7 +129,7 @@ npm run start:tunnel
 - `cd apps/mobile && npx eslint src --max-warnings 0` (o projeto trata avisos do ESLint como falha; corrija antes de merge)
 - `cd apps/mobile && npm run lint -- --quiet=false`
 - `cd apps/mobile && npx expo-doctor`
-- `cd apps/mobile && xcodebuild -workspace ios/GoodGame.xcworkspace -scheme GoodGame -configuration Release -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=26.4' build`
+- `cd apps/mobile && xcodebuild -workspace ios/GoodGame.xcworkspace -scheme GoodGame -configuration Release -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.4' build`
 
 ## App Store Connect (revisão e URLs)
 
@@ -137,8 +138,9 @@ Antes de enviar cada build, confira no App Store Connect que **Support URL**, **
 - Suporte: `https://itsmeluan.github.io/good-game-pages/support/`
 - Privacidade: `https://itsmeluan.github.io/good-game-pages/privacy/`
 - Segurança e moderação: `https://itsmeluan.github.io/good-game-pages/safety/`
+- Termos de uso: `https://itsmeluan.github.io/good-game-pages/terms/`
 
-Se o repositório ou o domínio de Pages mudar, atualize estas URLs no Connect **e** em `docs/good-game-submission-package.html` para não haver divergência. O binário iOS já declara `ITSAppUsesNonExemptEncryption` como `false` e inclui textos de uso para localização e fotos em `Info.plist` (revisar se novas permissões forem adicionadas).
+Se o repositório ou o domínio de Pages mudar, atualize estas URLs no Connect **e** em `docs/good-game-submission-package.html` para não haver divergência. O binário iOS já declara `ITSAppUsesNonExemptEncryption` como `false` e inclui textos de uso para localização e fotos em `Info.plist` (revisar se novas permissões forem adicionadas). Para a release atual, o paywall do Pro Player deve permanecer desligado com `EXPO_PUBLIC_PRO_PLAYER_PAYWALL_ENABLED=false`; o guia operacional atualizado está em `docs/app-store-release-hardening-2026-04-19.md`.
 
 ## Observações importantes
 

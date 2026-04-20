@@ -1,5 +1,5 @@
 import type { ComponentProps } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import { Animated, StyleSheet, View, type ViewProps } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
@@ -36,6 +36,7 @@ export type MapPageLayerProps = {
   profileIsPro: boolean;
   showUnreadMenuIndicator: boolean;
   dismissPanHandlers?: object;
+  chatRoomEdgePanHandlers?: ViewProps;
   chatScreenProps: ComponentProps<typeof ChatRoomPage>["chatScreenProps"];
   pageContentProps: ComponentProps<typeof MapPageContent>;
   onOpenMenu: () => void;
@@ -57,6 +58,7 @@ export function MapPageLayer({
   profileIsPro,
   showUnreadMenuIndicator,
   dismissPanHandlers,
+  chatRoomEdgePanHandlers,
   chatScreenProps,
   pageContentProps,
   onOpenMenu,
@@ -115,6 +117,7 @@ export function MapPageLayer({
                 { transform: [{ translateX: chatRoomTranslateX }] },
               ]}
             >
+              <View style={layerStyles.chatRoomEdgeSwipeZone} {...chatRoomEdgePanHandlers} />
               <ChatRoomPage chatScreenProps={chatScreenProps} />
             </Animated.View>
           ) : null}
@@ -135,5 +138,14 @@ const layerStyles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: 2,
     elevation: 8,
+  },
+  chatRoomEdgeSwipeZone: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 24,
+    zIndex: 3,
+    backgroundColor: "transparent",
   },
 });

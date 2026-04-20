@@ -1,3 +1,4 @@
+import { env } from "@/lib/env";
 import type { MeetupPost } from "@/types/domain";
 
 /** Prefix for structured meetup share messages in chat bodies (meetup + private). */
@@ -45,12 +46,12 @@ export function parseMeetupSharePayload(body: string): MeetupSharePayload | null
 }
 
 function getShareWebBase(): string {
-  return process.env.EXPO_PUBLIC_MEETUP_SHARE_WEB_BASE?.trim() || "https://goodgame.app";
+  return env.meetupShareWebBase.replace(/\/+$/, "");
 }
 
 /** Public HTTPS link (Universal Links / landing → App Store or app). */
 export function buildMeetupShareWebUrl(meetupId: string): string {
-  return `${getShareWebBase()}/m/${meetupId}`;
+  return `${getShareWebBase()}/?meetup=${encodeURIComponent(meetupId)}`;
 }
 
 /** Custom scheme fallback for in-app testing. */
@@ -76,6 +77,12 @@ export function parseMeetupIdFromIncomingUrl(url: string): string | null {
     const schemeMatch = url.match(/goodgame:\/\/meetup\/([^/?#]+)/i);
     if (schemeMatch?.[1]) {
       return schemeMatch[1];
+    }
+
+    const parsedUrl = new URL(url);
+    const queryMeetupId = parsedUrl.searchParams.get("meetup");
+    if (queryMeetupId) {
+      return queryMeetupId;
     }
 
     const webPathMatch = url.match(/\/m\/([a-f0-9-]{36})/i);

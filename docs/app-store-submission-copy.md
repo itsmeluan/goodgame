@@ -2,15 +2,17 @@
 
 Textos prontos para colar no App Store Connect e adaptar só onde houver placeholder.
 
+Release candidata atual documentada neste repositório: `1.1.0`.
+
 ## 1. Nome do app
 
-`Good Game`
+`Good Game: Sua Próxima Partida`
 
 ## 2. Subtítulo
 
 Opção principal:
 
-`Encontre mesas e jogadores por perto`
+`Ache jogadores e partidas`
 
 Opções alternativas:
 
@@ -71,6 +73,16 @@ Versão recomendada em inglês:
 
 `Good Game is a community app for discovering in-person tabletop and card game meetups nearby.`
 
+`Important for this review:`
+
+`- This release does not expose in-app purchases or subscription checkout.`
+
+`- Pro Player trial/purchase UI is disabled in the submitted build.`
+
+`- Access to nearby players is unlocked in this version without App Store payment flow.`
+
+`- Social login with Google and Apple is not enabled in this release.`
+
 `Main flows for review:`
 
 `1. Sign in with email and password.`
@@ -97,6 +109,16 @@ Versão em português, se quiser manter internamente:
 
 `O Good Game é um app social para descobrir e organizar partidas presenciais de jogos de mesa e card games.`
 
+`Importante para esta revisão:`
+
+`- Esta versão não expõe compra dentro do app nem checkout de assinatura.`
+
+`- A interface de teste grátis / compra do Pro Player foi desativada nesta build enviada para review.`
+
+`- O acesso a jogadores próximos está liberado nesta versão sem fluxo de pagamento da App Store.`
+
+`- Google e Apple Sign-In não estão habilitados nesta release.`
+
 `Fluxos principais para revisão:`
 
 `1. Entrar com e-mail e senha.`
@@ -115,7 +137,9 @@ Versão em português, se quiser manter internamente:
 
 - `Support URL`
 - `Privacy Policy URL`
+- `Terms of Use URL` (fortemente recomendado)
 - `Review contact email`
+- `Review contact phone`
 
 Se você ainda não tiver site, a saída mais rápida costuma ser publicar páginas públicas simples com:
 
@@ -129,4 +153,7 @@ Se você ainda não tiver site, a saída mais rápida costuma ser publicar pági
 - prefira `Manual Release` em vez de liberação automática;
 - suba screenshots finais do app principal, não do app de teste;
 - confira se o bundle enviado é o principal, não o `Good Game Teste`;
+- confirme que a build submetida está com `EXPO_PUBLIC_PRO_PLAYER_PAYWALL_ENABLED=false`;
+- se a versão enviada continuar `1.1.0`, aumente o `build number` a cada novo archive;
+- preencha App Privacy no Connect de acordo com a coleta real desta versão;
 - revise o texto final com o canal de suporte real antes de enviar.

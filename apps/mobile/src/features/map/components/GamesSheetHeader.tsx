@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View, type ViewProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { palette, radius, spacing } from "@/theme/tokens";
 
 type GamesSheetHeaderProps = {
@@ -71,12 +70,6 @@ export function GamesSheetHeader({
             }
           }}
         >
-          <AppleGlassSurface
-            pointerEvents="none"
-            variant="dark"
-            intensity="regular"
-            style={styles.tabsRailSurface}
-          />
           {tabWidth > 0 ? (
             <Animated.View
               pointerEvents="none"
@@ -167,10 +160,9 @@ const styles = StyleSheet.create({
     padding: 4,
     overflow: "hidden",
     minHeight: 48,
-  },
-  tabsRailSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: radius.pill,
+    backgroundColor: "rgba(255,255,255,0.015)",
+    borderWidth: 1,
+    borderColor: "rgba(231,216,188,0.08)",
   },
   tabButton: {
     flex: 1,
@@ -203,6 +195,14 @@ const styles = StyleSheet.create({
     bottom: 4,
     borderRadius: radius.pill,
     backgroundColor: palette.ember,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+    shadowColor: "#F18F5C",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    elevation: 5,
+    overflow: "hidden",
   },
   drawerButtonPressed: {
     opacity: 0.82,

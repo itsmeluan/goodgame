@@ -29,8 +29,12 @@ export function PublicPlayerProfileScreen({
   const [detailScene, setDetailScene] = useState<
     { type: "formats"; gameName: string } | { type: "availability" } | null
   >(null);
+  const showBlockingLoading = loading && !profile;
+  const showBlockingError = Boolean(error) && !profile;
+  const showRefreshingState = loading && !!profile;
+  const showInlineError = Boolean(error) && !!profile;
 
-  if (loading) {
+  if (showBlockingLoading) {
     return (
       <View style={styles.stateWrap}>
         <ActivityIndicator color={palette.ember} size="large" />
@@ -40,7 +44,7 @@ export function PublicPlayerProfileScreen({
     );
   }
 
-  if (error) {
+  if (showBlockingError) {
     return (
       <View style={styles.stateWrap}>
         <Text style={styles.stateTitle}>Não foi possível abrir o perfil</Text>
@@ -71,6 +75,20 @@ export function PublicPlayerProfileScreen({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
+        {showRefreshingState ? (
+          <View style={styles.inlineStatusCard}>
+            <ActivityIndicator color={palette.ember} size="small" />
+            <Text style={styles.inlineStatusText}>Atualizando dados públicos…</Text>
+          </View>
+        ) : null}
+
+        {showInlineError ? (
+          <View style={styles.inlineErrorCard}>
+            <Text style={styles.inlineErrorTitle}>Alguns dados podem estar desatualizados</Text>
+            <Text style={styles.inlineErrorText}>{error}</Text>
+          </View>
+        ) : null}
+
         <View style={styles.heroCard}>
           <View style={styles.heroIdentityRow}>
             <View
@@ -371,6 +389,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     textAlign: "center",
+  },
+  inlineStatusCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(241,143,92,0.18)",
+    backgroundColor: "rgba(241,143,92,0.08)",
+  },
+  inlineStatusText: {
+    color: palette.sand,
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  inlineErrorCard: {
+    gap: 4,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(214,93,93,0.2)",
+    backgroundColor: "rgba(214,93,93,0.1)",
+  },
+  inlineErrorTitle: {
+    color: palette.sand,
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  inlineErrorText: {
+    color: palette.mist,
+    fontSize: 13,
+    lineHeight: 18,
   },
   heroCard: {
     gap: 18,

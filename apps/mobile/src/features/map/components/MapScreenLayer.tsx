@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement } from "react";
-import { Animated, View } from "react-native";
+import { Animated, StyleSheet, View, type ViewProps } from "react-native";
 
 import { MapGamesSheet } from "@/features/map/components/MapGamesSheet";
 import type { MeetupSortOption } from "@/features/map/components/MeetupSortMenuModal";
@@ -38,6 +38,7 @@ export type MapScreenLayerProps<
     onOpenComposer: () => void;
     profileIsPro: boolean;
   };
+  drawerEdgePanHandlers?: ViewProps;
   gamesSheet: {
     onDismissPinCallout?: () => void;
     top: number;
@@ -104,11 +105,17 @@ export function MapScreenLayer<
   active,
   mapProps,
   topOverlay,
+  drawerEdgePanHandlers,
   gamesSheet,
 }: MapScreenLayerProps<MeetupItem, VenueItem>) {
   return (
     <View style={styles.screen} pointerEvents={active ? "auto" : "none"}>
       <InteractiveMap {...mapProps} />
+      <View
+        pointerEvents={active ? "auto" : "none"}
+        style={drawerStyles.edgeSwipeZone}
+        {...drawerEdgePanHandlers}
+      />
 
       <MapTopOverlay {...topOverlay} />
 
@@ -116,3 +123,15 @@ export function MapScreenLayer<
     </View>
   );
 }
+
+const drawerStyles = StyleSheet.create({
+  edgeSwipeZone: {
+    position: "absolute",
+    top: 0,
+    bottom: 0,
+    left: 0,
+    width: 24,
+    zIndex: 5,
+    backgroundColor: "transparent",
+  },
+});

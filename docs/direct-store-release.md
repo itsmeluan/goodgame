@@ -62,6 +62,7 @@ Como o projeto está com `ios/` como fonte da verdade, a rota mais consistente �
 
 - limpar o build folder;
 - confirmar `Bundle Identifier`, signing e version/build;
+- confirmar que a versão candidata atual é `1.1.0` e subir um `build number` novo para cada archive enviado;
 - conferir permissões em `Info.plist`;
 - conferir que o app abre sem Metro;
 - validar login, mapa e chat em `Release`.
