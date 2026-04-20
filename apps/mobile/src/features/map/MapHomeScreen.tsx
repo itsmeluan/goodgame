@@ -2370,12 +2370,44 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     [drawerBackdropOpacity, drawerTranslateX, drawerWidth]
   );
 
+  const hideDrawerImmediately = useCallback(
+    (options?: { resetSubmenus?: boolean }) => {
+      const shouldResetSubmenus = options?.resetSubmenus ?? true;
+
+      drawerClosingRef.current = false;
+      drawerTranslateX.stopAnimation();
+      drawerBackdropOpacity.stopAnimation();
+      drawerTranslateX.setValue(-drawerWidth);
+      drawerBackdropOpacity.setValue(0);
+      currentDrawerTranslateXRef.current = -drawerWidth;
+      drawerPanStartRef.current = -drawerWidth;
+      setDrawerOpen(false);
+
+      if (shouldResetSubmenus) {
+        setDrawerPanel("root");
+        drawerPanelProgress.setValue(0);
+        setExpandedDrawerChatGroupIds({});
+      }
+    },
+    [
+      drawerBackdropOpacity,
+      drawerPanelProgress,
+      drawerTranslateX,
+      drawerWidth,
+      currentDrawerTranslateXRef,
+      drawerPanStartRef,
+    ]
+  );
+
   const finalizeDrawerClose = useCallback(() => {
     drawerClosingRef.current = false;
     setDrawerOpen(false);
     setDrawerPanel("root");
     drawerPanelProgress.setValue(0);
-  }, [drawerPanelProgress]);
+    setExpandedDrawerChatGroupIds({});
+    currentDrawerTranslateXRef.current = -drawerWidth;
+    drawerPanStartRef.current = -drawerWidth;
+  }, [drawerPanelProgress, drawerWidth]);
 
   const requestDrawerClose = useCallback(
     (options?: { dismissPin?: boolean }) => {
@@ -2397,6 +2429,18 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     },
     [animateDrawerVisibility, drawerOpen, finalizeDrawerClose]
   );
+
+  const openDrawer = useCallback(() => {
+    Keyboard.dismiss();
+    closeComposerRef.current(false);
+    setFiltersOpen(false);
+    drawerClosingRef.current = false;
+    setDrawerOpen(true);
+
+    requestAnimationFrame(() => {
+      animateDrawerVisibility(true);
+    });
+  }, [animateDrawerVisibility]);
 
   const drawerPanResponders = useDrawerPanResponders({
     edgeSwipeEnabled:
@@ -2439,22 +2483,19 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     if (!drawerOpen && previousDrawerWidthRef.current !== drawerWidth) {
       drawerTranslateX.setValue(-drawerWidth);
       drawerBackdropOpacity.setValue(0);
+      currentDrawerTranslateXRef.current = -drawerWidth;
+      drawerPanStartRef.current = -drawerWidth;
     }
 
     previousDrawerWidthRef.current = drawerWidth;
-  }, [drawerBackdropOpacity, drawerOpen, drawerTranslateX, drawerWidth]);
-
-  useEffect(() => {
-    animateDrawerVisibility(drawerOpen);
-  }, [animateDrawerVisibility, drawerOpen]);
-
-  useEffect(() => {
-    if (!drawerOpen) {
-      drawerPanelProgress.setValue(0);
-      setDrawerPanel("root");
-      setExpandedDrawerChatGroupIds({});
-    }
-  }, [drawerOpen, drawerPanelProgress]);
+  }, [
+    currentDrawerTranslateXRef,
+    drawerBackdropOpacity,
+    drawerOpen,
+    drawerPanStartRef,
+    drawerTranslateX,
+    drawerWidth,
+  ]);
 
   useEffect(() => {
     void loadDashboardRef.current();
@@ -4602,8 +4643,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   animatePageInRef.current = animatePageIn;
 
   function finalizePageToMap() {
-    setDrawerOpen(false);
-    closeDrawerSubmenus();
+    hideDrawerImmediately();
     setActiveScreen("map");
     pageTranslateY.setValue(height);
     currentPageTranslateYRef.current = height;
@@ -4690,19 +4730,11 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
   function openComposerSheet() {
     Keyboard.dismiss();
-    setDrawerOpen(false);
+    hideDrawerImmediately();
     setFiltersOpen(false);
     setGamesSheetPreviewMode(false);
     animateGamesSheet(false);
     setComposerOpen(true);
-  }
-
-  function openDrawer() {
-    Keyboard.dismiss();
-    closeComposer(false);
-    setFiltersOpen(false);
-    drawerClosingRef.current = false;
-    setDrawerOpen(true);
   }
 
   function openDrawerRootPanel() {
@@ -4721,9 +4753,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   function openMap() {
     Keyboard.dismiss();
     closeComposer(false);
-    setDrawerOpen(false);
-    setDrawerPanel("root");
-    drawerPanelProgress.setValue(0);
+    hideDrawerImmediately();
     setGamesSheetPreviewMode(false);
     chatReturnSnapshotRef.current = null;
     chatRoomTranslateX.setValue(0);
@@ -4734,11 +4764,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
     setActiveScreen("map");
     animateGamesSheet(false);
-  }
-
-  function closeDrawerSubmenus() {
-    setDrawerPanel("root");
-    drawerPanelProgress.setValue(0);
   }
 
   function runAfterDrawerTransition(action: () => void) {
@@ -4753,8 +4778,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     Keyboard.dismiss();
     closeComposer(false);
     dismissPinCallout();
-    setDrawerOpen(false);
-    closeDrawerSubmenus();
+    hideDrawerImmediately();
 
     if (activeScreen !== "map") {
       animatePageOutToMap(() => {
@@ -4837,7 +4861,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       chatRoomTranslateX.setValue(0);
     }
 
-    setDrawerOpen(false);
+    hideDrawerImmediately();
     setChatViewMode("room");
 
     if (meetupId) {
@@ -4916,7 +4940,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       chatRoomTranslateX.setValue(0);
     }
 
-    setDrawerOpen(false);
+    hideDrawerImmediately();
     setChatViewMode("room");
 
     const unreadPrivateIds = effectiveNotifications
@@ -5234,7 +5258,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   function openAccount() {
     Keyboard.dismiss();
     closeComposer(false);
-    setDrawerOpen(false);
+    hideDrawerImmediately();
     setPageScreen("account");
 
     if (activeScreen === "map") {
@@ -5253,7 +5277,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   function openFriends() {
     Keyboard.dismiss();
     closeComposer(false);
-    setDrawerOpen(false);
+    hideDrawerImmediately();
     setPageScreen("friends");
 
     if (activeScreen === "map") {
@@ -5281,7 +5305,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       return;
     }
 
-    setDrawerOpen(false);
+    hideDrawerImmediately();
     pageTranslateY.setValue(0);
     currentPageTranslateYRef.current = 0;
     setPageScreen(playerReturnContext.pageScreen ?? "friends");
@@ -5297,7 +5321,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
     Keyboard.dismiss();
     closeComposer(false);
-    setDrawerOpen(false);
+    hideDrawerImmediately();
     setPlayerReturnContext({
       activeScreen: activeScreen === "player" ? "map" : activeScreen,
       pageScreen:
@@ -5529,7 +5553,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
     Keyboard.dismiss();
     closeComposerRef.current(false);
-    setDrawerOpen(false);
+    hideDrawerImmediately();
 
     const groupId = slugifyGameLabel(inferGameNameFromMeetup(meetup));
 
@@ -5553,7 +5577,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     }
 
     apply();
-  }, [activeScreen, effectiveSelectedChatMeetup]);
+  }, [activeScreen, effectiveSelectedChatMeetup, hideDrawerImmediately]);
 
   useLayoutEffect(() => {
     openMeetupFromShareLinkRef.current = (meetupId: string) => {
@@ -5566,7 +5590,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
       Keyboard.dismiss();
       closeComposer(false);
-      setDrawerOpen(false);
+      hideDrawerImmediately();
       setExpandedMeetupInfoId(meetupId);
       handleSelectMeetupFromMap(meetupId);
       const groupId = slugifyGameLabel(inferGameNameFromMeetup(meetup));
@@ -5583,7 +5607,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
       Keyboard.dismiss();
       closeComposer(false);
-      setDrawerOpen(false);
+      hideDrawerImmediately();
       handleSelectVenueFromMap(venueId);
       setExternalVenueDetailRequest({ venueId });
     };
@@ -5676,7 +5700,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       refreshing,
       onOpenDrawer: openDrawer,
       onToggleFilters: () => {
-        setDrawerOpen(false);
+        hideDrawerImmediately();
         closeComposer();
         setFiltersOpen((current) => !current);
       },

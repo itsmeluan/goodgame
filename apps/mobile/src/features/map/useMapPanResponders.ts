@@ -251,6 +251,7 @@ export function useDrawerPanResponders({
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: () => {
           Keyboard.dismiss();
+          drawerPanStartRef.current = currentDrawerTranslateXRef.current;
           drawerTranslateX.stopAnimation((value) => {
             currentDrawerTranslateXRef.current = value;
             drawerPanStartRef.current = value;
@@ -280,7 +281,20 @@ export function useDrawerPanResponders({
 
           animateDrawerVisibility(false);
         },
-        onPanResponderTerminate: () => {
+        onPanResponderTerminate: (_event, gestureState) => {
+          const projectedValue = clamp(
+            currentDrawerTranslateXRef.current + gestureState.vx * 180,
+            -drawerWidth,
+            0
+          );
+          const shouldOpen =
+            projectedValue > -drawerWidth * 0.52 || currentDrawerTranslateXRef.current > -drawerWidth * 0.44;
+
+          if (shouldOpen) {
+            onOpenDrawer();
+            return;
+          }
+
           animateDrawerVisibility(false);
         },
       }),
@@ -307,6 +321,7 @@ export function useDrawerPanResponders({
         onPanResponderTerminationRequest: () => false,
         onPanResponderGrant: () => {
           Keyboard.dismiss();
+          drawerPanStartRef.current = currentDrawerTranslateXRef.current;
           drawerTranslateX.stopAnimation((value) => {
             currentDrawerTranslateXRef.current = value;
             drawerPanStartRef.current = value;
@@ -336,7 +351,21 @@ export function useDrawerPanResponders({
 
           animateDrawerVisibility(true);
         },
-        onPanResponderTerminate: () => {
+        onPanResponderTerminate: (_event, gestureState) => {
+          const projectedValue = clamp(
+            currentDrawerTranslateXRef.current + gestureState.vx * 180,
+            -drawerWidth,
+            0
+          );
+          const shouldClose =
+            projectedValue < -drawerWidth * 0.48 ||
+            currentDrawerTranslateXRef.current < -drawerWidth * 0.44;
+
+          if (shouldClose) {
+            onCloseDrawer();
+            return;
+          }
+
           animateDrawerVisibility(true);
         },
       }),

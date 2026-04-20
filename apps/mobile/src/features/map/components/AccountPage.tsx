@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/AppleListNavigation";
-import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { Avatar } from "@/components/Avatar";
 import { GlassCard } from "@/components/GlassCard";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
@@ -87,12 +86,6 @@ export function AccountPage({
                   pressed ? styles.circleButtonPressed : null,
                 ]}
               >
-                <AppleGlassSurface
-                  pointerEvents="none"
-                  variant="dark"
-                  intensity="clear"
-                  style={styles.accountAvatarButtonSurface}
-                />
                 <Avatar
                   name={profile.displayName}
                   uri={profile.avatarUrl}
@@ -315,10 +308,6 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     paddingHorizontal: 2,
     alignSelf: "flex-start",
-  },
-  accountAvatarButtonSurface: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 999,
   },
   circleButtonPressed: {
     opacity: 0.78,
