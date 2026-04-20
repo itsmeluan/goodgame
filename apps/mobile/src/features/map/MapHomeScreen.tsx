@@ -523,6 +523,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const previousDrawerWidthRef = useRef(drawerWidth);
   const currentDrawerTranslateXRef = useRef(-drawerWidth);
   const drawerPanStartRef = useRef(-drawerWidth);
+  const drawerClosingRef = useRef(false);
   const loadDashboardRef = useRef<(mode?: "initial" | "refresh") => Promise<void>>(async () => {});
   const loadMapEntitiesRef = useRef<(mode?: "initial" | "refresh") => Promise<void>>(async () => {});
   const loadNotificationsRef = useRef<() => Promise<void>>(async () => {});
@@ -2369,6 +2370,34 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     [drawerBackdropOpacity, drawerTranslateX, drawerWidth]
   );
 
+  const finalizeDrawerClose = useCallback(() => {
+    drawerClosingRef.current = false;
+    setDrawerOpen(false);
+    setDrawerPanel("root");
+    drawerPanelProgress.setValue(0);
+  }, [drawerPanelProgress]);
+
+  const requestDrawerClose = useCallback(
+    (options?: { dismissPin?: boolean }) => {
+      if (options?.dismissPin ?? true) {
+        dismissPinCallout();
+      }
+
+      if (drawerClosingRef.current) {
+        return;
+      }
+
+      if (!drawerOpen) {
+        finalizeDrawerClose();
+        return;
+      }
+
+      drawerClosingRef.current = true;
+      animateDrawerVisibility(false, finalizeDrawerClose);
+    },
+    [animateDrawerVisibility, drawerOpen, finalizeDrawerClose]
+  );
+
   const drawerPanResponders = useDrawerPanResponders({
     edgeSwipeEnabled:
       activeScreen === "map" && !drawerOpen && !filtersOpen && !composerOpen && !venueComposerOpen,
@@ -2383,11 +2412,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       openDrawer();
     },
     onCloseDrawer: () => {
-      dismissPinCallout();
-      animateDrawerVisibility(false, () => {
-        setDrawerOpen(false);
-        closeDrawerSubmenus();
-      });
+      requestDrawerClose();
     },
   });
 
@@ -4676,6 +4701,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     Keyboard.dismiss();
     closeComposer(false);
     setFiltersOpen(false);
+    drawerClosingRef.current = false;
     setDrawerOpen(true);
   }
 
@@ -6016,8 +6042,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     unreadChatMeetupIds,
     nowTimestamp,
     onClose: () => {
-      dismissPinCallout();
-      setDrawerOpen(false);
+      requestDrawerClose();
     },
     onOpenMap: openMap,
     onOpenGames: openGames,
