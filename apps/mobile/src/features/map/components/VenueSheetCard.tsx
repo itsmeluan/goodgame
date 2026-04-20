@@ -364,7 +364,7 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
   },
   listCardSelected: {
-    backgroundColor: "rgba(241,143,92,0.06)",
+    backgroundColor: "transparent",
   },
   page: {
     paddingTop: 2,
