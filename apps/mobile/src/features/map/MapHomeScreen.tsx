@@ -2114,7 +2114,10 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const composerTopGap = insets.top + 72;
   const composerSheetHeight = Math.max(height - composerTopGap, 560);
   const composerFooterReserve = 104 + insets.bottom;
-  const defaultGamesSheetPeek = 150;
+  // On Android, show only handle + subtitle when collapsed (48dp of visible content).
+  // This keeps the map logo and recenter button clearly visible above the drawer.
+  // The insets.bottom offset ensures the visible content sits above the nav bar.
+  const defaultGamesSheetPeek = Platform.OS === "android" ? insets.bottom + 48 : 150;
   const previewGamesSheetPeek = Math.min(Math.max(380, height * 0.48), 448);
   const gamesSheetPeek = gamesSheetPreviewMode ? previewGamesSheetPeek : defaultGamesSheetPeek;
   const filterCloseTop = insets.top + 10 + 56 + 10;
@@ -2126,6 +2129,11 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const defaultCollapsedGamesSheetOffset = Math.max(gamesSheetHeight - defaultGamesSheetPeek, 0);
   const previewGamesSheetOffset = Math.max(gamesSheetHeight - previewGamesSheetPeek, 0);
   const collapsedGamesSheetOffset = defaultCollapsedGamesSheetOffset;
+  // On Android, limit how high the sheet rises when fully expanded so the map is still
+  // visible. Target: sheet top = 35% of screen height (leaves enough map context).
+  // On iOS the glass effect is transparent so full expansion (offset=0) is fine.
+  const expandedGamesSheetOffset =
+    Platform.OS === "android" ? Math.max(Math.round(height * 0.35) - gamesSheetTop, 0) : 0;
   const gamesSheetTranslateY = useRef(new Animated.Value(collapsedGamesSheetOffset)).current;
   const currentGamesSheetValueRef = useRef(collapsedGamesSheetOffset);
   const sheetPanStartRef = useRef(collapsedGamesSheetOffset);
@@ -2203,7 +2211,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
   useEffect(() => {
     const nextValue = gamesSheetExpandedRef.current
-      ? 0
+      ? expandedGamesSheetOffset
       : gamesSheetPreviewModeRef.current
         ? previewGamesSheetOffset
         : collapsedGamesSheetOffset;
@@ -2211,6 +2219,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     currentGamesSheetValueRef.current = nextValue;
   }, [
     collapsedGamesSheetOffset,
+    expandedGamesSheetOffset,
     gamesSheetTranslateY,
     previewGamesSheetOffset,
   ]);
@@ -2318,6 +2327,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
   const gamesSheetPanResponder = useGamesSheetPanResponder({
     defaultCollapsedGamesSheetOffset,
+    expandedGamesSheetOffset,
     venueComposerOpen,
     gamesSheetTranslateY,
     currentGamesSheetValueRef,
@@ -4176,7 +4186,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   function animateGamesSheet(expanded: boolean) {
     setGamesSheetExpanded(expanded);
     setGamesSheetPreviewMode(false);
-    animateGamesSheetTo(expanded ? 0 : defaultCollapsedGamesSheetOffset);
+    animateGamesSheetTo(expanded ? expandedGamesSheetOffset : defaultCollapsedGamesSheetOffset);
   }
 
   function animateGamesSheetPreview() {
@@ -4572,7 +4582,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     if (nextState === "expanded") {
       setGamesSheetExpanded(true);
       setGamesSheetPreviewMode(false);
-      animateGamesSheetTo(0);
+      animateGamesSheetTo(expandedGamesSheetOffset);
       return;
     }
 
@@ -4587,7 +4597,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   }
 
   function resolveGamesSheetSnapPoint(currentValue: number, velocityY: number) {
-    const topMidpoint = previewGamesSheetOffset / 2;
+    const topMidpoint = (expandedGamesSheetOffset + previewGamesSheetOffset) / 2;
     const bottomMidpoint =
       previewGamesSheetOffset +
       (defaultCollapsedGamesSheetOffset - previewGamesSheetOffset) / 2;
@@ -5380,6 +5390,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         ...current,
         [groupId]: true,
       }));
+      // Navigate the sheet directly to the detail scene for this meetup.
+      setExternalMeetupDetailRequest({ groupId, meetupId });
     }
 
     animateGamesSheetPreview();
@@ -5393,6 +5405,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     setGamesSheetPreviewMode(true);
     setActiveScreen("map");
     setVenueComposerOpen(false);
+    // Navigate the sheet directly to the detail scene for this venue.
+    setExternalVenueDetailRequest({ venueId });
     animateGamesSheetPreview();
   }
 

@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from "react";
-import { Animated, StyleSheet, View } from "react-native";
+import { Animated, Platform, StyleSheet, View, useWindowDimensions } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { GamesSheetHeader } from "@/features/map/components/GamesSheetHeader";
@@ -144,6 +144,7 @@ export function MapGamesSheet<
   resolveVenueById,
 }: MapGamesSheetProps<MeetupItem, VenueItem>) {
   const [sheetWidth, setSheetWidth] = useState(0);
+  const { width: windowWidth } = useWindowDimensions();
 
   return (
     <Animated.View
@@ -156,6 +157,9 @@ export function MapGamesSheet<
       }}
       style={[
         styles.gamesSheet,
+        Platform.OS === "android"
+          ? [stylesLocal.sheetFullWidth, { width: windowWidth }]
+          : null,
         {
           top,
           height,
@@ -268,14 +272,21 @@ export function MapGamesSheet<
 }
 
 const stylesLocal = StyleSheet.create({
+  sheetFullWidth: {
+    left: 0,
+    right: undefined,
+    borderTopLeftRadius: 0,
+    borderTopRightRadius: 0,
+  },
   sheetSurface: {
     position: "absolute",
-    left: -screenEdgeGlassBleed,
-    right: -screenEdgeGlassBleed,
+    // On Android there is no glass blur so no need to bleed beyond the sheet boundaries.
+    left: Platform.select({ android: 0, default: -screenEdgeGlassBleed }),
+    right: Platform.select({ android: 0, default: -screenEdgeGlassBleed }),
     top: 0,
     bottom: 0,
     borderWidth: 0,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    borderTopLeftRadius: Platform.select({ android: 0, default: 30 }),
+    borderTopRightRadius: Platform.select({ android: 0, default: 30 }),
   },
 });

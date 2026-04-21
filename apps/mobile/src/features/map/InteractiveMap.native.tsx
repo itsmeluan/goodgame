@@ -12,10 +12,15 @@ import { MaterialIcons } from "@expo/vector-icons";
 import {
   Animated,
   Easing,
+  Image,
   type LayoutChangeEvent,
+  Modal,
+  Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -43,14 +48,13 @@ type RawOverlayPin = {
   id: string;
   kind: "meetup" | "venue" | "draft";
   coordinate: MapCoordinate;
-  badgeCount: number | null;
-  /** Pins fanned out from the same coordinate — must not merge in screen-space clustering. */
+  badgeCount: null;
+  displayName?: string;
+  /** Fanned out from a coincident coordinate — kept for rendering, not for any clustering. */
   spreadFromCoincident?: boolean;
   overdue?: boolean;
   /** Sprite set for meetup pins (Magic vs other games / future dice art). */
   meetupMarkerStyle?: MeetupMarkerStyle;
-  representedMeetupIds?: string[];
-  representedVenueIds?: string[];
   calloutContent?: ReactNode;
   onPress?: () => void;
 };
@@ -59,26 +63,8 @@ type ProjectedOverlayPin = RawOverlayPin & {
   point: { x: number; y: number };
 };
 
-type ClusteredProjectedPin = {
-  id: string;
-  kind: "cluster";
-  coordinate: MapCoordinate;
-  point: { x: number; y: number };
-  badgeCount: number;
-  overdue?: boolean;
-  calloutContent?: ReactNode;
-  onPress?: () => void;
-};
-
-type VisibleOverlayPin = ProjectedOverlayPin | ClusteredProjectedPin;
-type OverlayPinGroup = {
-  key: string;
-  coordinate: MapCoordinate;
-  meetups: InteractiveMapProps["meetups"];
-  venues: InteractiveMapProps["venues"];
-  meetupIds: string[];
-  venueIds: string[];
-};
+/** All rendered pins are individual (no cluster aggregation). */
+type VisibleOverlayPin = ProjectedOverlayPin;
 
 type PixelOffset = {
   x: number;
@@ -87,6 +73,7 @@ type PixelOffset = {
 
 type OverlayMarkersProps = {
   pins: VisibleOverlayPin[];
+  selectedPinId?: string | null;
   onPressPin: (item: VisibleOverlayPin, event: { stopPropagation?: () => void }) => void;
 };
 
@@ -97,10 +84,6 @@ type OverlayPinSnapshot = {
 };
 
 const OVERDUE_MEETUP_AFTER_MS = 60 * 60 * 1000;
-/** Below this latitude/longitude delta, map is zoomed in enough to show individual pins (no screen-space clustering). */
-const PROJECTED_CLUSTER_ZOOM_IN_CUTOFF = 0.0075;
-/** Hysteresis: slightly lower cutoff while clustering is already on to avoid flicker at the boundary. */
-const PROJECTED_CLUSTER_ZOOM_IN_CUTOFF_ACTIVE = 0.006;
 const MARKER_IMAGE_SOURCES = {
   meetupMagic: require("../../../assets/map/marker-meetup-magic.png"),
   meetupMagic2: require("../../../assets/map/marker-meetup-magic-2.png"),
@@ -192,16 +175,6 @@ const MARKER_IMAGE_SOURCES = {
   venue8: require("../../../assets/map/marker-venue-8.png"),
   venue9: require("../../../assets/map/marker-venue-9.png"),
   venue9plus: require("../../../assets/map/marker-venue-9plus.png"),
-  cluster: require("../../../assets/map/marker-cluster.png"),
-  cluster2: require("../../../assets/map/marker-cluster-2.png"),
-  cluster3: require("../../../assets/map/marker-cluster-3.png"),
-  cluster4: require("../../../assets/map/marker-cluster-4.png"),
-  cluster5: require("../../../assets/map/marker-cluster-5.png"),
-  cluster6: require("../../../assets/map/marker-cluster-6.png"),
-  cluster7: require("../../../assets/map/marker-cluster-7.png"),
-  cluster8: require("../../../assets/map/marker-cluster-8.png"),
-  cluster9: require("../../../assets/map/marker-cluster-9.png"),
-  cluster9plus: require("../../../assets/map/marker-cluster-9plus.png"),
   draft: require("../../../assets/map/marker-draft.png"),
 } as const;
 
@@ -231,7 +204,6 @@ export function InteractiveMap({
   const latestRegionRef = useRef<Region>(buildRegion([]));
   const selectedDisplayedOverlayPinRef = useRef<{ id: string; coordinate: MapCoordinate } | null>(null);
   const markerPressLockUntilRef = useRef(0);
-  const projectedClusteringEnabledRef = useRef(false);
   const { coordinate: liveUserCoordinate, accuracy: liveUserAccuracy, heading: liveUserHeading } =
     useLiveLocation();
   const [mapReady, setMapReady] = useState(false);
@@ -262,7 +234,7 @@ export function InteractiveMap({
 
   const initialRegion = useMemo(() => buildRegion(coordinates), [coordinates]);
   const [visibleRegion, setVisibleRegion] = useState<Region>(initialRegion);
-  const [clusterRegion, setClusterRegion] = useState<Region>(initialRegion);
+  const [viewRegion, setViewRegion] = useState<Region>(initialRegion);
   const [mapSize, setMapSize] = useState<{ width: number; height: number }>({
     width: 1,
     height: MAP_VIEW_HEIGHT,
@@ -322,18 +294,6 @@ export function InteractiveMap({
     return null;
   }, [allowDraftSelection, draftCoordinate, meetups, selectedMeetupId, selectedVenueId, venues]);
 
-  const overlayGroups = useMemo(() => buildOverlayPinGroups({ meetups, venues }), [meetups, venues]);
-  /** Always fan out coincident groups so pins never sit on identical pixels; zoom-independent. */
-  const expandedCoincidentGroupKeys = useMemo(() => {
-    const keys = new Set<string>();
-    overlayGroups.forEach((group) => {
-      if (group.meetupIds.length + group.venueIds.length > 1) {
-        keys.add(group.key);
-      }
-    });
-    return keys;
-  }, [overlayGroups]);
-
   const rawOverlayPins = useMemo(() => {
     const items: RawOverlayPin[] = [];
 
@@ -343,8 +303,6 @@ export function InteractiveMap({
         kind: "draft",
         coordinate: draftCoordinate,
         badgeCount: null,
-        representedMeetupIds: [],
-        representedVenueIds: [],
         calloutContent: (
           <PinCallout
             kindLabel="Jogo"
@@ -356,268 +314,110 @@ export function InteractiveMap({
       });
     }
 
-    const venueCollisionOffsets = buildVenueCollisionOffsets(overlayGroups);
-    const meetupVenueAvoidanceOffsets = buildMeetupVenueAvoidanceOffsets(overlayGroups, clusterRegion);
+    venues.forEach((venue) => {
+      items.push({
+        id: `venue:${venue.id}`,
+        kind: "venue",
+        coordinate: { latitude: venue.lat, longitude: venue.lng },
+        badgeCount: null,
+        displayName: venue.name,
+        calloutContent: (
+          <PinCallout
+            kindLabel="Local"
+            title={venue.name}
+            distanceLabel={formatDistanceKm(profile.lat, profile.lng, venue.lat, venue.lng)}
+            helperText={buildVenueHelperText(venue)}
+          />
+        ),
+        onPress: () => onSelectVenue(venue.id),
+      });
+    });
 
-    overlayGroups.forEach((group) => {
-      const venueCollisionOffset = venueCollisionOffsets.get(group.key) ?? { x: 0, y: 0 };
-      const meetupVenueAvoidanceOffset = meetupVenueAvoidanceOffsets.get(group.key) ?? { x: 0, y: 0 };
-      if (expandedCoincidentGroupKeys.has(group.key)) {
-        const spreadItems = buildExpandedGroupItems(
-          group,
-          Math.max(clusterRegion.latitudeDelta, clusterRegion.longitudeDelta)
-        );
+    meetups.forEach((meetup) => {
+      const overdue = isMeetupOverdueForMap(meetup);
+      items.push({
+        id: `meetup:${meetup.id}`,
+        kind: "meetup",
+        coordinate: { latitude: meetup.lat, longitude: meetup.lng },
+        badgeCount: null,
+        overdue,
+        displayName: meetup.title,
+        meetupMarkerStyle: resolveMeetupMarkerStyle(meetup),
+        calloutContent: (
+          <PinCallout
+            kindLabel="Jogo"
+            title={meetup.title}
+            distanceLabel={formatDistanceKm(profile.lat, profile.lng, meetup.lat, meetup.lng)}
+            timeLabel={formatMeetupSchedule(meetup.startsAt)}
+            helperText={
+              meetup.isLocationExact
+                ? formatCompactAddress(meetup.addressLabel || meetup.locationHint)
+                : "Entre no grupo para ver o ponto exato."
+            }
+          />
+        ),
+        onPress: () => onSelectMeetup(meetup.id),
+      });
+    });
 
-        spreadItems.forEach((spreadItem) => {
-          if (spreadItem.kind === "venue") {
-            const venue = spreadItem.venue;
-            const coordinate = offsetCoordinateByPixelOffset(
-              group.coordinate,
-              {
-                x: spreadItem.offset.x + venueCollisionOffset.x,
-                y: spreadItem.offset.y + venueCollisionOffset.y,
-              },
-              clusterRegion,
-              mapSize
-            );
-
-            items.push({
-              id: `venue:${venue.id}`,
-              kind: "venue",
-              coordinate,
-              badgeCount: null,
-              spreadFromCoincident: true,
-              representedMeetupIds: [],
-              representedVenueIds: [venue.id],
-              calloutContent: (
-                <PinCallout
-                  kindLabel="Local"
-                  title={venue.name}
-                  distanceLabel={formatDistanceKm(profile.lat, profile.lng, venue.lat, venue.lng)}
-                  helperText={buildVenueHelperText(venue)}
-                />
-              ),
-              onPress: () => onSelectVenue(venue.id),
-            });
-
-            return;
-          }
-
-          const meetup = spreadItem.meetup;
-          const overdue = isMeetupOverdueForMap(meetup);
-          const coordinate = offsetCoordinateByPixelOffset(
-            group.coordinate,
-            {
-              x: spreadItem.offset.x + meetupVenueAvoidanceOffset.x,
-              y: spreadItem.offset.y + meetupVenueAvoidanceOffset.y,
-            },
-            clusterRegion,
-            mapSize
-          );
-
-          items.push({
-            id: `meetup:${meetup.id}`,
-            kind: "meetup",
-            coordinate,
-            badgeCount: null,
-            spreadFromCoincident: true,
-            overdue,
-            meetupMarkerStyle: resolveMeetupMarkerStyle(meetup),
-            representedMeetupIds: [meetup.id],
-            representedVenueIds: [],
-            calloutContent: (
-              <PinCallout
-                kindLabel="Jogo"
-                title={meetup.title}
-                distanceLabel={formatDistanceKm(profile.lat, profile.lng, meetup.lat, meetup.lng)}
-                timeLabel={formatMeetupSchedule(meetup.startsAt)}
-                helperText={
-                  meetup.isLocationExact
-                    ? formatCompactAddress(meetup.addressLabel || meetup.locationHint)
-                    : "Entre no grupo para ver o ponto exato."
-                }
-              />
-            ),
-            onPress: () => onSelectMeetup(meetup.id),
-          });
-        });
-
-        return;
-      }
-
-      const hasVenue = group.venueIds.length > 0;
-      const hasMeetup = group.meetupIds.length > 0;
-
-      if (hasVenue) {
-        const primaryVenue = group.venues[0] ?? null;
-
-        if (primaryVenue) {
-          const coordinate = offsetCoordinateByPixelOffset(
-            group.coordinate,
-            venueCollisionOffset,
-            clusterRegion,
-            mapSize
-          );
-
-          items.push({
-            id: `venue:${primaryVenue.id}`,
-            kind: "venue",
-            coordinate,
-            badgeCount: null,
-            representedMeetupIds: [],
-            representedVenueIds: [primaryVenue.id],
-            calloutContent: (
-              <PinCallout
-                kindLabel="Local"
-                title={primaryVenue.name}
-                distanceLabel={formatDistanceKm(
-                  profile.lat,
-                  profile.lng,
-                  primaryVenue.lat,
-                  primaryVenue.lng
-                )}
-                helperText={buildVenueHelperText(primaryVenue)}
-              />
-            ),
-            onPress: () => onSelectVenue(primaryVenue.id),
-          });
-        }
-      }
-
-      if (hasMeetup) {
-        const meetupPinId = `meetup-group:${group.key}`;
-        const isMeetupGroupSelected = selectedMapGroupKey === meetupPinId;
-        const selectedMeetup = selectedMeetupId
-          ? group.meetups.find((meetup) => meetup.id === selectedMeetupId) ?? null
-          : null;
-        const primaryMeetup = selectedMeetup ?? group.meetups[0] ?? null;
-        const meetupGroupOverdue =
-          group.meetups.length > 0 && group.meetups.every((meetup) => isMeetupOverdueForMap(meetup));
-
-        if (primaryMeetup) {
-          const coordinate = offsetCoordinateByPixelOffset(
-            group.coordinate,
-            meetupVenueAvoidanceOffset,
-            clusterRegion,
-            mapSize
-          );
-
-          items.push({
-            id: meetupPinId,
-            kind: "meetup",
-            coordinate,
-            badgeCount: group.meetupIds.length > 1 ? group.meetupIds.length : null,
-            overdue: meetupGroupOverdue,
-            meetupMarkerStyle: resolveMeetupMarkerStyle(primaryMeetup),
-            representedMeetupIds: group.meetupIds,
-            representedVenueIds: [],
-            calloutContent: isMeetupGroupSelected
-              ? (
-                  <PinCallout
-                    kindLabel="Jogos"
-                    title={`${group.meetupIds.length} partida${group.meetupIds.length > 1 ? "s" : ""}`}
-                    distanceLabel={formatDistanceKm(
-                      profile.lat,
-                      profile.lng,
-                      primaryMeetup.lat,
-                      primaryMeetup.lng
-                    )}
-                    peopleLabel={`${group.meetupIds.length} ativa${group.meetupIds.length > 1 ? "s" : ""}`}
-                    helperText={buildMeetupGroupHelperText(group)}
-                  />
-                )
-              : (
-                  <PinCallout
-                    kindLabel="Jogo"
-                    title={primaryMeetup.title}
-                    distanceLabel={formatDistanceKm(
-                      profile.lat,
-                      profile.lng,
-                      primaryMeetup.lat,
-                      primaryMeetup.lng
-                    )}
-                    timeLabel={formatMeetupSchedule(primaryMeetup.startsAt)}
-                    helperText={
-                      primaryMeetup.isLocationExact
-                        ? formatCompactAddress(primaryMeetup.addressLabel || primaryMeetup.locationHint)
-                        : "Entre no grupo para ver o ponto exato."
-                    }
-                  />
-                ),
-            onPress:
-              group.meetupIds.length > 1
-                ? () =>
-                    onSelectMapGroup?.({
-                      key: meetupPinId,
-                      kind: "meetup",
-                      coordinate: group.coordinate,
-                      meetupIds: group.meetupIds,
-                      venueIds: [],
-                      primaryMeetupId: primaryMeetup.id,
-                      primaryVenueId: null,
-                    })
-                : () => onSelectMeetup(primaryMeetup.id),
-          });
-        }
+    // Fan out items that share the exact same coordinate so they don't render on top of each other.
+    const byCoord = new Map<string, RawOverlayPin[]>();
+    items.forEach((item) => {
+      const key = `${item.coordinate.latitude.toFixed(6)},${item.coordinate.longitude.toFixed(6)}`;
+      const bucket = byCoord.get(key);
+      if (bucket) {
+        bucket.push(item);
+      } else {
+        byCoord.set(key, [item]);
       }
     });
 
-    return items;
+    const result: RawOverlayPin[] = [];
+    byCoord.forEach((bucket) => {
+      if (bucket.length === 1) {
+        result.push(bucket[0]);
+        return;
+      }
+      const spreadRadius = 16;
+      bucket.forEach((item, index) => {
+        const angle = -Math.PI / 2 + (index / bucket.length) * 2 * Math.PI;
+        result.push({
+          ...item,
+          spreadFromCoincident: true,
+          coordinate: offsetCoordinateByPixelOffset(
+            item.coordinate,
+            { x: Math.cos(angle) * spreadRadius, y: Math.sin(angle) * spreadRadius },
+            viewRegion,
+            mapSize
+          ),
+        });
+      });
+    });
+
+    return result;
   }, [
     allowDraftSelection,
     draftCoordinate,
-    onSelectMapGroup,
-    onSelectMeetup,
-    onSelectVenue,
+    meetups,
+    venues,
     profile.lat,
     profile.lng,
-    selectedMapGroupKey,
-    selectedMeetupId,
-    clusterRegion,
-    expandedCoincidentGroupKeys,
+    onSelectMeetup,
+    onSelectVenue,
+    viewRegion,
     mapSize,
-    overlayGroups,
   ]);
 
   const selectedPinOverlayKey = useMemo(() => {
-    if (selectedMapGroupKey) {
-      return selectedMapGroupKey;
-    }
-
     if (selectedMeetupId) {
-      const exactMeetupPin = rawOverlayPins.find((item) => item.id === `meetup:${selectedMeetupId}`);
-
-      if (exactMeetupPin) {
-        return exactMeetupPin.id;
-      }
-
-      const groupedMeetupPin = rawOverlayPins.find(
-        (item) =>
-          item.kind === "meetup" &&
-          item.representedMeetupIds?.includes(selectedMeetupId)
-      );
-
-      return groupedMeetupPin?.id ?? null;
+      return rawOverlayPins.find((item) => item.id === `meetup:${selectedMeetupId}`)?.id ?? null;
     }
-
     if (selectedVenueId) {
-      const exactVenuePin = rawOverlayPins.find((item) => item.id === `venue:${selectedVenueId}`);
-
-      if (exactVenuePin) {
-        return exactVenuePin.id;
-      }
-
-      const groupedVenuePin = rawOverlayPins.find(
-        (item) =>
-          item.kind === "venue" &&
-          item.representedVenueIds?.includes(selectedVenueId)
-      );
-
-      return groupedVenuePin?.id ?? null;
+      return rawOverlayPins.find((item) => item.id === `venue:${selectedVenueId}`)?.id ?? null;
     }
-
     return null;
-  }, [rawOverlayPins, selectedMapGroupKey, selectedMeetupId, selectedVenueId]);
+  }, [rawOverlayPins, selectedMeetupId, selectedVenueId]);
+
   const selectedVenueFallbackPin = useMemo<RawOverlayPin | null>(() => {
     if (!selectedVenueId) {
       return null;
@@ -634,8 +434,6 @@ export function InteractiveMap({
       kind: "venue",
       coordinate: { latitude: selectedVenue.lat, longitude: selectedVenue.lng },
       badgeCount: null,
-      representedMeetupIds: [],
-      representedVenueIds: [selectedVenue.id],
       calloutContent: (
         <PinCallout
           kindLabel="Local"
@@ -646,6 +444,7 @@ export function InteractiveMap({
       ),
     };
   }, [profile.lat, profile.lng, selectedVenueId, venues]);
+
   const selectedRawOverlayPin = useMemo(() => {
     if (selectedPinOverlayKey) {
       return rawOverlayPins.find((item) => item.id === selectedPinOverlayKey) ?? null;
@@ -726,53 +525,39 @@ export function InteractiveMap({
     setPressedOverlayPinSnapshot(null);
   }, [pinCalloutDismissNonce]);
 
-  const zoomIntoCluster = useCallback(
-    (pins: ProjectedOverlayPin[]) => {
-      if (!mapRef.current || !pins.length) {
-        return;
-      }
+  // Disambiguation popup: shown when multiple pins overlap at the tapped location.
+  const [disambiguationCandidates, setDisambiguationCandidates] = useState<VisibleOverlayPin[] | null>(null);
+  // Timer used to defer disambiguation close so that a Marker.onPress can cancel it before it fires.
+  const disambiguationCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-      onClearSelection();
-      lastFocusedSignatureRef.current = null;
-      mapRef.current.animateToRegion(
-        buildClusterFocusRegion(pins.map((item) => item.coordinate), latestRegionRef.current),
-        280
-      );
-    },
-    [onClearSelection]
-  );
+  function cancelDisambiguationCloseTimer() {
+    if (disambiguationCloseTimerRef.current !== null) {
+      clearTimeout(disambiguationCloseTimerRef.current);
+      disambiguationCloseTimerRef.current = null;
+    }
+  }
 
-  const renderedOverlayPins = useMemo(() => {
+  function closeDisambiguation() {
+    cancelDisambiguationCloseTimer();
+    setDisambiguationCandidates(null);
+  }
+
+  const renderedOverlayPins = useMemo((): VisibleOverlayPin[] => {
     if (!mapReady || !mapSize.width || !mapSize.height) {
       return [];
     }
 
-    const projectedPins = rawOverlayPins
+    return rawOverlayPins
       .map((item) => ({
         ...item,
         point: projectCoordinateToPoint({
           coordinate: item.coordinate,
-          region: clusterRegion,
+          region: viewRegion,
           mapSize,
         }),
-      }));
-
-    const projectedClusteringEnabled = resolveProjectedClusteringEnabled({
-      pins: projectedPins,
-      region: clusterRegion,
-      previousEnabled: projectedClusteringEnabledRef.current,
-    });
-
-    projectedClusteringEnabledRef.current = projectedClusteringEnabled;
-
-    return projectedClusteringEnabled
-      ? buildProjectedPinClusters({
-          pins: projectedPins,
-          region: clusterRegion,
-          onPressCluster: zoomIntoCluster,
-        })
-      : sortVisibleOverlayPins(projectedPins);
-  }, [clusterRegion, mapReady, mapSize, rawOverlayPins, zoomIntoCluster]);
+      }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }, [viewRegion, mapReady, mapSize, rawOverlayPins]);
 
   useEffect(() => {
     onVisibleRegionChange?.(visibleRegion);
@@ -820,9 +605,12 @@ export function InteractiveMap({
 
     lastFocusedSignatureRef.current = focusSignature;
 
+    // Zoom in to at least street level when focusing a pin; if already closer, keep current zoom.
+    const targetDelta = Math.min(visibleRegion.latitudeDelta || 0.028, 0.012);
+
     const centeredLatitude = getShiftedLatitude({
       latitude: focusTarget.latitude,
-      latitudeDelta: visibleRegion.latitudeDelta || 0.028,
+      latitudeDelta: targetDelta,
       bottomOverlayHeight,
       mapHeight: mapSize.height,
     });
@@ -831,8 +619,8 @@ export function InteractiveMap({
       {
         latitude: centeredLatitude,
         longitude: focusTarget.longitude,
-        latitudeDelta: visibleRegion.latitudeDelta || 0.028,
-        longitudeDelta: visibleRegion.longitudeDelta || 0.028,
+        latitudeDelta: targetDelta,
+        longitudeDelta: targetDelta,
       },
       400
     );
@@ -893,11 +681,8 @@ export function InteractiveMap({
     }).start();
   }, [bubbleProgress, selectedDisplayedOverlayPin?.id]);
 
-  const handleOverlayMarkerPress = useCallback(
-    (item: VisibleOverlayPin, event: { stopPropagation?: () => void }) => {
-      markerPressLockUntilRef.current = Date.now() + 600;
-      event.stopPropagation?.();
-
+  const activateOverlayPin = useCallback(
+    (item: VisibleOverlayPin) => {
       selectedDisplayedOverlayPinRef.current = {
         id: item.id,
         coordinate: item.coordinate,
@@ -923,6 +708,39 @@ export function InteractiveMap({
     [mapReady, mapSize]
   );
 
+  const handleOverlayMarkerPress = useCallback(
+    (item: VisibleOverlayPin, event: { stopPropagation?: () => void }) => {
+      // Cancel any pending disambiguation close that was queued by MapView.onPress.
+      // On Android, MapView.onPress fires BEFORE Marker.onPress for the same touch.
+      cancelDisambiguationCloseTimer();
+      markerPressLockUntilRef.current = Date.now() + 600;
+      event.stopPropagation?.();
+
+      // Find all rendered pins that visually overlap with the pressed pin.
+      const nearby = renderedOverlayPins.filter((pin) => {
+        if (pin.id === item.id) return true;
+        const dx = pin.point.x - item.point.x;
+        const dy = pin.point.y - item.point.y;
+        return Math.sqrt(dx * dx + dy * dy) < PIN_DISAMBIGUATION_RADIUS;
+      });
+
+      if (nearby.length > 1) {
+        // Clear the balloon: both pressed state and any parent-driven selection.
+        setPressedOverlayPinId(null);
+        setPressedOverlayPinSnapshot(null);
+        onClearSelection();
+        setDisambiguationCandidates(nearby);
+        return;
+      }
+
+      // Single pin — activate directly.
+      closeDisambiguation();
+      activateOverlayPin(item);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [activateOverlayPin, renderedOverlayPins]
+  );
+
   return (
     <View style={[styles.wrapper, immersive ? styles.wrapperImmersive : null]}>
       <View style={[styles.mapViewport, immersive ? styles.mapViewportImmersive : null]}>
@@ -939,8 +757,23 @@ export function InteractiveMap({
           }}
           onRegionChange={handleRegionChange}
           onRegionChangeComplete={handleRegionChangeComplete}
+          onPanDrag={() => {
+            // Only fires on genuine user drags; close the disambiguation menu.
+            closeDisambiguation();
+          }}
           onPress={(event: { nativeEvent: { coordinate: MapCoordinate } }) => {
             if (Date.now() < markerPressLockUntilRef.current) {
+              return;
+            }
+
+            // On Android, MapView.onPress fires BEFORE Marker.onPress for the same touch.
+            // Defer the close so that a marker press that follows can cancel the timer and keep
+            // (or update) the disambiguation menu instead of briefly flashing closed.
+            if (disambiguationCandidates) {
+              disambiguationCloseTimerRef.current = setTimeout(() => {
+                disambiguationCloseTimerRef.current = null;
+                closeDisambiguation();
+              }, 160);
               return;
             }
 
@@ -983,7 +816,11 @@ export function InteractiveMap({
             </>
           ) : null}
 
-          <OverlayMarkers pins={renderedOverlayPins} onPressPin={handleOverlayMarkerPress} />
+          <OverlayMarkers
+            pins={renderedOverlayPins}
+            selectedPinId={selectedDisplayedOverlayPin?.id ?? null}
+            onPressPin={handleOverlayMarkerPress}
+          />
 
           {liveUserCoordinate ? (
             <>
@@ -1021,7 +858,9 @@ export function InteractiveMap({
 
         </MapView>
 
-        {selectedPinScreenPoint && selectedDisplayedOverlayPin?.calloutContent ? (
+        {!disambiguationCandidates &&
+        selectedPinScreenPoint &&
+        selectedDisplayedOverlayPin?.calloutContent ? (
           <Animated.View
             pointerEvents="none"
             style={[
@@ -1073,6 +912,22 @@ export function InteractiveMap({
             color={recentering ? palette.mist : palette.ink}
           />
         </Pressable>
+
+        {disambiguationCandidates ? (
+          <PinDisambiguationMenu
+            candidates={disambiguationCandidates}
+            bottomOverlayHeight={bottomOverlayHeight}
+            onSelect={(item) => {
+              // Lock MapView.onPress for 600ms so it can't call onClearSelection()
+              // after this selection — same protection as regular Marker.onPress.
+              cancelDisambiguationCloseTimer();
+              markerPressLockUntilRef.current = Date.now() + 600;
+              closeDisambiguation();
+              activateOverlayPin(item);
+            }}
+            onDismiss={closeDisambiguation}
+          />
+        ) : null}
       </View>
 
       {immersive ? null : (
@@ -1135,7 +990,7 @@ function handleMapLayout(event: LayoutChangeEvent) {
 
   function handleRegionChangeComplete(nextRegion: Region) {
     handleRegionChange(nextRegion);
-    setClusterRegion((current) =>
+    setViewRegion((current) =>
       areRegionsClose(current, nextRegion) ? current : nextRegion
     );
   }
@@ -1312,537 +1167,6 @@ function getShiftedLatitude({
   return latitude - latitudeDelta * overlayRatio * 0.34;
 }
 
-function buildOverlayPinGroups({
-  meetups,
-  venues,
-}: {
-  meetups: InteractiveMapProps["meetups"];
-  venues: InteractiveMapProps["venues"];
-}) {
-  const proximityThresholdMeters = 22;
-
-  const sortedVenues = [...venues].sort((left, right) => {
-    if (left.lat !== right.lat) {
-      return left.lat - right.lat;
-    }
-
-    if (left.lng !== right.lng) {
-      return left.lng - right.lng;
-    }
-
-    return left.id.localeCompare(right.id);
-  });
-  const sortedMeetups = [...meetups].sort((left, right) => {
-    if (left.lat !== right.lat) {
-      return left.lat - right.lat;
-    }
-
-    if (left.lng !== right.lng) {
-      return left.lng - right.lng;
-    }
-
-    return left.id.localeCompare(right.id);
-  });
-
-  const venueGroups = sortedVenues.map((venue) => ({
-    key: `g:v:${venue.id}`,
-    coordinate: { latitude: venue.lat, longitude: venue.lng },
-    meetups: [],
-    venues: [venue],
-    meetupIds: [],
-    venueIds: [venue.id],
-  }));
-  const meetupGroups: OverlayPinGroup[] = [];
-
-  sortedMeetups.forEach((meetup) => {
-    const coordinate = { latitude: meetup.lat, longitude: meetup.lng };
-    const existing = findNearestOverlayGroup(meetupGroups, coordinate, proximityThresholdMeters);
-
-    if (existing) {
-      existing.meetups.push(meetup);
-      existing.meetupIds.push(meetup.id);
-      return;
-    }
-
-    meetupGroups.push({
-      key: `g:m:${meetup.id}`,
-      coordinate,
-      meetups: [meetup],
-      venues: [],
-      meetupIds: [meetup.id],
-      venueIds: [],
-    });
-  });
-
-  return [...venueGroups, ...meetupGroups].map((group) => {
-    const meetupIds = [...group.meetupIds].sort();
-    const venueIds = [...group.venueIds].sort();
-
-    return {
-      ...group,
-      meetupIds,
-      venueIds,
-      key: buildOverlayGroupKey({
-        coordinate: group.coordinate,
-        meetupIds,
-        venueIds,
-      }),
-    };
-  });
-}
-
-function findNearestOverlayGroup(
-  groups: OverlayPinGroup[],
-  coordinate: MapCoordinate,
-  thresholdMeters: number
-): OverlayPinGroup | null {
-  let bestMatch: OverlayPinGroup | null = null;
-  let bestDistance = Number.POSITIVE_INFINITY;
-
-  groups.forEach((group) => {
-    const distance = distanceBetweenCoordinatesMeters(group.coordinate, coordinate);
-
-    if (distance > thresholdMeters || distance >= bestDistance) {
-      return;
-    }
-
-    bestDistance = distance;
-    bestMatch = group;
-  });
-
-  return bestMatch;
-}
-
-function buildVenueCollisionOffsets(groups: OverlayPinGroup[]) {
-  const venueGroups = groups.filter((group) => group.venueIds.length > 0);
-  const visited = new Set<number>();
-  const offsets = new Map<string, PixelOffset>();
-
-  for (let index = 0; index < venueGroups.length; index += 1) {
-    if (visited.has(index)) {
-      continue;
-    }
-
-    const queue = [index];
-    const overlapIndexes: number[] = [];
-    visited.add(index);
-
-    while (queue.length) {
-      const nextIndex = queue.shift();
-
-      if (nextIndex === undefined) {
-        break;
-      }
-
-      overlapIndexes.push(nextIndex);
-
-      for (let candidateIndex = 0; candidateIndex < venueGroups.length; candidateIndex += 1) {
-        if (visited.has(candidateIndex)) {
-          continue;
-        }
-
-        const distance = distanceBetweenCoordinatesMeters(
-          venueGroups[nextIndex].coordinate,
-          venueGroups[candidateIndex].coordinate
-        );
-
-        if (distance <= 24) {
-          visited.add(candidateIndex);
-          queue.push(candidateIndex);
-        }
-      }
-    }
-
-    const overlapGroups = overlapIndexes
-      .map((overlapIndex) => venueGroups[overlapIndex])
-      .sort((left, right) => left.key.localeCompare(right.key));
-
-    if (overlapGroups.length === 1) {
-      offsets.set(overlapGroups[0].key, { x: 0, y: 0 });
-      continue;
-    }
-
-    const radius = overlapGroups.length === 2 ? 14 : overlapGroups.length <= 4 ? 18 : 22;
-
-    overlapGroups.forEach((group, overlapIndex) => {
-      const angle = (-Math.PI / 2) + (overlapIndex / overlapGroups.length) * Math.PI * 2;
-
-      offsets.set(group.key, {
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
-      });
-    });
-  }
-
-  return offsets;
-}
-
-/**
- * Screen-space offset magnitude (passed through `offsetCoordinateByPixelOffset`) for meetup pins
- * near venues. At wide zoom, 0 so pins can overlap; when zoomed in, enough to separate from venue art.
- */
-function resolveMeetupVenueAvoidancePixelMagnitude(zoomLevel: number): number {
-  if (zoomLevel >= 0.1) {
-    return 0;
-  }
-  if (zoomLevel >= 0.055) {
-    return 4;
-  }
-  if (zoomLevel >= 0.032) {
-    return 7;
-  }
-  if (zoomLevel >= 0.022) {
-    return 10;
-  }
-  if (zoomLevel >= 0.016) {
-    return 12;
-  }
-  return 14;
-}
-
-function buildMeetupVenueAvoidanceOffsets(groups: OverlayPinGroup[], region: Region) {
-  const offsets = new Map<string, PixelOffset>();
-  const venueGroups = groups.filter((group) => group.venueIds.length > 0);
-  const meetupGroups = groups.filter((group) => group.meetupIds.length > 0);
-  const zoomLevel = Math.max(region.latitudeDelta, region.longitudeDelta);
-  /** Only nudge when a meetup is almost on top of an app venue (wide radius caused a “ring” far from real coords). */
-  const nearbyVenueRadiusMeters = 22;
-
-  meetupGroups.forEach((group) => {
-    const nearbyVenueGroups = venueGroups
-      .map((candidate) => ({
-        group: candidate,
-        distanceMeters: distanceBetweenCoordinatesMeters(group.coordinate, candidate.coordinate),
-      }))
-      .filter((candidate) => candidate.distanceMeters <= nearbyVenueRadiusMeters);
-
-    if (!nearbyVenueGroups.length) {
-      offsets.set(group.key, { x: 0, y: 0 });
-      return;
-    }
-
-    const centroid = nearbyVenueGroups.reduce(
-      (accumulator, candidate) => ({
-        latitude: accumulator.latitude + candidate.group.coordinate.latitude / nearbyVenueGroups.length,
-        longitude: accumulator.longitude + candidate.group.coordinate.longitude / nearbyVenueGroups.length,
-      }),
-      { latitude: 0, longitude: 0 }
-    );
-
-    const meetupLatitudeMeters = group.coordinate.latitude * 111320;
-    const centroidLatitudeMeters = centroid.latitude * 111320;
-    const metersPerDegreeLongitude =
-      Math.max(Math.cos((group.coordinate.latitude * Math.PI) / 180), 0.00001) * 111320;
-    const meetupLongitudeMeters = group.coordinate.longitude * metersPerDegreeLongitude;
-    const centroidLongitudeMeters = centroid.longitude * metersPerDegreeLongitude;
-
-    let eastMeters = meetupLongitudeMeters - centroidLongitudeMeters;
-    let northMeters = meetupLatitudeMeters - centroidLatitudeMeters;
-
-    if (Math.abs(eastMeters) < 0.5 && Math.abs(northMeters) < 0.5) {
-      const seed = stableNumericHash(group.key);
-      const angle = (seed / 360) * Math.PI * 2;
-      eastMeters = Math.cos(angle);
-      northMeters = Math.sin(angle);
-    }
-
-    const nearestDistanceMeters = Math.min(...nearbyVenueGroups.map((candidate) => candidate.distanceMeters));
-    const baseMagnitude = resolveMeetupVenueAvoidancePixelMagnitude(zoomLevel);
-    if (baseMagnitude <= 0) {
-      offsets.set(group.key, { x: 0, y: 0 });
-      return;
-    }
-
-    const distanceFactor =
-      nearestDistanceMeters <= 6
-        ? 1
-        : nearestDistanceMeters <= 12
-          ? 0.82
-          : nearestDistanceMeters <= 18
-            ? 0.62
-            : 0.45;
-    const magnitude = baseMagnitude * distanceFactor;
-    const vectorLength = Math.max(Math.sqrt(eastMeters * eastMeters + northMeters * northMeters), 0.0001);
-    const normalizedEastMeters = (eastMeters / vectorLength) * magnitude;
-    const normalizedNorthMeters = (northMeters / vectorLength) * magnitude;
-
-    offsets.set(group.key, {
-      x: normalizedEastMeters,
-      y: -normalizedNorthMeters,
-    });
-  });
-
-  return offsets;
-}
-
-function buildExpandedGroupItems(group: OverlayPinGroup, zoomLevel: number) {
-  const items = [
-    ...group.venues
-      .slice()
-      .sort((left, right) => left.name.localeCompare(right.name))
-      .map((venue) => ({ kind: "venue" as const, venue })),
-    ...group.meetups
-      .slice()
-      .sort(
-        (left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime()
-      )
-      .map((meetup) => ({ kind: "meetup" as const, meetup })),
-  ];
-
-  const radius = resolveCoincidentSpreadRadius(items.length, zoomLevel);
-
-  if (items.length === 2) {
-    return items.map((item, index) => ({
-      ...item,
-      offset: { x: index === 0 ? -radius : radius, y: 0 },
-    }));
-  }
-
-  return items.map((item, index) => {
-    const angle = (-Math.PI / 2) + (index / items.length) * Math.PI * 2;
-
-    return {
-      ...item,
-      offset: {
-        x: Math.cos(angle) * radius,
-        y: Math.sin(angle) * radius,
-      },
-    };
-  });
-}
-
-function resolveCoincidentSpreadRadius(count: number, zoomLevel: number) {
-  const base =
-    count <= 2 ? 20 : count === 3 ? 24 : count <= 5 ? 28 : 34;
-  if (zoomLevel >= 0.11) {
-    return base * 0.4;
-  }
-  if (zoomLevel >= 0.055) {
-    return base * 0.6;
-  }
-  if (zoomLevel >= 0.028) {
-    return base * 0.78;
-  }
-  return base;
-}
-
-function buildOverlayGroupKey({
-  coordinate,
-  meetupIds,
-  venueIds,
-}: {
-  coordinate: MapCoordinate;
-  meetupIds: string[];
-  venueIds: string[];
-}) {
-  const latitudeKey = coordinate.latitude.toFixed(5);
-  const longitudeKey = coordinate.longitude.toFixed(5);
-  const meetupKey = meetupIds.join(",");
-  const venueKey = venueIds.join(",");
-
-  return `g:${latitudeKey}:${longitudeKey}:m[${meetupKey}]:v[${venueKey}]`;
-}
-
-function resolveProjectedClusteringEnabled({
-  pins,
-  region,
-  previousEnabled,
-}: {
-  pins: ProjectedOverlayPin[];
-  region: Region;
-  previousEnabled: boolean;
-}) {
-  const clusterablePins = pins.filter(shouldPinParticipateInProjectedClustering);
-
-  if (clusterablePins.length < 2) {
-    return false;
-  }
-
-  const zoomLevel = Math.max(region.latitudeDelta, region.longitudeDelta);
-  const cutoff = previousEnabled ? PROJECTED_CLUSTER_ZOOM_IN_CUTOFF_ACTIVE : PROJECTED_CLUSTER_ZOOM_IN_CUTOFF;
-
-  return zoomLevel > cutoff;
-}
-
-function buildProjectedPinClusters({
-  pins,
-  region,
-  onPressCluster,
-}: {
-  pins: ProjectedOverlayPin[];
-  region: Region;
-  onPressCluster: (pins: ProjectedOverlayPin[]) => void;
-}) {
-  const clusterRadius = resolveClusterRadius(region);
-  const visited = new Set<number>();
-  const fixedPins = pins.filter((pin) => !shouldPinParticipateInProjectedClustering(pin));
-  const clusterablePins = pins.filter(shouldPinParticipateInProjectedClustering);
-  const clusteredPins: VisibleOverlayPin[] = [];
-
-  for (let index = 0; index < clusterablePins.length; index += 1) {
-    if (visited.has(index)) {
-      continue;
-    }
-
-    const currentPin = clusterablePins[index];
-
-    const queue = [index];
-    const clusterIndexes: number[] = [];
-    visited.add(index);
-
-    while (queue.length) {
-      const nextIndex = queue.shift();
-
-      if (nextIndex === undefined) {
-        break;
-      }
-
-      clusterIndexes.push(nextIndex);
-
-      for (let candidateIndex = 0; candidateIndex < clusterablePins.length; candidateIndex += 1) {
-        if (visited.has(candidateIndex)) {
-          continue;
-        }
-
-        const candidate = clusterablePins[candidateIndex];
-
-        if (distanceBetweenPoints(clusterablePins[nextIndex].point, candidate.point) <= clusterRadius) {
-          visited.add(candidateIndex);
-          queue.push(candidateIndex);
-        }
-      }
-    }
-
-    if (clusterIndexes.length === 1) {
-      clusteredPins.push(currentPin);
-      continue;
-    }
-
-    const clusterPins = clusterIndexes.map((clusterIndex) => clusterablePins[clusterIndex]);
-    const totalCount = clusterPins.reduce(
-      (sum, item) => sum + countRepresentedPins(item),
-      0
-    );
-    const averagePoint = clusterPins.reduce(
-      (accumulator, item) => ({
-        x: accumulator.x + item.point.x / clusterPins.length,
-        y: accumulator.y + item.point.y / clusterPins.length,
-      }),
-      { x: 0, y: 0 }
-    );
-    const averageCoordinate = clusterPins.reduce(
-      (accumulator, item) => ({
-        latitude: accumulator.latitude + item.coordinate.latitude / clusterPins.length,
-        longitude: accumulator.longitude + item.coordinate.longitude / clusterPins.length,
-      }),
-      { latitude: 0, longitude: 0 }
-    );
-
-    clusteredPins.push({
-      id: `cluster:${clusterPins.map((item) => item.id).sort().join("|")}`,
-      kind: "cluster",
-      coordinate: averageCoordinate,
-      point: averagePoint,
-      badgeCount: totalCount,
-      overdue:
-        clusterPins.length > 0 && clusterPins.every((item) => item.kind === "meetup" && item.overdue),
-      onPress: () => onPressCluster(clusterPins),
-    });
-  }
-
-  return sortVisibleOverlayPins([...fixedPins, ...clusteredPins]);
-}
-
-function buildClusterFocusRegion(coordinates: MapCoordinate[], currentRegion: Region): Region {
-  if (!coordinates.length) {
-    return currentRegion;
-  }
-
-  if (coordinates.length === 1) {
-    return {
-      latitude: coordinates[0].latitude,
-      longitude: coordinates[0].longitude,
-      latitudeDelta: clampNumber(currentRegion.latitudeDelta * 0.42, 0.006, 0.028),
-      longitudeDelta: clampNumber(currentRegion.longitudeDelta * 0.42, 0.006, 0.028),
-    };
-  }
-
-  const latitudes = coordinates.map((item) => item.latitude);
-  const longitudes = coordinates.map((item) => item.longitude);
-  const minLat = Math.min(...latitudes);
-  const maxLat = Math.max(...latitudes);
-  const minLng = Math.min(...longitudes);
-  const maxLng = Math.max(...longitudes);
-  const latitudeDelta = clampNumber(
-    Math.max((maxLat - minLat) * 1.7, currentRegion.latitudeDelta * 0.42),
-    0.006,
-    currentRegion.latitudeDelta * 0.58
-  );
-  const longitudeDelta = clampNumber(
-    Math.max((maxLng - minLng) * 1.7, currentRegion.longitudeDelta * 0.42),
-    0.006,
-    currentRegion.longitudeDelta * 0.58
-  );
-
-  return {
-    latitude: (minLat + maxLat) / 2,
-    longitude: (minLng + maxLng) / 2,
-    latitudeDelta,
-    longitudeDelta,
-  };
-}
-
-function resolveClusterRadius(region: Region) {
-  const zoomLevel = Math.max(region.latitudeDelta, region.longitudeDelta);
-
-  if (zoomLevel >= 0.16) {
-    return 72;
-  }
-
-  if (zoomLevel >= 0.08) {
-    return 64;
-  }
-
-  if (zoomLevel >= 0.04) {
-    return 56;
-  }
-
-  if (zoomLevel >= 0.018) {
-    return 52;
-  }
-
-  return 48;
-}
-
-function shouldPinParticipateInProjectedClustering(pin: ProjectedOverlayPin) {
-  if (pin.spreadFromCoincident) {
-    return false;
-  }
-
-  return pin.kind === "meetup" && !pin.badgeCount;
-}
-
-function countRepresentedPins(pin: ProjectedOverlayPin) {
-  return pin.badgeCount && pin.badgeCount > 1 ? pin.badgeCount : 1;
-}
-
-function sortVisibleOverlayPins<T extends VisibleOverlayPin>(pins: T[]) {
-  return pins.slice().sort((left, right) => left.id.localeCompare(right.id));
-}
-
-function normalizeMarkerBadgeKey(count: number | null) {
-  if (!count || count <= 1) {
-    return null;
-  }
-
-  if (count >= 10) {
-    return "9plus" as const;
-  }
-
-  return String(count) as "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
-}
-
-type MeetupBadgeKey = NonNullable<ReturnType<typeof normalizeMarkerBadgeKey>>;
 
 function meetupSpriteBase(style: MeetupMarkerStyle | undefined) {
   if (style === "magic") {
@@ -1860,40 +1184,6 @@ function meetupSpriteBase(style: MeetupMarkerStyle | undefined) {
   return "meetupDice" as const;
 }
 
-function resolveMeetupStyleMarkerAssetKey({
-  style,
-  overdue,
-  badgeKey,
-}: {
-  style: MeetupMarkerStyle | undefined;
-  overdue: boolean | undefined;
-  badgeKey: MeetupBadgeKey | null;
-}): keyof typeof MARKER_IMAGE_SOURCES {
-  const base = meetupSpriteBase(style);
-
-  if (overdue) {
-    if (!badgeKey) {
-      return `${base}Overdue` as keyof typeof MARKER_IMAGE_SOURCES;
-    }
-
-    if (badgeKey === "9plus") {
-      return `${base}Overdue9plus` as keyof typeof MARKER_IMAGE_SOURCES;
-    }
-
-    return `${base}Overdue${badgeKey}` as keyof typeof MARKER_IMAGE_SOURCES;
-  }
-
-  if (!badgeKey) {
-    return base as keyof typeof MARKER_IMAGE_SOURCES;
-  }
-
-  if (badgeKey === "9plus") {
-    return `${base}9plus` as keyof typeof MARKER_IMAGE_SOURCES;
-  }
-
-  return `${base}${badgeKey}` as keyof typeof MARKER_IMAGE_SOURCES;
-}
-
 function resolveMeetupMarkerStyle(
   meetup: InteractiveMapProps["meetups"][number]
 ): MeetupMarkerStyle {
@@ -1901,33 +1191,18 @@ function resolveMeetupMarkerStyle(
 }
 
 function resolveMarkerImageAssetKey(item: VisibleOverlayPin): keyof typeof MARKER_IMAGE_SOURCES {
-  const badgeKey = normalizeMarkerBadgeKey(item.badgeCount);
-
-  if (item.kind === "cluster") {
-    if (!badgeKey) {
-      return "cluster";
-    }
-
-    return `cluster${badgeKey}`;
-  }
-
   if (item.kind === "venue") {
-    if (!badgeKey) {
-      return "venue";
-    }
-
-    return `venue${badgeKey}`;
+    return "venue";
   }
 
   if (item.kind === "draft") {
     return "draft";
   }
 
-  return resolveMeetupStyleMarkerAssetKey({
-    style: item.meetupMarkerStyle,
-    overdue: item.overdue,
-    badgeKey,
-  });
+  const base = meetupSpriteBase(item.meetupMarkerStyle);
+  return item.overdue
+    ? (`${base}Overdue` as keyof typeof MARKER_IMAGE_SOURCES)
+    : base;
 }
 
 function resolveMarkerImageSource(item: VisibleOverlayPin): number {
@@ -2011,15 +1286,6 @@ function clampNumber(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
 }
 
-function stableNumericHash(value: string) {
-  let hash = 0;
-
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) % 360;
-  }
-
-  return hash;
-}
 
 function projectCoordinateToPoint({
   coordinate,
@@ -2098,20 +1364,6 @@ function buildVenueHelperText(venue: InteractiveMapProps["venues"][number]) {
   return segments.join(" · ");
 }
 
-function buildMeetupGroupHelperText(
-  group: ReturnType<typeof buildOverlayPinGroups>[number]
-) {
-  const venueName = group.venues[0]?.name ?? null;
-  const earliestMeetup = [...group.meetups].sort(
-    (left, right) => new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime()
-  )[0];
-  const timeHint = earliestMeetup ? `Próxima às ${formatMeetupSchedule(earliestMeetup.startsAt)}` : null;
-  const shortAddress = formatShortAddress(
-    earliestMeetup?.addressLabel || earliestMeetup?.locationHint || group.venues[0]?.address || null
-  );
-
-  return [venueName, timeHint, shortAddress].filter(Boolean).join(" · ");
-}
 
 function PinCallout({
   kindLabel,
@@ -2168,8 +1420,199 @@ function formatMeetupSchedule(value: string) {
   return formatDateTime(value);
 }
 
+// Pixel radius within which two pins are considered overlapping and trigger the disambiguation menu.
+const PIN_DISAMBIGUATION_RADIUS = 30;
+
+type PinDisambiguationMenuProps = {
+  candidates: VisibleOverlayPin[];
+  bottomOverlayHeight: number;
+  onSelect: (item: VisibleOverlayPin) => void;
+  onDismiss: () => void;
+};
+
+const MENU_WIDTH = 260;
+const MENU_MAX_HEIGHT = 320;
+const MENU_MIN_HEIGHT = 156;
+const MENU_ITEM_HEIGHT = 56;
+const MENU_TOP_OFFSET = 96;
+const MENU_SCREEN_BOTTOM_GAP = 24;
+
+function PinDisambiguationMenu({ candidates, bottomOverlayHeight, onSelect, onDismiss }: PinDisambiguationMenuProps) {
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const reservedBottom = Math.max(
+    bottomOverlayHeight + insets.bottom + MENU_SCREEN_BOTTOM_GAP,
+    insets.bottom + MENU_SCREEN_BOTTOM_GAP
+  );
+  const top = insets.top + MENU_TOP_OFFSET;
+  const maxHeight = Math.min(
+    MENU_MAX_HEIGHT,
+    Math.max(windowHeight - top - reservedBottom, MENU_MIN_HEIGHT)
+  );
+
+  const content = (
+    <View style={disambiguationStyles.modalRoot} pointerEvents="box-none">
+      {/* Invisible full-screen backdrop to catch taps outside the menu */}
+      <Pressable
+        style={StyleSheet.absoluteFillObject}
+        onPress={onDismiss}
+        accessibilityRole="button"
+        accessibilityLabel="Fechar menu"
+      />
+      <View
+        style={[
+          disambiguationStyles.menuPositioner,
+          {
+            paddingTop: top,
+            paddingBottom: reservedBottom,
+          },
+        ]}
+        pointerEvents="box-none"
+      >
+        <View style={[disambiguationStyles.menu, { maxHeight }]}>
+          <Text style={disambiguationStyles.title}>Selecionar pin</Text>
+          <ScrollView
+            style={disambiguationStyles.scroll}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            {candidates.map((item, index) => (
+              <Pressable
+                key={item.id}
+                style={({ pressed }) => [
+                  disambiguationStyles.item,
+                  index < candidates.length - 1 && disambiguationStyles.itemBorder,
+                  pressed && disambiguationStyles.itemPressed,
+                ]}
+                onPress={() => onSelect(item)}
+                accessibilityRole="button"
+              >
+                <Image
+                  source={resolveMarkerImageSource(item)}
+                  style={disambiguationStyles.pinIcon}
+                  resizeMode="contain"
+                />
+                <View style={disambiguationStyles.itemText}>
+                  <Text style={disambiguationStyles.itemKind} numberOfLines={1}>
+                    {resolvePinKindLabel(item)}
+                  </Text>
+                  <Text style={disambiguationStyles.itemName} numberOfLines={1}>
+                    {resolvePinDisplayName(item)}
+                  </Text>
+                </View>
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  );
+
+  if (Platform.OS === "android") {
+    return (
+      <Modal
+        transparent
+        animationType="fade"
+        visible
+        onRequestClose={onDismiss}
+        statusBarTranslucent
+      >
+        {content}
+      </Modal>
+    );
+  }
+
+  return content;
+}
+
+function resolvePinKindLabel(item: VisibleOverlayPin): string {
+  if (item.kind === "venue") return "Local";
+  return "Jogo";
+}
+
+function resolvePinDisplayName(item: VisibleOverlayPin): string {
+  return item.displayName ?? "Pin";
+}
+
+const disambiguationStyles = StyleSheet.create({
+  modalRoot: {
+    flex: 1,
+  },
+  menuPositioner: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "flex-start",
+  },
+  menu: {
+    width: MENU_WIDTH,
+    backgroundColor: "rgba(14, 18, 24, 0.97)",
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+    overflow: "hidden",
+    elevation: 20,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.55,
+    shadowRadius: 16,
+  },
+  title: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 4,
+  },
+  scroll: {
+    flexGrow: 0,
+  },
+  item: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 10,
+    minHeight: MENU_ITEM_HEIGHT,
+  },
+  itemBorder: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(255,255,255,0.08)",
+  },
+  itemPressed: {
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+  pinIcon: {
+    width: 30,
+    height: 30,
+    flexShrink: 0,
+  },
+  itemText: {
+    flex: 1,
+  },
+  itemKind: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 11,
+    fontWeight: "500",
+    letterSpacing: 0.3,
+    marginBottom: 1,
+  },
+  itemName: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+});
+
 const OverlayMarkers = memo(function OverlayMarkers({
   pins,
+  selectedPinId = null,
   onPressPin,
 }: OverlayMarkersProps) {
   return (
@@ -2183,7 +1626,7 @@ const OverlayMarkers = memo(function OverlayMarkers({
           image={resolveMarkerImageSource(item)}
           style={{ transform: [{ scale: MAP_BALLOON_SCALE }] }}
           tracksViewChanges={false}
-          zIndex={item.kind === "venue" ? 7 : item.kind === "cluster" ? 6 : 5}
+          zIndex={resolveOverlayPinZIndex(item, selectedPinId)}
           onPress={(event) => {
             onPressPin(item, event);
           }}
@@ -2198,6 +1641,10 @@ function areOverlayMarkersEqual(left: OverlayMarkersProps, right: OverlayMarkers
     return false;
   }
 
+  if (left.selectedPinId !== right.selectedPinId) {
+    return false;
+  }
+
   if (left.pins.length !== right.pins.length) {
     return false;
   }
@@ -2209,7 +1656,6 @@ function areOverlayMarkersEqual(left: OverlayMarkersProps, right: OverlayMarkers
     if (
       leftPin.id !== rightPin.id ||
       leftPin.kind !== rightPin.kind ||
-      leftPin.badgeCount !== rightPin.badgeCount ||
       Boolean(leftPin.overdue) !== Boolean(rightPin.overdue) ||
       (leftPin.kind === "meetup" &&
         rightPin.kind === "meetup" &&
@@ -2224,9 +1670,17 @@ function areOverlayMarkersEqual(left: OverlayMarkersProps, right: OverlayMarkers
   return true;
 }
 
+function resolveOverlayPinZIndex(item: VisibleOverlayPin, selectedPinId: string | null) {
+  if (item.id === selectedPinId) {
+    return 20;
+  }
+
+  return item.kind === "venue" ? 7 : 5;
+}
+
 const LIVE_USER_DOT_OUTER_SIZE = 14;
 const MAP_VIEW_HEIGHT = 340;
-const MAP_BALLOON_SCALE = 0.75;
+const MAP_BALLOON_SCALE = Platform.select({ android: 0.54, default: 0.75 });
 
 const styles = StyleSheet.create({
   wrapper: {

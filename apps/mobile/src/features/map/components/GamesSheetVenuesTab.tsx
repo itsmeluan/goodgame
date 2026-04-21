@@ -1,11 +1,11 @@
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleListGroup } from "@/components/AppleListNavigation";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { VirtualizedListBoundary } from "@/components/VirtualizedListBoundary";
-import { sheetContentGutter, spacing } from "@/theme/tokens";
+import { spacing } from "@/theme/tokens";
 
 type VenueStackRoute =
   | { key: string; venueId: string; surface: "detail" }
@@ -164,9 +164,11 @@ export function GamesSheetVenuesTab<Item extends { id: string; name: string; nei
           ) : null}
           {venues.length ? (
             <AppleListGroup>
-              {venues.map((venue, index) =>
-                renderVenueListItem(venue, () => pushDetailRoute(venue.id), index > 0)
-              )}
+              {venues.map((venue, index) => (
+                <Fragment key={venue.id}>
+                  {renderVenueListItem(venue, () => pushDetailRoute(venue.id), index > 0)}
+                </Fragment>
+              ))}
             </AppleListGroup>
           ) : (
             emptyState
@@ -202,7 +204,7 @@ export function GamesSheetVenuesTab<Item extends { id: string; name: string; nei
         onPop={popRoute}
         headerVariant="compact"
         sceneWidth={sceneWidth}
-        scenePaddingHorizontal={sheetContentGutter}
+        scenePaddingHorizontal={spacing.lg}
       />
     </VirtualizedListBoundary>
   );

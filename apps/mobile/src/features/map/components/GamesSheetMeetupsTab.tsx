@@ -1,5 +1,5 @@
 import type { ReactElement } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
@@ -21,7 +21,7 @@ import {
 } from "@/features/map/components/MeetupSortMenuModal";
 import type { MeetupSortMode } from "@/features/map/mapHelpers";
 import type { MeetupPost, MeetupStatus } from "@/types/domain";
-import { palette, radius, sheetContentGutter, spacing } from "@/theme/tokens";
+import { palette, radius, spacing } from "@/theme/tokens";
 
 /** Fields required to pick game list icons and overdue state. */
 export type GamesSheetMeetupListItem = {
@@ -448,13 +448,15 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
               </View>
               {group?.meetups.length ? (
                 <AppleListGroup>
-                  {group.meetups.map((item, index) =>
-                    renderMeetupListItem(
-                      item,
-                      () => pushMeetupRoute(route.groupId, item.id),
-                      index > 0
-                    )
-                  )}
+                  {group.meetups.map((item, index) => (
+                    <Fragment key={item.id}>
+                      {renderMeetupListItem(
+                        item,
+                        () => pushMeetupRoute(route.groupId, item.id),
+                        index > 0
+                      )}
+                    </Fragment>
+                  ))}
                 </AppleListGroup>
               ) : (
                 emptyState
@@ -532,7 +534,7 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
         onPop={popRoute}
         headerVariant="compact"
         sceneWidth={sceneWidth}
-        scenePaddingHorizontal={sheetContentGutter}
+        scenePaddingHorizontal={spacing.lg}
       />
     </VirtualizedListBoundary>
   );
