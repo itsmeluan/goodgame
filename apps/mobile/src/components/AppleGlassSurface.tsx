@@ -1,7 +1,6 @@
 import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
 import type { ReactNode } from "react";
 import { Platform, StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from "react-native";
-
 import { palette } from "@/theme/tokens";
 
 type AppleGlassSurfaceVariant = "light" | "dark" | "accent";
@@ -126,12 +125,15 @@ const styles = StyleSheet.create({
     borderColor: "rgba(241,143,92,0.38)",
   },
   fallbackLight: {
-    backgroundColor: "rgba(255,255,255,0.78)",
-    borderColor: "rgba(255,255,255,0.3)",
+    // Android: solid so buttons/surfaces don't look transparent over the dark map.
+    backgroundColor: Platform.select({ android: "#F8F6F1", default: "rgba(255,255,255,0.78)" }),
+    borderColor: Platform.select({ android: "rgba(180,175,165,0.4)", default: "rgba(255,255,255,0.3)" }),
   },
   fallbackDark: {
-    backgroundColor: "rgba(18,18,18,0.9)",
-    borderColor: "rgba(255,255,255,0.12)",
+    // Android: solid dark navy so sheets/drawers are fully opaque (no map bleed-through).
+    // iOS old devices (glass unavailable): keep the original semi-transparent dark.
+    backgroundColor: Platform.select({ android: "#0D1526", default: "rgba(18,18,18,0.9)" }),
+    borderColor: Platform.select({ android: "rgba(70,110,180,0.18)", default: "rgba(255,255,255,0.12)" }),
   },
   fallbackAccent: {
     backgroundColor: "rgba(241,143,92,0.96)",

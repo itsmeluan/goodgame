@@ -37,7 +37,7 @@
 </linearGradient>
 </defs>
 <path d="M0 0L1024 0L1024 1024L0 1024L0 0Z" fill="#0d162b" fill-rule="nonzero" opacity="1" stroke="none"/>
-<g id="Logo">
+<g id="Logo" transform="translate(512 512) scale(0.7) translate(-512 -512)">
 <g opacity="1">
 <g opacity="1">
 <g opacity="1">

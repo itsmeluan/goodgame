@@ -1,6 +1,7 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, Text, type StyleProp, type ViewStyle } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { triggerHaptic, type AppHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 
@@ -90,7 +91,8 @@ export function PrimaryButton({
         />
       ) : null}
       {loading ? (
-        <ActivityIndicator
+        <LoadingSpinner
+          size={20}
           color={
             tone === "danger"
               ? DANGER_LABEL_COLOR

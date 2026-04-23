@@ -1,5 +1,5 @@
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL?.trim();
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.trim();
 const enableDemoMode = process.env.EXPO_PUBLIC_ENABLE_DEMO_MODE === "true";
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN ?? null;
 const posthogApiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY ?? null;
@@ -17,17 +17,18 @@ const meetupShareWebBase =
   process.env.EXPO_PUBLIC_MEETUP_SHARE_WEB_BASE?.trim() ||
   "https://itsmeluan.github.io/good-game-pages";
 
-if (!supabaseUrl) {
-  throw new Error("EXPO_PUBLIC_SUPABASE_URL não foi definido.");
-}
+const hasSupabaseConfig = Boolean(supabaseUrl && supabaseAnonKey);
 
-if (!supabaseAnonKey) {
-  throw new Error("EXPO_PUBLIC_SUPABASE_ANON_KEY não foi definido.");
+if (!hasSupabaseConfig && __DEV__) {
+  console.warn(
+    "EXPO_PUBLIC_SUPABASE_URL e EXPO_PUBLIC_SUPABASE_ANON_KEY não foram definidos."
+  );
 }
 
 export const env = {
-  supabaseUrl,
-  supabaseAnonKey,
+  supabaseUrl: supabaseUrl || "https://example.supabase.co",
+  supabaseAnonKey: supabaseAnonKey || "missing-anon-key",
+  hasSupabaseConfig,
   enableDemoMode,
   sentryDsn,
   posthogApiKey,

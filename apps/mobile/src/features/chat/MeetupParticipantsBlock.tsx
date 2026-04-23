@@ -1,6 +1,5 @@
 import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -10,6 +9,7 @@ import {
 
 import { AppIcon } from "@/components/AppIcon";
 import { Avatar } from "@/components/Avatar";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { AttendanceStatus, MeetupMemberPresence, MeetupPost } from "@/types/domain";
 
@@ -153,7 +153,7 @@ export function ParticipantAvatar({
           ]}
         >
           {removing ? (
-            <ActivityIndicator size="small" color={palette.ink} />
+            <LoadingSpinner size={16} color={palette.ink} />
           ) : (
             <AppIcon iosName="xmark" fallbackName="close" size={11} color={palette.ink} />
           )}

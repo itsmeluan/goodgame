@@ -1,5 +1,6 @@
 import { analyticsCapture, analyticsFlush, analyticsReset } from "@/lib/analytics";
 import { clearPendingPasswordRecoveryState, getAuthRedirectUri } from "@/lib/authRedirect";
+import { trackProductEvent } from "@/lib/productAnalytics";
 import { supabase } from "@/lib/supabase";
 import {
   type FormatDetailTags,
@@ -280,6 +281,20 @@ export async function signUpWithPassword(email: string, password: string) {
     has_session: Boolean(data.session),
   });
 
+  if (data.user?.id) {
+    await trackProductEvent({
+      eventName: "signup_completed",
+      eventCategory: "onboarding",
+      oncePerUser: true,
+      userIdOverride: data.user.id,
+      acquisitionSource: "email_password",
+      context: {
+        auth_provider: "password",
+        has_session: Boolean(data.session),
+      },
+    });
+  }
+
   return data;
 }
 
@@ -470,6 +485,14 @@ export async function startProTrial() {
   if (error) {
     throw error;
   }
+
+  await trackProductEvent({
+    eventName: "pro_enabled",
+    eventCategory: "monetization",
+    context: {
+      source: "trial",
+    },
+  });
 }
 
 export async function ensureMyProfileExists() {
@@ -686,6 +709,15 @@ export async function registerPushDevice(input: {
     throw error;
   }
 
+  await trackProductEvent({
+    eventName: "push_device_registered",
+    eventCategory: "lifecycle",
+    context: {
+      permission_status: input.permissionStatus ?? "granted",
+      device_name: input.deviceName ?? null,
+    },
+  });
+
   return data as string;
 }
 
@@ -779,6 +811,7 @@ export async function createMeetup(input: {
   title: string;
   description: string;
   formatId: string;
+  gameSlug?: string | null;
   hostMode: HostMode;
   startsAt: string;
   maxPlayers: number;
@@ -812,6 +845,38 @@ export async function createMeetup(input: {
     has_exact_location: input.lat !== null && input.lng !== null,
   });
 
+  await trackProductEvent({
+    eventName: "game_created",
+    eventCategory: "meetup",
+    relatedEntityId: data as string,
+    gameType: input.gameSlug ?? null,
+    context: {
+      host_mode: input.hostMode,
+      has_venue: Boolean(input.venueId),
+      has_exact_location: input.lat !== null && input.lng !== null,
+      max_players: input.maxPlayers,
+    },
+  });
+
+  await trackProductEvent({
+    eventName: "first_game_created",
+    eventCategory: "meetup",
+    oncePerUser: true,
+    relatedEntityId: data as string,
+    gameType: input.gameSlug ?? null,
+  });
+
+  await trackProductEvent({
+    eventName: "first_meaningful_action_completed",
+    eventCategory: "engagement",
+    oncePerUser: true,
+    relatedEntityId: data as string,
+    gameType: input.gameSlug ?? null,
+    context: {
+      trigger_event: "game_created",
+    },
+  });
+
   return data as string;
 }
 
@@ -838,6 +903,17 @@ export async function updateMyMeetupLocation(input: {
     has_venue: Boolean(input.venueId),
     has_exact_location: input.lat !== null && input.lng !== null,
   });
+
+  await trackProductEvent({
+    eventName: "game_edited",
+    eventCategory: "meetup",
+    relatedEntityId: input.meetupId,
+    context: {
+      edit_type: "location",
+      has_venue: Boolean(input.venueId),
+      has_exact_location: input.lat !== null && input.lng !== null,
+    },
+  });
 }
 
 export async function joinMeetup(meetupId: string) {
@@ -850,6 +926,22 @@ export async function joinMeetup(meetupId: string) {
   }
 
   analyticsCapture("meetup_joined");
+
+  await trackProductEvent({
+    eventName: "game_join_intent_registered",
+    eventCategory: "meetup",
+    relatedEntityId: meetupId,
+  });
+
+  await trackProductEvent({
+    eventName: "first_meaningful_action_completed",
+    eventCategory: "engagement",
+    oncePerUser: true,
+    relatedEntityId: meetupId,
+    context: {
+      trigger_event: "game_join_intent_registered",
+    },
+  });
 }
 
 export async function leaveMeetup(meetupId: string) {
@@ -884,6 +976,17 @@ export async function updateMyMeetup(input: {
   analyticsCapture("meetup_updated", {
     status: input.status ?? null,
     has_schedule_change: input.startsAt !== undefined,
+  });
+
+  await trackProductEvent({
+    eventName: input.status === "cancelled" ? "game_cancelled" : "game_edited",
+    eventCategory: "meetup",
+    relatedEntityId: input.meetupId,
+    context: {
+      status: input.status ?? null,
+      has_schedule_change: input.startsAt !== undefined,
+      max_players: input.maxPlayers ?? null,
+    },
   });
 }
 
@@ -1042,6 +1145,26 @@ export async function sendMeetupMessage(
 
   analyticsCapture("meetup_message_sent", {
     has_reply: Boolean(replyToMessageId),
+  });
+
+  await trackProductEvent({
+    eventName: "game_contact_action",
+    eventCategory: "meetup",
+    relatedEntityId: meetupId,
+    context: {
+      action_type: "meetup_message_sent",
+      has_reply: Boolean(replyToMessageId),
+    },
+  });
+
+  await trackProductEvent({
+    eventName: "first_meaningful_action_completed",
+    eventCategory: "engagement",
+    oncePerUser: true,
+    relatedEntityId: meetupId,
+    context: {
+      trigger_event: "game_contact_action",
+    },
   });
 }
 
@@ -1343,6 +1466,15 @@ export async function searchPlayers(query: string) {
     throw error;
   }
 
+  await trackProductEvent({
+    eventName: "search_performed",
+    eventCategory: "discovery",
+    screenName: "player_search",
+    context: {
+      query_length: query.trim().length,
+    },
+  });
+
   return ((data ?? []) as PlayerSearchRow[]).map(mapPlayerSearchResult);
 }
 
@@ -1508,6 +1640,15 @@ export async function deleteMyMeetup(meetupId: string) {
   }
 
   analyticsCapture("meetup_deleted");
+
+  await trackProductEvent({
+    eventName: "game_cancelled",
+    eventCategory: "meetup",
+    relatedEntityId: meetupId,
+    context: {
+      cancellation_mode: "delete",
+    },
+  });
 }
 
 export async function getMyVenueSuggestions() {
@@ -1750,6 +1891,25 @@ export async function submitAppFeedback(input: {
     }
     throw error;
   }
+
+  await trackProductEvent({
+    eventName: "feedback_submitted",
+    eventCategory: "feedback",
+    screenName: "feedback",
+    context: {
+      feedback_type: input.feedbackType,
+      app_area: input.appArea?.trim() || null,
+    },
+  });
+
+  await trackProductEvent({
+    eventName: "first_meaningful_action_completed",
+    eventCategory: "engagement",
+    oncePerUser: true,
+    context: {
+      trigger_event: "feedback_submitted",
+    },
+  });
 }
 
 export async function listAppNews(): Promise<AppNewsItem[]> {

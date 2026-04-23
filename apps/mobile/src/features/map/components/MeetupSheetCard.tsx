@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   Easing,
@@ -16,6 +15,7 @@ import {
   AppleListSection,
 } from "@/components/AppleListNavigation";
 import { AppIcon } from "@/components/AppIcon";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { AddressAutocompleteField } from "@/features/map/components/AddressAutocompleteField";
 import { StatusChip } from "@/features/map/components/MapSheetPrimitives";
@@ -255,7 +255,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                   ]}
                 >
                   {cancelling ? (
-                    <ActivityIndicator color={WATERMELON_RED} />
+                    <LoadingSpinner size={20} color={WATERMELON_RED} />
                   ) : (
                     <Text style={styles.watermelonOutlineLabel}>Cancelar</Text>
                   )}
@@ -288,7 +288,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                   ]}
                 >
                   {deleting ? (
-                    <ActivityIndicator color={palette.ink} />
+                    <LoadingSpinner size={20} color={palette.ink} />
                   ) : (
                     <Text style={styles.watermelonSolidLabel}>Excluir</Text>
                   )}
@@ -451,7 +451,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                   ]}
                 >
                   {leaving ? (
-                    <ActivityIndicator color={palette.ink} size="small" />
+                    <LoadingSpinner size={20} color={palette.ink} />
                   ) : (
                     <AppIcon
                       iosName="arrow.left.to.line"
@@ -551,7 +551,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                   ]}
                 >
                   {joining ? (
-                    <ActivityIndicator color={palette.ink} size="small" />
+                    <LoadingSpinner size={20} color={palette.ink} />
                   ) : (
                     <AppIcon
                       iosName="arrow.right.to.line"
@@ -761,17 +761,17 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     alignItems: "center",
     justifyContent: "center",
-    overflow: "hidden",
+    backgroundColor: "#101722",
     borderWidth: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.16,
     shadowRadius: 18,
-    elevation: 4,
+    elevation: 0,
   },
   circleActionButtonGlass: {
-    backgroundColor: "rgba(255,255,255,0.015)",
-    borderColor: "rgba(231,216,188,0.08)",
+    backgroundColor: "#101722",
+    borderColor: "rgba(231,216,188,0.12)",
   },
   /** Solid `palette.ember` — matches Games sheet “Jogos” tab; avoids muddy glass + tint on first paint. */
   circleActionButtonEmber: {

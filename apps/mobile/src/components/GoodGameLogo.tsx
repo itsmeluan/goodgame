@@ -6,6 +6,7 @@ import { GOOD_GAME_TEXT_SVG_XML } from "./goodGameTextSvgXml";
 
 type GoodGameLogoProps = {
   size?: "sm" | "md" | "lg";
+  scale?: number;
   /** Reserved for future theme-aware tinting; wordmark SVG is light-on-dark. */
   monochrome?: boolean;
   /**
@@ -32,9 +33,14 @@ const sizeMap = {
 
 export function GoodGameLogo({
   size = "md",
+  scale = 1,
   variant = "default",
 }: GoodGameLogoProps) {
-  const metrics = sizeMap[size];
+  const baseMetrics = sizeMap[size];
+  const metrics = {
+    width: baseMetrics.width * scale,
+    height: baseMetrics.height * scale,
+  };
   const xml =
     variant === "map" ? GOOD_GAME_MAP_LOGO_SVG_XML : GOOD_GAME_TEXT_SVG_XML;
 

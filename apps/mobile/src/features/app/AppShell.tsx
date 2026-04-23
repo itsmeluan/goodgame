@@ -1,10 +1,11 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, LogBox, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import type { Session } from "@supabase/supabase-js";
 
 import { AppErrorBoundary } from "@/components/AppErrorBoundary";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { AuthScreen } from "@/features/auth/AuthScreen";
 import { PasswordRecoveryScreen } from "@/features/auth/PasswordRecoveryScreen";
 import { LegalAgreementScreen } from "@/features/legal/LegalAgreementScreen";
@@ -36,6 +37,7 @@ import { LiveLocationProvider } from "@/features/app/LiveLocationContext";
 import { appInfo } from "@/lib/appInfo";
 import { clearMonitoringUser, setMonitoringUser } from "@/lib/monitoring";
 import { registerForPushNotificationsAsync } from "@/lib/notifications";
+import { trackProductEvent } from "@/lib/productAnalytics";
 import {
   clearPendingAppNewsMapOverlayAfterSignIn,
   requestAppNewsMapOverlayAfterSignIn,
@@ -43,6 +45,10 @@ import {
 import { supabase } from "@/lib/supabase";
 import { palette, spacing } from "@/theme/tokens";
 import type { CatalogFormat, CatalogGame, LegalDocument, PlayerProfile } from "@/types/domain";
+
+// VirtualizedListBoundary uses a React Native internal API to reset VirtualizedList context.
+// This is intentional — RN uses the same mechanism inside Modal. Suppress the deprecation noise.
+LogBox.ignoreLogs(["Deep imports from the 'react-native' package are deprecated"]);
 
 export function AppShell() {
   const [booting, setBooting] = useState(true);
@@ -55,6 +61,7 @@ export function AppShell() {
   const [editingProfile, setEditingProfile] = useState(false);
   const [passwordRecoveryPending, setPasswordRecoveryPending] = useState(false);
   const lastHandledAuthUrlRef = useRef<string | null>(null);
+  const trackedSessionUserRef = useRef<string | null>(null);
 
   useEffect(() => {
     initializeAnalytics();
@@ -146,6 +153,49 @@ export function AppShell() {
     clearMonitoringUser();
     analyticsReset();
   }, [profile, session]);
+
+  useEffect(() => {
+    const hasAcceptedAllCurrentDocuments =
+      legalDocuments.length > 0 && legalDocuments.every((document) => document.acceptedAt !== null);
+
+    if (!session || !profile || !hasAcceptedAllCurrentDocuments) {
+      return;
+    }
+
+    const sessionKey = `${session.user.id}:${session.access_token}`;
+    if (trackedSessionUserRef.current === sessionKey) {
+      return;
+    }
+
+    trackedSessionUserRef.current = sessionKey;
+
+    void trackProductEvent({
+      eventName: "app_opened",
+      eventCategory: "lifecycle",
+      screenName: "app_shell",
+      region: profile.neighborhood || null,
+      acquisitionSource: session.user.app_metadata?.provider
+        ? String(session.user.app_metadata.provider)
+        : null,
+      context: {
+        legal_documents_ready: true,
+      },
+    });
+
+    void trackProductEvent({
+      eventName: "first_app_open",
+      eventCategory: "lifecycle",
+      oncePerUser: true,
+      screenName: "app_shell",
+      region: profile.neighborhood || null,
+      acquisitionSource: session.user.app_metadata?.provider
+        ? String(session.user.app_metadata.provider)
+        : null,
+      context: {
+        legal_documents_ready: true,
+      },
+    });
+  }, [legalDocuments, profile, session]);
 
   const loadProfileBundle = useCallback(async (options?: { silent?: boolean }) => {
     if (!options?.silent) {
@@ -316,7 +366,7 @@ export function AppShell() {
         {booting || loadingProfile ? (
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.loadingState}>
-              <ActivityIndicator size="large" color={palette.ember} />
+              <LoadingSpinner size={42} />
               <Text style={styles.loadingText}>Conectando sua sessão e preparando o app...</Text>
             </View>
           </SafeAreaView>

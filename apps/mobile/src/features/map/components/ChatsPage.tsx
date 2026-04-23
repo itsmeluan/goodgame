@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/AppleListNavigation";
 import { Avatar } from "@/components/Avatar";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { ChatMeetupListLeading } from "@/features/map/components/ChatMeetupListLeading";
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
@@ -215,7 +216,7 @@ function PrivateChatsListScene({
       </View>
       {loading ? (
         <View style={styles.privateLoading}>
-          <ActivityIndicator color={palette.ember} />
+          <LoadingSpinner size={22} />
         </View>
       ) : threads.length ? (
         <AppleListGroup>

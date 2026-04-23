@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/AppleListNavigation";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { Avatar } from "@/components/Avatar";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { isUserPro } from "@/lib/proPlayer";
 import { palette, radius, spacing } from "@/theme/tokens";
@@ -37,7 +38,7 @@ export function PublicPlayerProfileScreen({
   if (showBlockingLoading) {
     return (
       <View style={styles.stateWrap}>
-        <ActivityIndicator color={palette.ember} size="large" />
+        <LoadingSpinner size={42} />
         <Text style={styles.stateTitle}>Carregando perfil</Text>
         <Text style={styles.stateBody}>Buscando os detalhes públicos do jogador.</Text>
       </View>
@@ -77,7 +78,7 @@ export function PublicPlayerProfileScreen({
       >
         {showRefreshingState ? (
           <View style={styles.inlineStatusCard}>
-            <ActivityIndicator color={palette.ember} size="small" />
+            <LoadingSpinner size={18} />
             <Text style={styles.inlineStatusText}>Atualizando dados públicos…</Text>
           </View>
         ) : null}

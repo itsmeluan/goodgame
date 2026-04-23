@@ -7,6 +7,7 @@ type GamesSheetSection = "meetups" | "venues";
 
 type GamesSheetPanResponderParams = {
   defaultCollapsedGamesSheetOffset: number;
+  expandedGamesSheetOffset: number;
   venueComposerOpen: boolean;
   gamesSheetTranslateY: Animated.Value;
   currentGamesSheetValueRef: MutableRefObject<number>;
@@ -19,6 +20,7 @@ type GamesSheetPanResponderParams = {
 
 export function useGamesSheetPanResponder({
   defaultCollapsedGamesSheetOffset,
+  expandedGamesSheetOffset,
   venueComposerOpen,
   gamesSheetTranslateY,
   currentGamesSheetValueRef,
@@ -41,7 +43,7 @@ export function useGamesSheetPanResponder({
         onPanResponderMove: (_event, gestureState) => {
           const nextValue = clamp(
             sheetPanStartRef.current + gestureState.dy,
-            0,
+            expandedGamesSheetOffset,
             defaultCollapsedGamesSheetOffset
           );
           gamesSheetTranslateY.setValue(nextValue);
@@ -61,7 +63,7 @@ export function useGamesSheetPanResponder({
 
           const projectedValue = clamp(
             currentGamesSheetValueRef.current + gestureState.vy * 180,
-            0,
+            expandedGamesSheetOffset,
             defaultCollapsedGamesSheetOffset
           );
 
@@ -78,6 +80,7 @@ export function useGamesSheetPanResponder({
       cancelVenueComposerRef,
       currentGamesSheetValueRef,
       defaultCollapsedGamesSheetOffset,
+      expandedGamesSheetOffset,
       gamesSheetTranslateY,
       sheetPanStartRef,
       snapGamesSheetToNearestRef,

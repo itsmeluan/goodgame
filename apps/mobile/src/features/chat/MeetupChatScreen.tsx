@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  ActivityIndicator,
   Animated,
   FlatList,
   Keyboard,
@@ -18,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppIcon } from "@/components/AppIcon";
 import { Avatar } from "@/components/Avatar";
 import { ChoiceChip } from "@/components/ChoiceChip";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import {
   SHEET_BACK_BUTTON_MIN_HEIGHT,
@@ -506,16 +506,16 @@ export function MeetupChatScreen({
                         )}
                         {meetup.isCreator ? (
                           <View style={styles.chatAvatarBadge}>
-                            <AppIcon
-                              iosName={
-                                pickingChatImage
-                                  ? "arrow.triangle.2.circlepath"
-                                  : "camera.fill"
-                              }
-                              fallbackName={pickingChatImage ? "sync" : "photo-camera"}
-                              size={11}
-                              color={palette.ink}
-                            />
+                            {pickingChatImage ? (
+                              <LoadingSpinner size={12} color={palette.ink} />
+                            ) : (
+                              <AppIcon
+                                iosName="camera.fill"
+                                fallbackName="photo-camera"
+                                size={11}
+                                color={palette.ink}
+                              />
+                            )}
                           </View>
                         ) : null}
                       </Pressable>
@@ -624,7 +624,7 @@ export function MeetupChatScreen({
                               </Text>
                               <View style={styles.ratingActions}>
                                 {ratingActionId === member.userId ? (
-                                  <ActivityIndicator color={palette.ember} size="small" />
+                                  <LoadingSpinner size={18} />
                                 ) : submittedRatedUserIds.has(member.userId) &&
                                   !revisingRatedUserIds.has(member.userId) ? (
                                   <Pressable

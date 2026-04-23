@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 import {
-  ActivityIndicator,
   Animated,
   Easing,
   Modal,
@@ -14,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 
@@ -133,7 +133,7 @@ export function ProPlayerPaywallModal({
                 ]}
               >
                 {startingTrial ? (
-                  <ActivityIndicator color={palette.ink} />
+                  <LoadingSpinner size={20} color={palette.ink} />
                 ) : (
                   <Text style={styles.primaryLabel}>Iniciar teste grátis de 7 dias</Text>
                 )}

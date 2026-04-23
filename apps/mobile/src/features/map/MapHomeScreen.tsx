@@ -8,7 +8,6 @@ import {
   useState,
 } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   Easing,
@@ -33,6 +32,7 @@ import { StatusBar } from "expo-status-bar";
 import { buildDemoBundle, buildEmptyDemoBundle } from "@/features/demo/demoData";
 import type { ChatListSection } from "@/features/map/components/ChatsPage";
 import { ProPlayerPaywallModal } from "@/features/monetization/ProPlayerPaywallModal";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MapHomeSurface } from "@/features/map/components/MapHomeSurface";
 import { MapCircleActionButton } from "@/features/map/components/MapCircleActionButton";
 import { AppNewsDetailOverlay } from "@/features/map/components/AppNewsDetailOverlay";
@@ -42,6 +42,7 @@ import { MeetupSheetParticipantsScene } from "@/features/map/components/MeetupSh
 import { MeetupSheetListRowContainer } from "@/features/map/components/MeetupSheetListRowContainer";
 import { VenueSheetCardContainer } from "@/features/map/components/VenueSheetCardContainer";
 import { VenueSheetListRowContainer } from "@/features/map/components/VenueSheetListRowContainer";
+import { GAMES_SHEET_HEADER_COLLAPSED_HEIGHT } from "@/features/map/components/GamesSheetHeader";
 import {
   inferGameLabelsFromVenue,
   inferGameNameFromLabels,
@@ -183,6 +184,7 @@ import {
   toLocalDateTimeInput,
 } from "@/lib/formatting";
 import { triggerHaptic } from "@/lib/haptics";
+import { trackProductEvent } from "@/lib/productAnalytics";
 import { isUserPro } from "@/lib/proPlayer";
 import { resolveTypedAddress, type AddressSuggestion } from "@/lib/placeSearch";
 import { supabase } from "@/lib/supabase";
@@ -2114,11 +2116,15 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const composerTopGap = insets.top + 72;
   const composerSheetHeight = Math.max(height - composerTopGap, 560);
   const composerFooterReserve = 104 + insets.bottom;
-  // On Android, show only handle + subtitle when collapsed (48dp of visible content).
-  // This keeps the map logo and recenter button clearly visible above the drawer.
-  // The insets.bottom offset ensures the visible content sits above the nav bar.
-  const defaultGamesSheetPeek = Platform.OS === "android" ? insets.bottom + 48 : 150;
-  const previewGamesSheetPeek = Math.min(Math.max(380, height * 0.48), 448);
+  // Android has three deliberate snap points:
+  // collapsed: exactly the full header visible;
+  // preview: sheet top at half of the screen; expanded: full browse height.
+  const defaultGamesSheetPeek =
+    Platform.OS === "android" ? insets.bottom + GAMES_SHEET_HEADER_COLLAPSED_HEIGHT : 150;
+  const previewGamesSheetPeek =
+    Platform.OS === "android"
+      ? height / 2 + insets.bottom
+      : Math.min(Math.max(380, height * 0.48), 448);
   const gamesSheetPeek = gamesSheetPreviewMode ? previewGamesSheetPeek : defaultGamesSheetPeek;
   const filterCloseTop = insets.top + 10 + 56 + 10;
   const filterPanelTop = filterCloseTop + 56 + spacing.sm;
@@ -2129,11 +2135,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const defaultCollapsedGamesSheetOffset = Math.max(gamesSheetHeight - defaultGamesSheetPeek, 0);
   const previewGamesSheetOffset = Math.max(gamesSheetHeight - previewGamesSheetPeek, 0);
   const collapsedGamesSheetOffset = defaultCollapsedGamesSheetOffset;
-  // On Android, limit how high the sheet rises when fully expanded so the map is still
-  // visible. Target: sheet top = 35% of screen height (leaves enough map context).
-  // On iOS the glass effect is transparent so full expansion (offset=0) is fine.
-  const expandedGamesSheetOffset =
-    Platform.OS === "android" ? Math.max(Math.round(height * 0.35) - gamesSheetTop, 0) : 0;
+  const expandedGamesSheetOffset = 0;
   const gamesSheetTranslateY = useRef(new Animated.Value(collapsedGamesSheetOffset)).current;
   const currentGamesSheetValueRef = useRef(collapsedGamesSheetOffset);
   const sheetPanStartRef = useRef(collapsedGamesSheetOffset);
@@ -2151,21 +2153,31 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const currentPageTranslateYRef = useRef(height);
   const pagePanStartRef = useRef(0);
   const pageLayerOpacity = useMemo(
-    () =>
-      pageTranslateY.interpolate({
+    () => {
+      if (Platform.OS === "android") {
+        return null;
+      }
+
+      return pageTranslateY.interpolate({
         inputRange: [0, height * 0.32, height],
         outputRange: [1, 0.98, 0],
         extrapolate: "clamp",
-      }),
+      });
+    },
     [height, pageTranslateY]
   );
   const pageLayerScale = useMemo(
-    () =>
-      pageTranslateY.interpolate({
+    () => {
+      if (Platform.OS === "android") {
+        return 1;
+      }
+
+      return pageTranslateY.interpolate({
         inputRange: [0, height],
         outputRange: [1, 0.988],
         extrapolate: "clamp",
-      }),
+      });
+    },
     [height, pageTranslateY]
   );
   const dashboardRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2176,6 +2188,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const mapFeedRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastViewportFeedBoundsRef = useRef<ViewportFeedBounds | null>(null);
   const viewportFeedSupportedRef = useRef(true);
+  const filterUsageReadyRef = useRef(false);
 
   useEffect(() => {
     const nextScreen =
@@ -2190,6 +2203,132 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       chat_view_mode: activeScreen === "chats" ? chatViewMode : null,
     });
   }, [activeScreen, chatViewMode, pageScreen]);
+
+  useEffect(() => {
+    if (activeScreen !== "map") {
+      return;
+    }
+
+    void trackProductEvent({
+      eventName: "map_viewed",
+      eventCategory: "navigation",
+      screenName: "map_home",
+      region: profile.neighborhood || null,
+      context: {
+        filters_active: filtersActive,
+        selected_meetup_id: selectedMeetupId,
+      },
+    });
+  }, [activeScreen, filtersActive, profile.neighborhood, selectedMeetupId]);
+
+  useEffect(() => {
+    if (activeScreen !== "map" || !gamesSheetExpanded || gamesSheetSection !== "meetups") {
+      return;
+    }
+
+    void trackProductEvent({
+      eventName: "game_list_viewed",
+      eventCategory: "discovery",
+      screenName: "meetups_list",
+      region: profile.neighborhood || null,
+      context: {
+        filters_active: filtersActive,
+        visible_meetups: filteredMeetups.length,
+      },
+    });
+  }, [
+    activeScreen,
+    filteredMeetups.length,
+    filtersActive,
+    gamesSheetExpanded,
+    gamesSheetSection,
+    profile.neighborhood,
+  ]);
+
+  useEffect(() => {
+    if (!selectedMeetup) {
+      return;
+    }
+
+    void trackProductEvent({
+      eventName: "game_details_viewed",
+      eventCategory: "discovery",
+      relatedEntityId: selectedMeetup.id,
+      screenName: "meetup_details",
+      region: selectedMeetup.creatorNeighborhood || profile.neighborhood || null,
+      gameType: selectedMeetup.gameSlug || null,
+      context: {
+        host_mode: selectedMeetup.hostMode,
+        status: selectedMeetup.status,
+        is_member: selectedMeetup.isMember,
+        is_creator: selectedMeetup.isCreator,
+      },
+    });
+
+    void trackProductEvent({
+      eventName: "first_game_viewed",
+      eventCategory: "discovery",
+      oncePerUser: true,
+      relatedEntityId: selectedMeetup.id,
+      screenName: "meetup_details",
+      region: selectedMeetup.creatorNeighborhood || profile.neighborhood || null,
+      gameType: selectedMeetup.gameSlug || null,
+    });
+  }, [profile.neighborhood, selectedMeetup]);
+
+  useEffect(() => {
+    if (activeScreen !== "player" || !viewedPlayerProfile) {
+      return;
+    }
+
+    void trackProductEvent({
+      eventName: "profile_viewed",
+      eventCategory: "navigation",
+      screenName: "player_profile",
+      relatedEntityId: viewedPlayerProfile.userId,
+      region: viewedPlayerProfile.neighborhood || null,
+      context: {
+        viewed_user_id: viewedPlayerProfile.userId,
+        relationship_state: viewedPlayerProfile.relationshipState,
+      },
+    });
+  }, [activeScreen, viewedPlayerProfile]);
+
+  useEffect(() => {
+    if (!filterUsageReadyRef.current) {
+      filterUsageReadyRef.current = true;
+      return;
+    }
+
+    if (!filtersActive) {
+      return;
+    }
+
+    void trackProductEvent({
+      eventName: "filter_used",
+      eventCategory: "discovery",
+      screenName: "map_filters",
+      region: profile.neighborhood || null,
+      context: {
+        entity_filters: entityFilters,
+        game_filter_ids: selectedGameFilterIds,
+        format_filter_ids: selectedFormatFilterIds,
+        period_filters: periodFilters,
+        distance_filter: distanceFilter,
+        has_date_filter: Boolean(filterDateFrom || filterDateTo),
+      },
+    });
+  }, [
+    distanceFilter,
+    entityFilters.join("|"),
+    filterDateFrom,
+    filterDateTo,
+    filtersActive,
+    periodFilters.join("|"),
+    profile.neighborhood,
+    selectedFormatFilterIds.join("|"),
+    selectedGameFilterIds.join("|"),
+  ]);
 
   useEffect(() => {
     const listenerId = gamesSheetTranslateY.addListener(({ value }) => {
@@ -3501,6 +3640,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         title: trimmedMeetupTitle,
         description: meetupDescription,
         formatId: selectedFormatId,
+        gameSlug: selectedGameForCreate?.slug ?? null,
         hostMode: resolvedHostMode,
         startsAt,
         maxPlayers: DEFAULT_MEETUP_CAPACITY,
@@ -5239,6 +5379,14 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     }
 
     analyticsCapture("paywall_opened", { source });
+    void trackProductEvent({
+      eventName: "pro_screen_viewed",
+      eventCategory: "monetization",
+      screenName: "pro_paywall",
+      context: {
+        source,
+      },
+    });
     setProPaywallVisible(true);
   }
 
@@ -5668,7 +5816,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     return (
       <SafeAreaView style={styles.loadingSafeArea}>
         <View style={styles.loadingState}>
-          <ActivityIndicator color={palette.ember} size="large" />
+          <LoadingSpinner size={44} />
           <Text style={styles.loadingTitle}>Preparando o mapa</Text>
           <Text style={styles.loadingText}>Sincronizando jogos, grupos, locais e amigos.</Text>
         </View>
@@ -6421,6 +6569,16 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
           }
 
           const next = mapShareOverlayTarget;
+          void trackProductEvent({
+            eventName: "game_shared",
+            eventCategory: "meetup",
+            relatedEntityId: next.kind === "meetup" ? next.meetup.id : next.venue.id,
+            gameType: next.kind === "meetup" ? next.meetup.gameSlug || null : null,
+            context: {
+              share_channel: "chat",
+              entity_kind: next.kind,
+            },
+          });
           setMapShareOverlayTarget(null);
           pendingMapShareTargetRef.current = next;
           openChatsPage();
@@ -6432,6 +6590,17 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
           const next = mapShareOverlayTarget;
           setMapShareOverlayTarget(null);
+
+          void trackProductEvent({
+            eventName: "game_shared",
+            eventCategory: "meetup",
+            relatedEntityId: next.kind === "meetup" ? next.meetup.id : next.venue.id,
+            gameType: next.kind === "meetup" ? next.meetup.gameSlug || null : null,
+            context: {
+              share_channel: "external",
+              entity_kind: next.kind,
+            },
+          });
 
           const { message } =
             next.kind === "meetup"

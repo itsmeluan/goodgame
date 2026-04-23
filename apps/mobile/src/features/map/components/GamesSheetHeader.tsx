@@ -4,6 +4,8 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { palette, radius, spacing } from "@/theme/tokens";
 
+export const GAMES_SHEET_HEADER_COLLAPSED_HEIGHT = 116;
+
 type GamesSheetHeaderProps = {
   expanded: boolean;
   meetupCount: number;

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Linking,
   Pressable,
   RefreshControl,
@@ -13,6 +12,7 @@ import {
 import { ProFeatureGate } from "@/components/ProFeatureGate";
 import { Avatar } from "@/components/Avatar";
 import { AppIcon } from "@/components/AppIcon";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
 import { analyticsCapture } from "@/lib/analytics";
@@ -20,6 +20,7 @@ import { env } from "@/lib/env";
 import { useLiveLocation } from "@/features/app/LiveLocationContext";
 import { listNearbyPlayers } from "@/lib/api";
 import { isUserPro } from "@/lib/proPlayer";
+import { trackProductEvent } from "@/lib/productAnalytics";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { NearbyPlayer, PlayerProfile } from "@/types/domain";
 
@@ -57,6 +58,18 @@ export function NearbyPlayersPage({
 
   const initialFetchScheduledRef = useRef(false);
 
+  useEffect(() => {
+    void trackProductEvent({
+      eventName: "pro_feature_used",
+      eventCategory: "monetization",
+      screenName: "nearby_players",
+      context: {
+        feature: "nearby_players",
+        locked: !pro,
+      },
+    });
+  }, [pro]);
+
   const fetchList = useCallback(
     async (mode: "initial" | "pull") => {
       if (mode === "initial") {
@@ -79,6 +92,18 @@ export function NearbyPlayersPage({
           viewerLng: c.longitude,
         });
         setPlayers(rows);
+
+        if (pro) {
+          await trackProductEvent({
+            eventName: "pro_feature_used",
+            eventCategory: "monetization",
+            screenName: "nearby_players",
+            context: {
+              feature: "nearby_players_results_loaded",
+              result_count: rows.length,
+            },
+          });
+        }
       } catch (fetchError) {
         setError("Não foi possível carregar jogadores próximos. Tente novamente.");
         if (__DEV__) {
@@ -170,7 +195,7 @@ export function NearbyPlayersPage({
       >
       {!error && (loading || locating) ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={palette.ember} />
+          <LoadingSpinner size={24} />
           <Text style={styles.loadingHint}>
             {locating ? "Obtendo sua posição…" : "Buscando jogadores…"}
           </Text>
@@ -197,7 +222,7 @@ export function NearbyPlayersPage({
             ]}
           >
             {requestingPermission ? (
-              <ActivityIndicator color={palette.parchment} />
+              <LoadingSpinner size={18} color={palette.parchment} />
             ) : (
               <AppIcon iosName="location.fill" fallbackName="my-location" size={18} color={palette.parchment} />
             )}

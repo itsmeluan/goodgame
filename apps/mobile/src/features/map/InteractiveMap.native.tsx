@@ -24,7 +24,13 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import MapView, { Callout, Circle, Marker, Polygon, Region } from "react-native-maps";
+import MapView, {
+  Circle,
+  Marker,
+  type MapStyleElement,
+  Polygon,
+  Region,
+} from "react-native-maps";
 
 import type {
   InteractiveMapProps,
@@ -178,6 +184,19 @@ const MARKER_IMAGE_SOURCES = {
   draft: require("../../../assets/map/marker-draft.png"),
 } as const;
 
+const GOOD_GAME_MAP_STYLE: MapStyleElement[] = [
+  {
+    featureType: "poi",
+    elementType: "labels.icon",
+    stylers: [{ visibility: "off" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "labels.icon",
+    stylers: [{ visibility: "off" }],
+  },
+];
+
 export function InteractiveMap({
   profile,
   visibleRadiusKm = null,
@@ -204,8 +223,12 @@ export function InteractiveMap({
   const latestRegionRef = useRef<Region>(buildRegion([]));
   const selectedDisplayedOverlayPinRef = useRef<{ id: string; coordinate: MapCoordinate } | null>(null);
   const markerPressLockUntilRef = useRef(0);
-  const { coordinate: liveUserCoordinate, accuracy: liveUserAccuracy, heading: liveUserHeading } =
-    useLiveLocation();
+  const {
+    coordinate: liveUserCoordinate,
+    accuracy: liveUserAccuracy,
+    heading: liveUserHeading,
+    permissionStatus: liveUserPermissionStatus,
+  } = useLiveLocation();
   const [mapReady, setMapReady] = useState(false);
   const [selectedPinScreenPoint, setSelectedPinScreenPoint] = useState<{
     x: number;
@@ -749,8 +772,15 @@ export function InteractiveMap({
           initialRegion={initialRegion}
           style={styles.map}
           mapType="standard"
+          customMapStyle={GOOD_GAME_MAP_STYLE}
           showsCompass
+          pitchEnabled={false}
+          rotateEnabled={false}
+          showsBuildings={false}
+          showsUserLocation={liveUserPermissionStatus === "granted"}
+          showsMyLocationButton={false}
           toolbarEnabled={false}
+          onPoiClick={() => {}}
           onLayout={handleMapLayout}
           onMapReady={() => {
             setMapReady(true);
@@ -790,30 +820,14 @@ export function InteractiveMap({
           }}
         >
           {profile.lat !== null && profile.lng !== null ? (
-            <>
-              {visibleRadiusKm !== null ? (
-                <Circle
-                  center={{ latitude: profile.lat, longitude: profile.lng }}
-                  radius={visibleRadiusKm * 1000}
-                  fillColor="rgba(241, 143, 92, 0.12)"
-                  strokeColor="rgba(241, 143, 92, 0.55)"
-                />
-              ) : null}
-              <Marker
-                coordinate={{ latitude: profile.lat, longitude: profile.lng }}
-                pinColor={palette.forest}
-                tracksViewChanges={false}
-              >
-                <Callout>
-                  <PinCallout
-                    kindLabel="Perfil"
-                    title="Sua área aproximada"
-                    distanceLabel={null}
-                    helperText={profile.neighborhood || "Localização de perfil"}
-                  />
-                </Callout>
-              </Marker>
-            </>
+            visibleRadiusKm !== null ? (
+              <Circle
+                center={{ latitude: profile.lat, longitude: profile.lng }}
+                radius={visibleRadiusKm * 1000}
+                fillColor="rgba(241, 143, 92, 0.12)"
+                strokeColor="rgba(241, 143, 92, 0.55)"
+              />
+            ) : null
           ) : null}
 
           <OverlayMarkers
@@ -841,18 +855,20 @@ export function InteractiveMap({
                   zIndex={1000}
                 />
               ) : null}
-              <Marker
-                coordinate={liveUserCoordinate}
-                anchor={{ x: 0.5, y: 0.5 }}
-                tracksViewChanges={false}
-                zIndex={1000}
-              >
-                <View style={styles.liveUserMarker}>
-                  <View style={styles.liveUserDotOuter}>
-                    <View style={styles.liveUserDotInner} />
+              {Platform.OS === "ios" ? (
+                <Marker
+                  coordinate={liveUserCoordinate}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                  tracksViewChanges={false}
+                  zIndex={1000}
+                >
+                  <View style={styles.liveUserMarker}>
+                    <View style={styles.liveUserDotOuter}>
+                      <View style={styles.liveUserDotInner} />
+                    </View>
                   </View>
-                </View>
-              </Marker>
+                </Marker>
+              ) : null}
             </>
           ) : null}
 

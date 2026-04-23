@@ -24,9 +24,9 @@ type AnimatedScalar = Animated.Value | Animated.AnimatedInterpolation<number | s
 
 export type MapPageLayerProps = {
   active: boolean;
-  opacity: AnimatedScalar;
+  opacity: AnimatedScalar | null;
   translateY: AnimatedScalar;
-  scale: AnimatedScalar;
+  scale: AnimatedScalar | number;
   /** Slide chat room horizontally when opened from chat list (native driver). */
   chatRoomTranslateX: Animated.Value;
   pageScreen: PageScreen;
@@ -101,8 +101,8 @@ export function MapPageLayer({
       pointerEvents={active ? "auto" : "none"}
       style={[
         styles.pageLayer,
+        opacity === null ? null : { opacity },
         {
-          opacity,
           transform: [{ translateY }, { scale }],
         },
       ]}

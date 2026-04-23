@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
@@ -9,6 +9,7 @@ import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { Avatar } from "@/components/Avatar";
 import { ChoiceChip } from "@/components/ChoiceChip";
 import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { TextField } from "@/components/TextField";
 import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
@@ -29,6 +30,7 @@ import {
   signOut,
   uploadMyAvatar,
 } from "@/lib/api";
+import { trackProductEvent } from "@/lib/productAnalytics";
 import { isUserPro } from "@/lib/proPlayer";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type {
@@ -95,6 +97,7 @@ export function ProfileSetupScreen({
     catalogFormats,
     selectedFormatIds
   );
+  const firstProfileCompletion = !profile;
 
   const displayNamePlaceholder = useMemo(
     () => displayNameExampleFromEmail(accountEmail),
@@ -254,6 +257,43 @@ export function ProfileSetupScreen({
           "Seus dados foram salvos, mas não foi possível confirmar o perfil. Verifique a conexão e toque em salvar de novo."
         );
       }
+
+      await trackProductEvent({
+        eventName: "profile_completed",
+        eventCategory: "onboarding",
+        oncePerUser: true,
+        region: inputValueOrNull(neighborhood),
+        context: {
+          selected_games_count: selectedGameIds.length,
+          selected_formats_count: selectedFormatIds.length,
+          availability_slots_count: availability.length,
+          can_host: canHost,
+        },
+      });
+
+      if (firstProfileCompletion) {
+        await trackProductEvent({
+          eventName: "onboarding_completed",
+          eventCategory: "onboarding",
+          oncePerUser: true,
+          region: inputValueOrNull(neighborhood),
+          context: {
+            selected_games_count: selectedGameIds.length,
+            selected_formats_count: selectedFormatIds.length,
+          },
+        });
+      }
+
+      await trackProductEvent({
+        eventName: "first_meaningful_action_completed",
+        eventCategory: "engagement",
+        oncePerUser: true,
+        region: inputValueOrNull(neighborhood),
+        context: {
+          trigger_event: firstProfileCompletion ? "onboarding_completed" : "profile_completed",
+        },
+      });
+
       await onSaved(refreshed);
     } catch (saveError) {
       setError(toMessage(saveError));
@@ -399,7 +439,7 @@ export function ProfileSetupScreen({
           </Text>
           {catalogState === "loading" && catalogGames.length === 0 ? (
             <View style={styles.catalogLoadingRow}>
-              <ActivityIndicator color={palette.ember} />
+              <LoadingSpinner size={20} />
               <Text style={styles.helpText}>Carregando jogos e formatos…</Text>
             </View>
           ) : null}
@@ -603,6 +643,11 @@ export function ProfileSetupScreen({
       </KeyboardAwareScrollView>
     </SafeAreaView>
   );
+}
+
+function inputValueOrNull(value: string | null | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
 }
 
 function toMessage(error: unknown) {

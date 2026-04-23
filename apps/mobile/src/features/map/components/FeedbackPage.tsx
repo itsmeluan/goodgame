@@ -1,6 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   Modal,
   Platform,
@@ -13,11 +12,13 @@ import {
 import { AppIcon } from "@/components/AppIcon";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { TextField } from "@/components/TextField";
 import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import { appInfo } from "@/lib/appInfo";
 import { submitAppFeedback } from "@/lib/api";
 import { triggerHaptic } from "@/lib/haptics";
+import { trackProductEvent } from "@/lib/productAnalytics";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { AppFeedbackType } from "@/types/domain";
 
@@ -46,6 +47,14 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
     feedbackType === null
       ? "Selecione o tipo"
       : FEEDBACK_TYPE_OPTIONS.find((o) => o.type === feedbackType)?.label ?? "";
+
+  useEffect(() => {
+    void trackProductEvent({
+      eventName: "feedback_screen_viewed",
+      eventCategory: "feedback",
+      screenName: "feedback",
+    });
+  }, []);
 
   const handleCancel = useCallback(() => {
     triggerHaptic("selection");
@@ -162,7 +171,7 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
           ]}
         >
           {submitting ? (
-            <ActivityIndicator color={palette.parchment} />
+            <LoadingSpinner size={20} color={palette.parchment} />
           ) : (
             <Text style={styles.primaryButtonLabel}>Enviar</Text>
           )}

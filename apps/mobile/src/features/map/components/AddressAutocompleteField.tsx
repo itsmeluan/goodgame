@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Keyboard,
   type KeyboardEvent,
   Modal,
@@ -17,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { meetupSheetEdgePadding, palette, spacing } from "@/theme/tokens";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 
@@ -276,7 +276,7 @@ export function AddressAutocompleteField({
                   ) : null}
                   {loading ? (
                     <View style={styles.addressSuggestionLoading}>
-                      <ActivityIndicator color={palette.ember} size="small" />
+                      <LoadingSpinner size={18} />
                       <Text style={styles.addressSuggestionLoadingText}>Buscando endereços...</Text>
                     </View>
                   ) : suggestions.length ? (

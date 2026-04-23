@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/AppleListNavigation";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { AppNewsDetailOverlay } from "@/features/map/components/AppNewsDetailOverlay";
 import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
@@ -74,7 +75,7 @@ export function NovidadesPage({ bottomInset, onClose, onInboxMarked }: Novidades
         >
           {loading ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator color={palette.ember} />
+              <LoadingSpinner size={24} />
             </View>
           ) : null}
 

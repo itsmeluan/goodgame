@@ -1,10 +1,11 @@
-import { Pressable, Text, View } from "react-native";
+import { Platform, Pressable, Text, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
 import { Avatar } from "@/components/Avatar";
 import { GoodGameLogo } from "@/components/GoodGameLogo";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MapCircleActionButton } from "@/features/map/components/MapCircleActionButton";
 import { styles } from "@/features/map/MapHomeScreen.styles";
 import { triggerHaptic } from "@/lib/haptics";
@@ -130,7 +131,12 @@ export function MapTopOverlay({
         style={[styles.mapBrandWrap, { left: insets.left + spacing.lg }]}
         pointerEvents="none"
       >
-        <GoodGameLogo size="sm" monochrome variant="map" />
+        <GoodGameLogo
+          size="sm"
+          scale={Platform.OS === "android" ? 0.8 : 1}
+          monochrome
+          variant="map"
+        />
       </View>
 
       {error || refreshing ? (
@@ -141,12 +147,16 @@ export function MapTopOverlay({
             intensity="clear"
             style={styles.topBannerSurface}
           />
-          <AppIcon
-            iosName={error ? "exclamationmark.triangle.fill" : "arrow.triangle.2.circlepath"}
-            fallbackName={error ? "error-outline" : "autorenew"}
-            size={16}
-            color={error ? "#F7B0B0" : palette.parchment}
-          />
+          {error ? (
+            <AppIcon
+              iosName="exclamationmark.triangle.fill"
+              fallbackName="error-outline"
+              size={16}
+              color="#F7B0B0"
+            />
+          ) : (
+            <LoadingSpinner size={16} color={palette.parchment} />
+          )}
           <Text style={styles.topBannerText}>
             {error ?? "Atualizando jogos e locais do mapa..."}
           </Text>
