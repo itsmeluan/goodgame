@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { useTranslation } from "@/i18n";
 import { meetupSheetEdgePadding, palette, spacing } from "@/theme/tokens";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 
@@ -50,6 +51,7 @@ export function AddressAutocompleteField({
   onSelectSuggestion,
   placeholder,
 }: AddressAutocompleteFieldProps) {
+  const { t } = useTranslation();
   const modalInputRef = useRef<TextInput | null>(null);
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
@@ -116,7 +118,7 @@ export function AddressAutocompleteField({
       <Text style={[styles.fieldLabel, labelTone === "light" ? styles.fieldLabelLight : null]}>{label}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${label}: abrir busca de endereço`}
+        accessibilityLabel={t("address.openSearch", { label })}
         onPress={() => {
           Keyboard.dismiss();
           setTimeout(() => {
@@ -139,7 +141,7 @@ export function AddressAutocompleteField({
           numberOfLines={1}
           style={value.trim() ? styles.addressFieldValue : styles.addressFieldPlaceholder}
         >
-          {value.trim() || placeholder || "Toque para pesquisar endereço"}
+          {value.trim() || placeholder || t("address.placeholder")}
         </Text>
         <AppIcon iosName="magnifyingglass" fallbackName="search" size={17} color={palette.ember} />
       </Pressable>
@@ -189,11 +191,11 @@ export function AddressAutocompleteField({
               >
                 <View style={styles.overlayHeader}>
                   <View style={styles.overlayHeaderCopy}>
-                    <Text style={styles.overlayTitle}>Pesquisar endereço</Text>
+                    <Text style={styles.overlayTitle}>{t("address.searchTitle")}</Text>
                   </View>
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Fechar busca de endereço"
+                    accessibilityLabel={t("address.closeSearch")}
                     onPress={() => {
                       Keyboard.dismiss();
                       onFocusChange(false);
@@ -231,7 +233,7 @@ export function AddressAutocompleteField({
                   {canUseTypedAddress ? (
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Usar endereço digitado"
+                      accessibilityLabel={t("address.useTyped")}
                       onPress={handleUseTypedAddress}
                       style={({ pressed }) => [
                         styles.addressSuggestionRow,
@@ -246,7 +248,7 @@ export function AddressAutocompleteField({
                         color={palette.ember}
                       />
                       <Text style={[styles.addressSuggestionTitle, styles.addressSuggestionTitleInline]}>
-                        Usar endereço digitado
+                        {t("address.useTyped")}
                       </Text>
                     </Pressable>
                   ) : null}
@@ -270,14 +272,14 @@ export function AddressAutocompleteField({
                         color={palette.ember}
                       />
                       <Text style={[styles.addressSuggestionTitle, styles.addressSuggestionTitleInline]}>
-                        Usar minha localização atual
+                        {t("address.useCurrentLocation")}
                       </Text>
                     </Pressable>
                   ) : null}
                   {loading ? (
                     <View style={styles.addressSuggestionLoading}>
                       <LoadingSpinner size={18} />
-                      <Text style={styles.addressSuggestionLoadingText}>Buscando endereços...</Text>
+                      <Text style={styles.addressSuggestionLoadingText}>{t("address.loading")}</Text>
                     </View>
                   ) : suggestions.length ? (
                     suggestions.map((suggestion) => (

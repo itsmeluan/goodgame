@@ -1,38 +1,39 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
+import { useTranslation, type TranslationKey } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { AvailabilitySlot } from "@/types/domain";
 
 const periods = [
   {
     id: "morning",
-    label: "Manhã",
+    labelKey: "format.period.morning",
     start_time: "09:00",
     end_time: "12:00",
   },
   {
     id: "afternoon",
-    label: "Tarde",
+    labelKey: "format.period.afternoon",
     start_time: "14:00",
     end_time: "18:00",
   },
   {
     id: "night",
-    label: "Noite",
+    labelKey: "format.period.night",
     start_time: "19:00",
     end_time: "23:00",
   },
 ] as const;
 
 const weekdays = [
-  { id: 1, label: "Seg" },
-  { id: 2, label: "Ter" },
-  { id: 3, label: "Qua" },
-  { id: 4, label: "Qui" },
-  { id: 5, label: "Sex" },
-  { id: 6, label: "Sáb" },
-  { id: 0, label: "Dom" },
+  { id: 1, labelKey: "format.weekday.1" },
+  { id: 2, labelKey: "format.weekday.2" },
+  { id: 3, labelKey: "format.weekday.3" },
+  { id: 4, labelKey: "format.weekday.4" },
+  { id: 5, labelKey: "format.weekday.5" },
+  { id: 6, labelKey: "format.weekday.6" },
+  { id: 0, labelKey: "format.weekday.0" },
 ] as const;
 
 /** Same width for every weekday pill; short height + pill radius = full capsule. */
@@ -45,6 +46,8 @@ type AvailabilityMatrixProps = {
 };
 
 export function AvailabilityMatrix({ value, onChange }: AvailabilityMatrixProps) {
+  const { t } = useTranslation();
+
   function hasSelection(weekday: number, periodId: string) {
     const period = periods.find((item) => item.id === periodId);
 
@@ -118,12 +121,15 @@ export function AvailabilityMatrix({ value, onChange }: AvailabilityMatrixProps)
   return (
     <View style={styles.container}>
       <View style={styles.shortcutsRow}>
-        <ShortcutButton label="Dias úteis" onPress={() => mergeSlots(buildSlotsForWeekdays([1, 2, 3, 4, 5]))} />
-        <ShortcutButton label="Fim de semana" onPress={() => mergeSlots(buildSlotsForWeekdays([6, 0]))} />
-        <ShortcutButton label="Limpar tudo" onPress={() => onChange([])} />
+        <ShortcutButton label={t("profile.weekdays")} onPress={() => mergeSlots(buildSlotsForWeekdays([1, 2, 3, 4, 5]))} />
+        <ShortcutButton label={t("profile.weekend")} onPress={() => mergeSlots(buildSlotsForWeekdays([6, 0]))} />
+        <ShortcutButton label={t("profile.clearAll")} onPress={() => onChange([])} />
       </View>
 
-      {periods.map((period) => (
+      {periods.map((period) => {
+        const periodLabel = t(period.labelKey as TranslationKey);
+
+        return (
         <View key={period.id} style={styles.periodCard}>
           <AppleGlassSurface
             pointerEvents="none"
@@ -131,7 +137,7 @@ export function AvailabilityMatrix({ value, onChange }: AvailabilityMatrixProps)
             intensity="clear"
             style={styles.periodCardSurface}
           />
-          <Text style={styles.periodTitle}>{period.label}</Text>
+          <Text style={styles.periodTitle}>{periodLabel}</Text>
           <ScrollView
             horizontal
             nestedScrollEnabled
@@ -141,12 +147,13 @@ export function AvailabilityMatrix({ value, onChange }: AvailabilityMatrixProps)
           >
             {weekdays.map((weekday) => {
               const selected = hasSelection(weekday.id, period.id);
+              const weekdayLabel = t(weekday.labelKey as TranslationKey);
 
               return (
                 <Pressable
                   key={`${weekday.id}:${period.id}`}
                   accessibilityRole="button"
-                  accessibilityLabel={`${weekday.label} ${period.label}`}
+                  accessibilityLabel={`${weekdayLabel} ${periodLabel}`}
                   onPress={() => toggleCell(weekday.id, period.id)}
                   style={({ pressed }) => [
                     styles.dayChip,
@@ -163,14 +170,15 @@ export function AvailabilityMatrix({ value, onChange }: AvailabilityMatrixProps)
                     />
                   )}
                   <Text style={[styles.dayChipLabel, selected ? styles.dayChipLabelSelected : null]}>
-                    {weekday.label}
+                    {weekdayLabel}
                   </Text>
                 </Pressable>
               );
             })}
           </ScrollView>
         </View>
-      ))}
+        );
+      })}
     </View>
   );
 }

@@ -20,6 +20,7 @@ import {
   MiniIconActionButton,
   formatRelationshipStateLabel,
 } from "@/features/map/components/FriendsPagePrimitives";
+import { useTranslation } from "@/i18n";
 import type {
   FriendActionCandidate,
   RecentPlayerCard,
@@ -83,6 +84,7 @@ export function FriendsPage({
   onRemoveFriend,
   onClose,
 }: FriendsPageProps) {
+  const { t } = useTranslation();
   const [routeKeys, setRouteKeys] = useState<FriendsRouteKey[]>([]);
 
   const incomingRequestsByUserId = useMemo(
@@ -115,7 +117,7 @@ export function FriendsPage({
               <AppleListGroup>
                 <AppleListRow
                   icon={{ iosName: "person.badge.plus", fallbackName: "person-add-alt-1" }}
-                  label="Solicitações recebidas"
+                  label={t("friends.incoming")}
                   trailingValue={String(incomingFriendRequests.length)}
                   onPress={() => pushRoute("requests")}
                   tone={incomingFriendRequests.length ? "accent" : "default"}
@@ -124,14 +126,14 @@ export function FriendsPage({
                 <AppleListRow
                   separator
                   icon={{ iosName: "magnifyingglass", fallbackName: "search" }}
-                  label="Buscar jogadores"
+                  label={t("friends.search")}
                   onPress={() => pushRoute("search")}
                   size="compact"
                 />
                 <AppleListRow
                   separator
                   icon={{ iosName: "clock.arrow.circlepath", fallbackName: "history" }}
-                  label="Últimos jogadores"
+                  label={t("friends.recent")}
                   trailingValue={String(recentPlayers.length)}
                   onPress={() => pushRoute("recent")}
                   size="compact"
@@ -139,7 +141,7 @@ export function FriendsPage({
                 <AppleListRow
                   separator
                   icon={{ iosName: "person.2.fill", fallbackName: "groups-2" }}
-                  label="Seus amigos"
+                  label={t("friends.yourFriends")}
                   trailingValue={String(acceptedFriends.length)}
                   onPress={() => pushRoute("friends")}
                   size="compact"
@@ -148,7 +150,7 @@ export function FriendsPage({
                   <AppleListRow
                     separator
                     icon={{ iosName: "paperplane.fill", fallbackName: "send" }}
-                    label="Convites enviados"
+                    label={t("friends.outgoing")}
                     trailingValue={String(outgoingFriendRequests.length)}
                     onPress={() => pushRoute("outgoing")}
                     size="compact"
@@ -168,7 +170,7 @@ export function FriendsPage({
           content: (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
               <View style={styles.sceneLead}>
-                <Text style={styles.sceneLeadTitle}>Solicitações recebidas</Text>
+                <Text style={styles.sceneLeadTitle}>{t("friends.incoming")}</Text>
               </View>
               {incomingFriendRequests.length ? (
                 <View style={styles.edgeList}>
@@ -180,13 +182,13 @@ export function FriendsPage({
                       avatarUrl={friend.avatarUrl}
                       isPro={Boolean(friend.isPro)}
                       meta={friend.neighborhood ? `@${friend.handle} · ${friend.neighborhood}` : `@${friend.handle}`}
-                      supporting={friend.isOnline ? "Online agora" : "Convite pendente"}
+                      supporting={friend.isOnline ? t("friends.onlineNow") : t("friends.pendingInvite")}
                       onPress={() => onOpenPlayerProfile(friend.userId)}
                       actions={
                         <View style={styles.friendIconActions}>
                           <MiniIconActionButton
                             icon="close"
-                            accessibilityLabel={`Recusar ${friend.displayName}`}
+                            accessibilityLabel={t("friends.reject", { name: friend.displayName })}
                             onPress={() =>
                               onRespondToFriendRequest(friend.friendshipId, false, friendToCandidate(friend))
                             }
@@ -194,7 +196,7 @@ export function FriendsPage({
                           />
                           <MiniIconActionButton
                             icon="check"
-                            accessibilityLabel={`Aceitar ${friend.displayName}`}
+                            accessibilityLabel={t("friends.accept", { name: friend.displayName })}
                             onPress={() =>
                               onRespondToFriendRequest(friend.friendshipId, true, friendToCandidate(friend))
                             }
@@ -206,8 +208,8 @@ export function FriendsPage({
                 </View>
               ) : (
                 <MapEmptyCard
-                  title="Sem solicitações pendentes"
-                  body="Quando alguém te adicionar, o convite vai aparecer aqui."
+                  title={t("friends.emptyIncomingTitle")}
+                  body={t("friends.emptyIncomingBody")}
                 />
               )}
             </ScrollView>
@@ -225,19 +227,19 @@ export function FriendsPage({
               contentContainerStyle={styles.sceneContent}
             >
               <View style={styles.sceneLead}>
-                <Text style={styles.sceneLeadTitle}>Buscar jogadores</Text>
+                <Text style={styles.sceneLeadTitle}>{t("friends.search")}</Text>
               </View>
               <GlassCard style={styles.formCard}>
                 <TextField
-                  label="Buscar jogadores"
+                  label={t("friends.search")}
                   value={playerSearchQuery}
                   onChangeText={onChangePlayerSearchQuery}
-                  placeholder="Nome, @handle, bairro ou e-mail"
+                  placeholder={t("friends.searchPlaceholder")}
                   autoCapitalize="none"
                 />
                 <View style={styles.rowActions}>
                   <View style={styles.rowActionCell}>
-                    <PrimaryButton label="Buscar" onPress={onSearchPlayers} loading={searchingPlayers} />
+                    <PrimaryButton label={t("friends.search")} onPress={onSearchPlayers} loading={searchingPlayers} />
                   </View>
                 </View>
               </GlassCard>
@@ -259,14 +261,14 @@ export function FriendsPage({
                             ? `@${player.handle} · ${player.neighborhood}`
                             : `@${player.handle}`
                         }
-                        supporting={player.isOnline ? "Online agora" : "Offline"}
+                        supporting={player.isOnline ? t("friends.onlineNow") : t("friends.offline")}
                         onPress={() => onOpenPlayerProfile(player.userId)}
                         actions={
                           <View style={styles.rowActions}>
                             {player.relationshipState === "none" ? (
                               <View style={styles.rowActionCell}>
                                 <PrimaryButton
-                                  label="Adicionar"
+                                  label={t("friends.add")}
                                   onPress={() => onSendFriendRequest(playerToCandidate(player))}
                                   loading={friendActionId === player.userId}
                                 />
@@ -275,7 +277,7 @@ export function FriendsPage({
                               <View style={styles.friendIconActionsRow}>
                                 <MiniIconActionButton
                                   icon="close"
-                                  accessibilityLabel={`Recusar ${player.displayName}`}
+                                  accessibilityLabel={t("friends.reject", { name: player.displayName })}
                                   onPress={() =>
                                     onRespondToFriendRequest(
                                       incoming.friendshipId,
@@ -287,7 +289,7 @@ export function FriendsPage({
                                 />
                                 <MiniIconActionButton
                                   icon="check"
-                                  accessibilityLabel={`Aceitar ${player.displayName}`}
+                                  accessibilityLabel={t("friends.accept", { name: player.displayName })}
                                   onPress={() =>
                                     onRespondToFriendRequest(
                                       incoming.friendshipId,
@@ -300,7 +302,7 @@ export function FriendsPage({
                             ) : player.relationshipState === "friend" ? (
                               <View style={styles.rowActionCell}>
                                 <PrimaryButton
-                                  label="Remover"
+                                  label={t("friends.remove")}
                                   onPress={() => onRemoveFriend(player.userId)}
                                   tone="ghost"
                                   loading={friendActionId === player.userId}
@@ -309,7 +311,7 @@ export function FriendsPage({
                             ) : (
                               <View style={styles.rowActionCell}>
                                 <PrimaryButton
-                                  label="Cancelar convite"
+                                  label={t("friends.cancelInvite")}
                                   onPress={() => onRemoveFriend(player.userId)}
                                   tone="ghost"
                                   loading={friendActionId === player.userId}
@@ -324,8 +326,8 @@ export function FriendsPage({
                 </View>
               ) : (
                 <MapEmptyCard
-                  title="Nenhum resultado ainda"
-                  body="Busque um nome ou handle para começar a montar sua rede."
+                  title={t("friends.emptySearchTitle")}
+                  body={t("friends.emptySearchBody")}
                 />
               )}
             </KeyboardAwareScrollView>
@@ -339,7 +341,7 @@ export function FriendsPage({
           content: (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
               <View style={styles.sceneLead}>
-                <Text style={styles.sceneLeadTitle}>Últimos jogadores</Text>
+                <Text style={styles.sceneLeadTitle}>{t("friends.recent")}</Text>
               </View>
               {recentPlayers.length ? (
                 <View style={styles.edgeList}>
@@ -355,13 +357,13 @@ export function FriendsPage({
                           ? `@${player.handle} · ${player.neighborhood}`
                           : `@${player.handle}`
                       }
-                      supporting={`Último jogo ${formatRelativeTimestamp(player.playedAt)}`}
+                      supporting={t("friends.lastGame", { time: formatRelativeTimestamp(player.playedAt) })}
                       onPress={() => onOpenPlayerProfile(player.userId)}
                       actions={
                         player.relationshipState === "none" ? (
                           <MiniIconActionButton
                             icon="person-add-alt-1"
-                            accessibilityLabel={`Adicionar ${player.displayName}`}
+                            accessibilityLabel={t("friends.addA11y", { name: player.displayName })}
                             onPress={() => onSendFriendRequest(recentPlayerToCandidate(player))}
                           />
                         ) : (
@@ -376,8 +378,8 @@ export function FriendsPage({
                 </View>
               ) : (
                 <MapEmptyCard
-                  title="Sem histórico recente"
-                  body="Quando você participar de jogos, os últimos jogadores aparecem aqui."
+                  title={t("friends.emptyRecentTitle")}
+                  body={t("friends.emptyRecentBody")}
                 />
               )}
             </ScrollView>
@@ -391,9 +393,9 @@ export function FriendsPage({
           content: (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
               <View style={styles.sceneLead}>
-                <Text style={styles.sceneLeadTitle}>Seus amigos</Text>
+                <Text style={styles.sceneLeadTitle}>{t("friends.yourFriends")}</Text>
                 <Text style={styles.sceneLeadSubtitle}>
-                  {acceptedFriends.length} amigo(s) · {onlineFriendsCount} online agora
+                  {t("friends.friendCount", { friends: acceptedFriends.length, online: onlineFriendsCount })}
                 </Text>
               </View>
               {acceptedFriends.length ? (
@@ -412,17 +414,17 @@ export function FriendsPage({
                       }
                       supporting={
                         friend.isOnline
-                          ? "Online agora"
+                          ? t("friends.onlineNow")
                           : friend.lastSeenAt
-                            ? `Visto ${formatRelativeTimestamp(friend.lastSeenAt)}`
-                            : "Offline"
+                            ? t("publicProfile.seen", { time: formatRelativeTimestamp(friend.lastSeenAt) })
+                            : t("friends.offline")
                       }
                       onPress={() => onOpenPlayerProfile(friend.userId)}
                       actions={
                         <View style={styles.rowActions}>
                           <View style={styles.rowActionCell}>
                             <PrimaryButton
-                              label="Remover"
+                              label={t("friends.remove")}
                               onPress={() => onRemoveFriend(friend.userId)}
                               tone="ghost"
                               loading={friendActionId === friend.userId}
@@ -435,8 +437,8 @@ export function FriendsPage({
                 </View>
               ) : (
                 <MapEmptyCard
-                  title="Você ainda não adicionou amigos"
-                  body="Comece buscando jogadores pelo nome ou handle."
+                  title={t("friends.emptyFriendsTitle")}
+                  body={t("friends.emptyFriendsBody")}
                 />
               )}
             </ScrollView>
@@ -449,9 +451,9 @@ export function FriendsPage({
         content: (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
             <View style={styles.sceneLead}>
-              <Text style={styles.sceneLeadTitle}>Convites enviados</Text>
+              <Text style={styles.sceneLeadTitle}>{t("friends.sentInvites")}</Text>
               <Text style={styles.sceneLeadSubtitle}>
-                {outgoingFriendRequests.length} pendente(s)
+                {t("friends.pending", { count: outgoingFriendRequests.length })}
               </Text>
             </View>
             {outgoingFriendRequests.length ? (
@@ -464,13 +466,13 @@ export function FriendsPage({
                     avatarUrl={friend.avatarUrl}
                     isPro={Boolean(friend.isPro)}
                     meta={`@${friend.handle}`}
-                    supporting="Aguardando resposta"
+                    supporting={t("friends.awaitingResponse")}
                     onPress={() => onOpenPlayerProfile(friend.userId)}
                     actions={
                       <View style={styles.rowActions}>
                         <View style={styles.rowActionCell}>
                           <PrimaryButton
-                            label="Cancelar convite"
+                            label={t("friends.cancelInvite")}
                             onPress={() => onRemoveFriend(friend.userId)}
                             tone="ghost"
                             loading={friendActionId === friend.userId}
@@ -483,8 +485,8 @@ export function FriendsPage({
               </View>
             ) : (
               <MapEmptyCard
-                title="Nenhum convite enviado"
-                body="Quando você mandar novos convites, eles aparecem aqui."
+                title={t("friends.emptyOutgoingTitle")}
+                body={t("friends.emptyOutgoingBody")}
               />
             )}
           </ScrollView>

@@ -5,6 +5,7 @@ import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
 import { DrawerChatsPanel, type DrawerChatGameGroup } from "@/features/map/components/DrawerChatsPanel";
 import { DrawerRootPanel } from "@/features/map/components/DrawerRootPanel";
+import { useTranslation } from "@/i18n";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, spacing } from "@/theme/tokens";
 import type { FriendProfile, MeetupPost } from "@/types/domain";
@@ -96,6 +97,8 @@ export function MapDrawer({
   onOpenChat,
   panHandlers,
 }: MapDrawerProps) {
+  const { t } = useTranslation();
+
   return (
     <>
       <Animated.View
@@ -127,10 +130,10 @@ export function MapDrawer({
 
         <SafeAreaView style={styles.drawerSafeArea} edges={["top", "bottom", "left", "right"]}>
           <View style={styles.drawerHeader}>
-            <Text style={styles.drawerHeaderTitle}>Menu</Text>
+            <Text style={styles.drawerHeaderTitle}>{t("common.menu")}</Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Fechar menu"
+              accessibilityLabel={t("common.close")}
               hitSlop={12}
               onPress={() => {
                 triggerHaptic("selection");

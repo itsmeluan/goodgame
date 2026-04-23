@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Good Game | Product Metrics</title>
+    <meta
+      name="description"
+      content="Dashboard web de métricas reais do produto Good Game, preparado para visão consolidada e multiplataforma."
+    />
+    <link rel="stylesheet" href="./dashboard.css" />
+    <script src="./dashboard.local-config.js"></script>
+  </head>
+  <body>
+    <div class="dashboard-window">
+      <div class="window-chrome">
+        <div class="window-dots" aria-hidden="true">
+          <span class="dot red"></span>
+          <span class="dot amber"></span>
+          <span class="dot green"></span>
+        </div>
+        <div class="window-search">Good Game Product Analytics</div>
+        <div class="window-actions">
+          <span class="window-chip">ETAPA 2</span>
+          <span class="window-chip">Supabase Live</span>
+        </div>
+      </div>
+
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand-lockup">
+            <div class="brand-mark">GG</div>
+            <div>
+              <p class="eyebrow">Product Metrics</p>
+              <h1>Good Game</h1>
+            </div>
+          </div>
+
+          <nav class="sidebar-nav">
+            <div class="sidebar-group-title">Reports</div>
+            <a class="sidebar-link active" href="#overview-section">Resumo executivo</a>
+            <a class="sidebar-link" href="#advanced-section">Analytics avancado</a>
+            <a class="sidebar-link" href="#growth-section">Crescimento</a>
+            <a class="sidebar-link" href="#funnel-section">Funil e retencao</a>
+            <a class="sidebar-link" href="#operations-section">Uso operacional</a>
+            <a class="sidebar-link" href="#feedback-section">Feedback</a>
+            <a class="sidebar-link" href="#pro-section">Pro Player</a>
+            <a class="sidebar-link" href="#alerts-section">Saude do produto</a>
+          </nav>
+
+          <section class="sidebar-panel">
+            <div class="section-kicker">Acesso</div>
+            <p class="sidebar-copy" id="access-copy">
+              Painel privado com dados reais do Supabase. Use URL + anon key e entre com uma
+              conta autorizada no allowlist `dashboard_admin_users`.
+            </p>
+
+            <form id="connection-form" class="stack-form">
+              <label id="supabase-url-field">
+                <span>Supabase URL</span>
+                <input id="supabase-url" type="url" placeholder="https://xxxxx.supabase.co" required />
+              </label>
+
+              <label id="supabase-anon-key-field">
+                <span>Supabase anon key</span>
+                <textarea
+                  id="supabase-anon-key"
+                  rows="4"
+                  placeholder="Cole a anon key publica do projeto"
+                  required
+                ></textarea>
+              </label>
+
+              <div class="inline-grid">
+                <label>
+                  <span>E-mail</span>
+                  <input id="email" type="email" placeholder="seu-email@dominio.com" required />
+                </label>
+
+                <label>
+                  <span>Senha</span>
+                  <input id="password" type="password" placeholder="Sua senha" required />
+                </label>
+              </div>
+
+              <div class="button-row">
+                <button class="button primary" type="submit" id="login-button">Conectar</button>
+                <button class="button ghost" type="button" id="logout-button">Sair</button>
+              </div>
+            </form>
+
+            <div id="auth-status" class="status-card subtle">
+              Configure a conexao e autentique-se para carregar o dashboard.
+            </div>
+          </section>
+
+          <section class="sidebar-panel">
+            <div class="section-kicker">Filtros</div>
+            <div class="toggle-panel">
+              <div>
+                <span class="toggle-label">Dados de teste</span>
+                <p class="toggle-copy">
+                  Inclui ou oculta do dashboard os dados gerados por contas internas de teste.
+                </p>
+              </div>
+              <button class="button ghost compact" type="button" id="test-data-toggle">
+                Ocultar dados de teste
+              </button>
+            </div>
+            <div class="filters" id="filters-form">
+              <label>
+                <span>Periodo</span>
+                <select id="period-filter"></select>
+              </label>
+
+              <label>
+                <span>Plataforma</span>
+                <select id="platform-filter"></select>
+              </label>
+
+              <label>
+                <span>Tipo de feedback</span>
+                <select id="feedback-type-filter"></select>
+              </label>
+
+              <label>
+                <span>Versao do app</span>
+                <select id="app-version-filter"></select>
+              </label>
+
+              <label>
+                <span>Tipo de evento</span>
+                <select id="event-name-filter"></select>
+              </label>
+
+              <label>
+                <span>Tipo de jogo</span>
+                <select id="game-filter"></select>
+              </label>
+
+              <label>
+                <span>Status Pro</span>
+                <select id="pro-status-filter"></select>
+              </label>
+
+              <label>
+                <span>Regiao</span>
+                <select id="region-filter"></select>
+              </label>
+            </div>
+          </section>
+
+          <section class="sidebar-panel">
+            <div class="section-kicker">Confiabilidade</div>
+            <div id="data-quality-panel" class="status-card muted">
+              As notas de confiabilidade aparecem aqui assim que o Supabase responder.
+            </div>
+          </section>
+        </aside>
+
+        <main class="content">
+          <header class="content-topbar">
+            <div class="report-heading">
+              <p class="eyebrow">Analytics Workspace</p>
+              <h2>Good Game Product Dashboard</h2>
+              <p class="hero-copy">
+                Visao operacional e executiva do produto com instrumentacao oficial,
+                comparativos multiplataforma e leitura pronta para decisao.
+              </p>
+            </div>
+
+            <div class="hero-meta">
+              <div class="meta-card">
+                <span class="meta-label">Atualizacao</span>
+                <strong id="generated-at">Aguardando conexao</strong>
+              </div>
+              <div class="meta-card">
+                <span class="meta-label">Escopo</span>
+                <strong>Confiabilidade + instrumentacao</strong>
+              </div>
+            </div>
+          </header>
+
+          <section class="banner-grid">
+          <article class="banner-card accent" id="platform-banner">
+            <div class="section-kicker">Multiplataforma</div>
+            <h3>Base pronta para iOS e Android</h3>
+            <p>
+              O filtro de plataforma atua onde o dado existe hoje com confianca. Onde ainda
+              nao existe origem estruturada, o painel deixa isso explicito.
+            </p>
+          </article>
+
+          <article class="banner-card" id="limitations-banner">
+            <div class="section-kicker">Limitacoes atuais</div>
+            <p>
+              Usuarios, meetups e Pro ainda nao possuem segmentacao nativa por plataforma na
+              modelagem principal. Feedback ja possui plataforma e versao.
+            </p>
+          </article>
+        </section>
+
+        <section class="section-block" id="overview-section">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">A</p>
+              <h3>Resumo executivo</h3>
+            </div>
+            <div class="section-note">Cards principais do produto com recortes confiaveis.</div>
+          </div>
+          <div id="executive-kpis" class="kpi-grid"></div>
+        </section>
+
+        <section class="section-block" id="advanced-section">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">A2</p>
+              <h3>Analytics avancado</h3>
+            </div>
+            <div class="section-note">
+              DAU, WAU, MAU, stickiness, comparativos por plataforma e versao quando houver base real.
+            </div>
+          </div>
+
+          <div id="advanced-kpis" class="kpi-grid compact"></div>
+
+          <div class="two-column">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Funcionalidades</div>
+                  <h4>Atividade por evento</h4>
+                </div>
+              </div>
+              <div id="feature-activity-bars" class="bars-host"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Liquidez</div>
+                  <h4>Liquidez por regiao</h4>
+                </div>
+              </div>
+              <div id="liquidity-table"></div>
+            </article>
+          </div>
+
+          <div class="two-column">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Plataformas</div>
+                  <h4>Comparacao iOS vs Android</h4>
+                </div>
+              </div>
+              <div id="platform-comparison-table"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Versoes</div>
+                  <h4>Comparacao por app version</h4>
+                </div>
+              </div>
+              <div id="version-comparison-table"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section-block" id="growth-section">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">B</p>
+              <h3>Crescimento</h3>
+            </div>
+            <div class="segmented" id="growth-granularity">
+              <button class="segmented-button active" data-granularity="daily">Diario</button>
+              <button class="segmented-button" data-granularity="weekly">Semanal</button>
+              <button class="segmented-button" data-granularity="monthly">Mensal</button>
+            </div>
+          </div>
+
+          <div class="two-column">
+            <article class="panel chart-panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Usuarios</div>
+                  <h4>Evolucao de cadastros</h4>
+                </div>
+                <div id="users-comparison" class="comparison-chip"></div>
+              </div>
+              <div id="users-growth-chart" class="chart-host"></div>
+            </article>
+
+            <article class="panel chart-panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Partidas</div>
+                  <h4>Evolucao de partidas criadas</h4>
+                </div>
+                <div id="meetups-comparison" class="comparison-chip"></div>
+              </div>
+              <div id="meetups-growth-chart" class="chart-host"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section-block" id="funnel-section">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">B2</p>
+              <h3>Funil e retencao</h3>
+            </div>
+            <div class="section-note">
+              Essas metricas passam a ser oficiais a partir do acmulo de `product_events`.
+            </div>
+          </div>
+
+          <div class="two-column">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Funil principal</div>
+                  <h4>Signup ate primeiro jogo criado</h4>
+                </div>
+              </div>
+              <div id="funnel-table"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Retencao</div>
+                  <h4>D1, D7 e D30</h4>
+                </div>
+              </div>
+              <div id="retention-kpis" class="kpi-grid compact"></div>
+            </article>
+          </div>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="section-kicker">Cohorts</div>
+                <h4>Cohorts mensais</h4>
+              </div>
+            </div>
+            <div id="cohorts-table"></div>
+          </article>
+        </section>
+
+        <section class="section-block" id="operations-section">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">C</p>
+              <h3>Uso operacional do produto</h3>
+            </div>
+            <div class="section-note">Meetups, distribuicao operacional e lideranca de criadores.</div>
+          </div>
+
+          <div class="three-column">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Status</div>
+                  <h4>Panorama operacional</h4>
+                </div>
+              </div>
+              <div id="operations-status" class="stat-stack"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Regioes</div>
+                  <h4>Partidas por regiao</h4>
+                </div>
+              </div>
+              <div id="operations-region-bars" class="bars-host"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Jogos</div>
+                  <h4>Partidas por tipo de jogo</h4>
+                </div>
+              </div>
+              <div id="operations-game-bars" class="bars-host"></div>
+            </article>
+          </div>
+
+          <div class="two-column">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Criadores</div>
+                  <h4>Usuarios com mais partidas criadas</h4>
+                </div>
+              </div>
+              <div id="top-creators-table"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Distribuicao temporal</div>
+                  <h4>Criacao de partidas por horario UTC</h4>
+                </div>
+              </div>
+              <div id="operations-hour-chart" class="chart-host compact"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section-block" id="feedback-section">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">D</p>
+              <h3>Feedback dos usuarios</h3>
+            </div>
+            <div class="section-note">
+              Plataforma e versao so aparecem aqui porque esses campos ja existem em `app_feedback`.
+            </div>
+          </div>
+
+          <div id="feedback-kpis" class="kpi-grid compact"></div>
+
+          <div class="two-column">
+            <article class="panel chart-panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Periodo</div>
+                  <h4>Feedbacks ao longo do tempo</h4>
+                </div>
+              </div>
+              <div id="feedback-chart" class="chart-host"></div>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <div class="section-kicker">Distribuicao</div>
+                  <h4>Feedback por tipo</h4>
+                </div>
+              </div>
+              <div id="feedback-type-bars" class="bars-host"></div>
+              <div class="panel-divider"></div>
+              <div class="section-kicker">Plataforma</div>
+              <div id="feedback-platform-bars" class="bars-host"></div>
+            </article>
+          </div>
+
+          <article class="panel">
+            <div class="panel-header">
+              <div>
+                <div class="section-kicker">Recentes</div>
+                <h4>Lista de feedbacks recentes</h4>
+              </div>
+            </div>
+            <div id="recent-feedback-table"></div>
+          </article>
+        </section>
+
+        <section class="section-block" id="pro-section">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">E</p>
+              <h3>Pro Player</h3>
+            </div>
+            <div class="section-note">
+              Percentual real da base e observacao sobre o flag global de Pro.
+            </div>
+          </div>
+
+          <div id="pro-kpis" class="kpi-grid compact"></div>
+        </section>
+
+        <section class="section-block" id="alerts-section">
+          <div class="section-header">
+            <div>
+              <p class="section-kicker">F</p>
+              <h3>Saude do produto</h3>
+            </div>
+            <div class="section-note">
+              Alertas simples, transparentes e rule-based para anomalias de produto.
+            </div>
+          </div>
+          <div id="alerts-list"></div>
+        </section>
+        </main>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./dashboard.js"></script>
+  </body>
+</html>

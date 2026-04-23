@@ -1,4 +1,5 @@
 import { inferGameNameFromMeetup, slugifyGameLabel } from "@/features/map/gameLabels";
+import { translate } from "@/i18n";
 import { formatShortAddress } from "@/lib/formatting";
 import { getDeviceCoordinate, reverseGeocodeAddress } from "@/lib/location";
 import type { AddressSuggestion } from "@/lib/placeSearch";
@@ -20,9 +21,9 @@ export function resolveCurrentLocationSuggestion(): Promise<AddressSuggestion> {
 
     return {
       id: "current-location",
-      title: resolvedAddress.label ?? "Sua localização atual",
-      subtitle: resolvedAddress.neighborhood ?? "Posição atual do aparelho",
-      fullLabel: resolvedAddress.label ?? "Sua localização atual",
+      title: resolvedAddress.label ?? translate("address.useCurrentLocation"),
+      subtitle: resolvedAddress.neighborhood ?? translate("address.currentLocationSubtitle"),
+      fullLabel: resolvedAddress.label ?? translate("address.useCurrentLocation"),
       latitude: coordinate.latitude,
       longitude: coordinate.longitude,
     };
@@ -97,7 +98,7 @@ export function toMessage(error: unknown) {
     }
   }
 
-  return "Não foi possível concluir esta ação.";
+  return translate("map.actionFailed");
 }
 
 export function clamp(value: number, min: number, max: number) {

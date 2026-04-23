@@ -10,7 +10,6 @@ import {
 } from "@/features/map/friendTypes";
 
 type UseMapFriendActionsParams = {
-  demoFriends: FriendProfile[];
   playerSearchQuery: string;
   setFriends: Dispatch<SetStateAction<FriendProfile[]>>;
   setLastFriendSyncAt: Dispatch<SetStateAction<Date | null>>;
@@ -24,7 +23,6 @@ type UseMapFriendActionsParams = {
 };
 
 export function useMapFriendActions({
-  demoFriends,
   playerSearchQuery,
   setFriends,
   setLastFriendSyncAt,
@@ -47,10 +45,10 @@ export function useMapFriendActions({
 
   const applyDemoFriendMutation = useCallback(
     (transform: (current: FriendProfile[]) => FriendProfile[]) => {
-      setFriends((current) => transform(current.length ? current : demoFriends));
+      setFriends((current) => transform(current));
       setLastFriendSyncAt(new Date());
     },
-    [demoFriends, setFriends, setLastFriendSyncAt]
+    [setFriends, setLastFriendSyncAt]
   );
 
   const handleSearchPlayers = useCallback(async () => {

@@ -6,6 +6,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { AppNewsDetailOverlay } from "@/features/map/components/AppNewsDetailOverlay";
 import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
+import { useTranslation } from "@/i18n";
 import { listAppNews, markAppNewsInboxOpened } from "@/lib/api";
 import { formatDateTime } from "@/lib/formatting";
 import { palette, spacing } from "@/theme/tokens";
@@ -19,6 +20,7 @@ type NovidadesPageProps = {
 };
 
 export function NovidadesPage({ bottomInset, onClose, onInboxMarked }: NovidadesPageProps) {
+  const { t } = useTranslation();
   const [items, setItems] = useState<AppNewsItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export function NovidadesPage({ bottomInset, onClose, onInboxMarked }: Novidades
         }
       } catch {
         if (!cancelled) {
-          setFetchError("Não foi possível carregar as novidades agora.");
+          setFetchError(t("news.fetchError"));
         }
       } finally {
         if (!cancelled) {
@@ -47,7 +49,7 @@ export function NovidadesPage({ bottomInset, onClose, onInboxMarked }: Novidades
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     void (async () => {
@@ -81,15 +83,15 @@ export function NovidadesPage({ bottomInset, onClose, onInboxMarked }: Novidades
 
           {!loading && !items.length && !fetchError ? (
             <MapEmptyCard
-              title="Nada por enquanto"
-              body="Quando houver novidades, elas aparecem aqui."
+              title={t("news.emptyTitle")}
+              body={t("news.emptyBody")}
             />
           ) : null}
 
           {fetchError ? <MapInlineNotice tone="error" message={fetchError} /> : null}
 
           {!loading && items.length ? (
-            <AppleListSection size="compact" title="Mensagens">
+            <AppleListSection size="compact" title={t("news.messages")}>
               <AppleListGroup>
                 {items.map((item, index) => (
                   <AppleListRow

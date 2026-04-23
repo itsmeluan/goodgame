@@ -2,6 +2,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppIcon } from "@/components/AppIcon";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
+import { useTranslation } from "@/i18n";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 
@@ -21,6 +22,8 @@ export function MeetupShareOverlay({
   onShareInChat,
   onShareExternal,
 }: MeetupShareOverlayProps) {
+  const { t } = useTranslation();
+
   if (!headline.trim()) {
     return null;
   }
@@ -40,13 +43,13 @@ export function MeetupShareOverlay({
           onPress={(event) => event.stopPropagation()}
         >
           <Text style={styles.title} numberOfLines={2}>
-            Compartilhar “{headline}”
+            {t("share.title", { headline })}
           </Text>
-          <Text style={styles.subtitle}>Escolha como enviar o convite.</Text>
+          <Text style={styles.subtitle}>{t("share.subtitle")}</Text>
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Compartilhar em um chat"
+            accessibilityLabel={t("share.inChat")}
             onPress={() => {
               triggerHaptic("selection");
               onShareInChat();
@@ -68,8 +71,8 @@ export function MeetupShareOverlay({
               />
             </View>
             <View style={styles.optionCopy}>
-              <Text style={styles.optionLabel}>Compartilhar em um chat</Text>
-              <Text style={styles.optionHint}>Grupos e conversas do Good Game</Text>
+              <Text style={styles.optionLabel}>{t("share.inChat")}</Text>
+              <Text style={styles.optionHint}>{t("share.inChatHint")}</Text>
             </View>
             <AppIcon
               iosName="chevron.right"
@@ -81,7 +84,7 @@ export function MeetupShareOverlay({
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Compartilhamento externo"
+            accessibilityLabel={t("share.external")}
             onPress={() => {
               triggerHaptic("selection");
               onShareExternal();
@@ -98,8 +101,8 @@ export function MeetupShareOverlay({
               <AppIcon iosName="square.and.arrow.up" fallbackName="share" size={18} color={palette.sand} />
             </View>
             <View style={styles.optionCopy}>
-              <Text style={styles.optionLabel}>Compartilhamento externo</Text>
-              <Text style={styles.optionHint}>Apps do sistema, Mensagens, copiar link…</Text>
+              <Text style={styles.optionLabel}>{t("share.external")}</Text>
+              <Text style={styles.optionHint}>{t("share.externalHint")}</Text>
             </View>
             <AppIcon
               iosName="chevron.right"
@@ -111,14 +114,14 @@ export function MeetupShareOverlay({
 
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Fechar"
+            accessibilityLabel={t("common.close")}
             onPress={() => {
               triggerHaptic("selection");
               onClose();
             }}
             style={({ pressed }) => [styles.cancelPill, pressed ? styles.cancelPillPressed : null]}
           >
-            <Text style={styles.cancelLabel}>Cancelar</Text>
+            <Text style={styles.cancelLabel}>{t("common.cancel")}</Text>
           </Pressable>
         </Pressable>
       </Pressable>

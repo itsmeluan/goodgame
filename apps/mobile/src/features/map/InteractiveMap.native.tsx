@@ -44,7 +44,8 @@ import {
 } from "@/lib/formatting";
 import { getDeviceCoordinate } from "@/lib/location";
 import { useLiveLocation } from "@/features/app/LiveLocationContext";
-import { inferGameNameFromLabels, meetupMarkerVisualFromMeetup } from "@/features/map/gameLabels";
+import { inferGameNameFromLabels, localizeGameLabel, meetupMarkerVisualFromMeetup } from "@/features/map/gameLabels";
+import { useTranslation } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { MapCoordinate } from "@/types/domain";
 
@@ -217,6 +218,7 @@ export function InteractiveMap({
   onSelectDraftCoordinate,
   pinCalloutDismissNonce = 0,
 }: InteractiveMapProps) {
+  const { t } = useTranslation();
   const mapRef = useRef<MapView | null>(null);
   const hasAutoCenteredOnUserRef = useRef(false);
   const lastFocusedSignatureRef = useRef<string | null>(null);
@@ -328,10 +330,10 @@ export function InteractiveMap({
         badgeCount: null,
         calloutContent: (
           <PinCallout
-            kindLabel="Jogo"
-            title="Ponto do próximo jogo"
+            kindLabel={t("common.game")}
+            title={t("map.nextGamePoint")}
             distanceLabel={null}
-            helperText="Toque em outro lugar do mapa para ajustar essa localização."
+            helperText={t("map.adjustLocationHint")}
           />
         ),
       });
@@ -349,7 +351,7 @@ export function InteractiveMap({
             kindLabel="Local"
             title={venue.name}
             distanceLabel={formatDistanceKm(profile.lat, profile.lng, venue.lat, venue.lng)}
-            helperText={buildVenueHelperText(venue)}
+            helperText={buildVenueHelperText(venue, t)}
           />
         ),
         onPress: () => onSelectVenue(venue.id),
@@ -462,7 +464,7 @@ export function InteractiveMap({
           kindLabel="Local"
           title={selectedVenue.name}
           distanceLabel={formatDistanceKm(profile.lat, profile.lng, selectedVenue.lat, selectedVenue.lng)}
-          helperText={buildVenueHelperText(selectedVenue)}
+          helperText={buildVenueHelperText(selectedVenue, t)}
         />
       ),
     };
@@ -777,7 +779,7 @@ export function InteractiveMap({
           pitchEnabled={false}
           rotateEnabled={false}
           showsBuildings={false}
-          showsUserLocation={liveUserPermissionStatus === "granted"}
+          showsUserLocation={Platform.OS === "android" && liveUserPermissionStatus === "granted"}
           showsMyLocationButton={false}
           toolbarEnabled={false}
           onPoiClick={() => {}}
@@ -836,7 +838,7 @@ export function InteractiveMap({
             onPressPin={handleOverlayMarkerPress}
           />
 
-          {liveUserCoordinate ? (
+          {liveUserCoordinate && Platform.OS === "ios" ? (
             <>
               <Circle
                 center={liveUserCoordinate}
@@ -855,20 +857,18 @@ export function InteractiveMap({
                   zIndex={1000}
                 />
               ) : null}
-              {Platform.OS === "ios" ? (
-                <Marker
-                  coordinate={liveUserCoordinate}
-                  anchor={{ x: 0.5, y: 0.5 }}
-                  tracksViewChanges={false}
-                  zIndex={1000}
-                >
-                  <View style={styles.liveUserMarker}>
-                    <View style={styles.liveUserDotOuter}>
-                      <View style={styles.liveUserDotInner} />
-                    </View>
+              <Marker
+                coordinate={liveUserCoordinate}
+                anchor={{ x: 0.5, y: 0.5 }}
+                tracksViewChanges={false}
+                zIndex={1000}
+              >
+                <View style={styles.liveUserMarker}>
+                  <View style={styles.liveUserDotOuter}>
+                    <View style={styles.liveUserDotInner} />
                   </View>
-                </Marker>
-              ) : null}
+                </View>
+              </Marker>
             </>
           ) : null}
 
@@ -909,7 +909,7 @@ export function InteractiveMap({
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Centralizar na minha localização"
+          accessibilityLabel={t("map.centerMyLocation")}
           hitSlop={10}
           onPress={() => {
             void handleRecenterOnUser();
@@ -1366,12 +1366,20 @@ function areRegionsClose(left: Region, right: Region) {
   );
 }
 
-function inferGameNamesFromLabels(labels: string[]) {
-  return Array.from(new Set(labels.map((label) => inferGameNameFromLabels([label.trim()])))).filter(Boolean);
+function inferGameNamesFromLabels(
+  labels: string[],
+  t: (key: "map.gameLabelBoard" | "map.gameLabelCommunity") => string
+) {
+  return Array.from(
+    new Set(labels.map((label) => localizeGameLabel(inferGameNameFromLabels([label.trim()]), t)))
+  ).filter(Boolean);
 }
 
-function buildVenueHelperText(venue: InteractiveMapProps["venues"][number]) {
-  const gameNames = inferGameNamesFromLabels(venue.formats);
+function buildVenueHelperText(
+  venue: InteractiveMapProps["venues"][number],
+  t: (key: "map.gameLabelBoard" | "map.gameLabelCommunity") => string
+) {
+  const gameNames = inferGameNamesFromLabels(venue.formats, t);
   const segments = [
     formatVenueKind(venue.kind),
     ...gameNames,
@@ -1454,6 +1462,7 @@ const MENU_TOP_OFFSET = 96;
 const MENU_SCREEN_BOTTOM_GAP = 24;
 
 function PinDisambiguationMenu({ candidates, bottomOverlayHeight, onSelect, onDismiss }: PinDisambiguationMenuProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const reservedBottom = Math.max(
@@ -1473,7 +1482,7 @@ function PinDisambiguationMenu({ candidates, bottomOverlayHeight, onSelect, onDi
         style={StyleSheet.absoluteFillObject}
         onPress={onDismiss}
         accessibilityRole="button"
-        accessibilityLabel="Fechar menu"
+        accessibilityLabel={t("map.closeMenu")}
       />
       <View
         style={[
@@ -1486,7 +1495,7 @@ function PinDisambiguationMenu({ candidates, bottomOverlayHeight, onSelect, onDi
         pointerEvents="box-none"
       >
         <View style={[disambiguationStyles.menu, { maxHeight }]}>
-          <Text style={disambiguationStyles.title}>Selecionar pin</Text>
+          <Text style={disambiguationStyles.title}>{t("map.selectPin")}</Text>
           <ScrollView
             style={disambiguationStyles.scroll}
             showsVerticalScrollIndicator={false}

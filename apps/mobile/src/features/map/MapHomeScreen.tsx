@@ -29,7 +29,6 @@ import * as ImageManipulator from "expo-image-manipulator";
 import * as Notifications from "expo-notifications";
 import { StatusBar } from "expo-status-bar";
 
-import { buildDemoBundle, buildEmptyDemoBundle } from "@/features/demo/demoData";
 import type { ChatListSection } from "@/features/map/components/ChatsPage";
 import { ProPlayerPaywallModal } from "@/features/monetization/ProPlayerPaywallModal";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
@@ -44,9 +43,11 @@ import { VenueSheetCardContainer } from "@/features/map/components/VenueSheetCar
 import { VenueSheetListRowContainer } from "@/features/map/components/VenueSheetListRowContainer";
 import { GAMES_SHEET_HEADER_COLLAPSED_HEIGHT } from "@/features/map/components/GamesSheetHeader";
 import {
+  inferCatalogGameSlugFromFormatName,
   inferGameLabelsFromVenue,
   inferGameNameFromLabels,
   inferGameNameFromMeetup,
+  localizeGameLabel,
   slugifyGameLabel,
 } from "@/features/map/gameLabels";
 import type { MapSelectionGroup } from "@/features/map/InteractiveMap.types";
@@ -81,7 +82,6 @@ import {
   TIME_MINUTES,
   type ComposerMeetupMode,
 } from "@/features/map/mapConfig";
-import { buildDemoPublicProfiles, describeDemoPlayer } from "@/features/map/demoProfiles";
 import type {
   FriendActionCandidate,
   RecentPlayerCard,
@@ -184,6 +184,7 @@ import {
   toLocalDateTimeInput,
 } from "@/lib/formatting";
 import { triggerHaptic } from "@/lib/haptics";
+import { translate, useTranslation } from "@/i18n";
 import { trackProductEvent } from "@/lib/productAnalytics";
 import { isUserPro } from "@/lib/proPlayer";
 import { resolveTypedAddress, type AddressSuggestion } from "@/lib/placeSearch";
@@ -268,6 +269,7 @@ const venueKindOptions = [
 const COMPOSER_OPEN_OFFSET = 28;
 
 export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapHomeScreenProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const [nowTimestamp, setNowTimestamp] = useState(() => Date.now());
@@ -560,10 +562,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const deferredFilterDetailTags = useDeferredValue(filterDetailTags);
   const deferredDistanceFilter = useDeferredValue(distanceFilter);
   const deferredPeriodFilters = useDeferredValue(periodFilters);
-  const demoBundle = useMemo(
-    () => (env.enableDemoMode ? buildDemoBundle(profile) : buildEmptyDemoBundle()),
-    [profile]
-  );
   const allVenues = useMemo(
     () => mergeById(optimisticVenues, venues),
     [optimisticVenues, venues]
@@ -571,10 +569,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const allMeetups = useMemo(
     () => mergeById(optimisticMeetups, meetups),
     [meetups, optimisticMeetups]
-  );
-  const demoPublicProfilesByUserId = useMemo(
-    () => buildDemoPublicProfiles(profile, demoBundle),
-    [demoBundle, profile]
   );
   const memberMeetups = useMemo(
     () => allMeetups.filter((item) => item.isMember || item.isCreator),
@@ -588,23 +582,10 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     () => (mapFeedVenues === null ? venues : mapFeedVenues),
     [mapFeedVenues, venues]
   );
-  const demoChatMeetups = useMemo(
-    () =>
-      demoBundle.chatMeetups.map((meetup) => ({
-        ...meetup,
-        ...demoMeetupOverrides[meetup.id],
-      })),
-    [demoBundle.chatMeetups, demoMeetupOverrides]
-  );
   const effectiveNotifications =
-    notifications.length > 0
-      ? notifications
-      : demoNotifications.length > 0
-        ? demoNotifications
-        : demoBundle.notifications;
-  const effectiveFriends = friends.length > 0 ? friends : demoBundle.friends;
-  const effectiveChatMeetups =
-    memberMeetups.length > 0 ? memberMeetups : demoChatMeetups;
+    notifications.length > 0 ? notifications : demoNotifications;
+  const effectiveFriends = friends;
+  const effectiveChatMeetups = memberMeetups;
   const historyMeetups = useMemo(
     () =>
       [...allMeetups]
@@ -614,23 +595,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         ),
     [allMeetups]
   );
-
-  useEffect(() => {
-    setDemoNotifications((current) => {
-      const next = demoBundle.notifications;
-
-      if (!current.length) {
-        return next;
-      }
-
-      const readAtById = new Map(current.map((item) => [item.id, item.readAt]));
-
-      return next.map((item) => ({
-        ...item,
-        readAt: readAtById.get(item.id) ?? item.readAt,
-      }));
-    });
-  }, [demoBundle.notifications]);
 
   const filtersActive =
     entityFilters.length !== 2 ||
@@ -648,7 +612,9 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     Number(periodFilters.length > 0) +
     Number(filterDateFrom !== null || filterDateTo !== null);
   const sectionDistanceReference =
-    distanceFilter === "all" ? "raio: qualquer distância" : `raio: até ${distanceFilter} km`;
+    distanceFilter === "all"
+      ? t("map.distanceReferenceAny")
+      : t("map.distanceReferenceKm", { distance: distanceFilter });
 
   const venueGameOptions = useMemo(() => {
     const groups = new Map<
@@ -656,13 +622,14 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       {
         id: string;
         label: string;
+        gameSlug: string;
         formatIds: string[];
       }
     >();
 
     formats.forEach((format) => {
       const catalogName = games.find((game) => game.id === format.gameId)?.name;
-      const label = catalogName ?? inferGameNameFromLabels([format.name]);
+      const rawLabel = catalogName ?? inferGameNameFromLabels([format.name]);
       const id = format.gameId;
       const existing = groups.get(id);
 
@@ -673,13 +640,14 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
       groups.set(id, {
         id,
-        label,
+        label: localizeGameLabel(rawLabel, t),
+        gameSlug: format.gameSlug,
         formatIds: [format.id],
       });
     });
 
     return Array.from(groups.values()).sort((left, right) => left.label.localeCompare(right.label));
-  }, [formats, games]);
+  }, [formats, games, t]);
 
   const selectedVenueFormatIds = useMemo(
     () =>
@@ -823,7 +791,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     const nextQuery = composerAddressQuery.trim();
 
     if (nextQuery.length < 5) {
-      setComposerError("Digite o endereço com rua e número para posicionar o jogo.");
+      setComposerError(translate("map.typedAddressMeetupHint"));
       return;
     }
 
@@ -833,9 +801,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       const resolvedAddress = await resolveTypedAddress(nextQuery, { near: addressSearchNearHint });
 
       if (!resolvedAddress) {
-        throw new Error(
-          "Não conseguimos localizar esse endereço. Tente incluir número, bairro ou cidade."
-        );
+        throw new Error(translate("map.addressResolveFailed"));
       }
 
       setComposerSelectedAddress(resolvedAddress);
@@ -858,7 +824,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     const nextQuery = manageAddressQuery.trim();
 
     if (nextQuery.length < 5) {
-      setMessageError("Digite o endereço com rua e número para posicionar o jogo.");
+      setMessageError(translate("map.typedAddressMeetupHint"));
       return;
     }
 
@@ -868,9 +834,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       const resolvedAddress = await resolveTypedAddress(nextQuery, { near: addressSearchNearHint });
 
       if (!resolvedAddress) {
-        throw new Error(
-          "Não conseguimos localizar esse endereço. Tente incluir número, bairro ou cidade."
-        );
+        throw new Error(translate("map.addressResolveFailed"));
       }
 
       setManageSelectedAddress(resolvedAddress);
@@ -924,11 +888,12 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     onError: handleVenueAddressSearchError,
   });
 
-  const selectedGameFilterLabels = useMemo(
+  const selectedGameFilterSlugs = useMemo(
     () =>
       venueGameOptions
         .filter((game) => deferredGameFilterIds.includes(game.id))
-        .map((game) => game.label),
+        .map((game) => game.gameSlug)
+        .filter(Boolean),
     [deferredGameFilterIds, venueGameOptions]
   );
 
@@ -1037,7 +1002,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     () =>
       deferredEntityFilters.includes("meetups")
         ? filterMeetups(feedMeetupsSource, {
-            gameTypes: selectedGameFilterLabels,
+            gameSlugs: selectedGameFilterSlugs,
             formatNames: selectedFormatFilterNames,
             userLat: profile.lat,
             userLng: profile.lng,
@@ -1064,7 +1029,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       profile.lat,
       profile.lng,
       selectedFormatFilterNames,
-      selectedGameFilterLabels,
+      selectedGameFilterSlugs,
       nowTimestamp,
       feedMeetupsSource,
     ]
@@ -1074,7 +1039,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     () =>
       deferredEntityFilters.includes("venues")
         ? filterVenues(feedVenuesSource, {
-            gameTypes: selectedGameFilterLabels,
+            gameSlugs: selectedGameFilterSlugs,
             formatNames: selectedFormatFilterNames,
             userLat: profile.lat,
             userLng: profile.lng,
@@ -1087,7 +1052,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       profile.lat,
       profile.lng,
       selectedFormatFilterNames,
-      selectedGameFilterLabels,
+      selectedGameFilterSlugs,
       feedVenuesSource,
     ]
   );
@@ -1151,12 +1116,9 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const effectiveMeetupPresence = useMemo(
     () =>
       effectiveSelectedChatMeetup && selectedChatIsDemo
-        ? demoMeetupPresenceById[effectiveSelectedChatMeetup.id] ??
-          demoBundle.meetupPresenceById[effectiveSelectedChatMeetup.id] ??
-          []
+        ? demoMeetupPresenceById[effectiveSelectedChatMeetup.id] ?? []
         : meetupPresence,
     [
-      demoBundle.meetupPresenceById,
       demoMeetupPresenceById,
       effectiveSelectedChatMeetup,
       meetupPresence,
@@ -1167,8 +1129,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const loadSheetMeetupPresence = useCallback(
     async (meetupId: string) => {
       if (isDemoId(meetupId)) {
-        const next =
-          demoMeetupPresenceById[meetupId] ?? demoBundle.meetupPresenceById[meetupId] ?? [];
+        const next = demoMeetupPresenceById[meetupId] ?? [];
         setSheetMeetupPresenceById((current) => ({ ...current, [meetupId]: next }));
         return;
       }
@@ -1183,7 +1144,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         setSheetMeetupPresenceLoadingId((prev) => (prev === meetupId ? null : prev));
       }
     },
-    [demoBundle.meetupPresenceById, demoMeetupPresenceById]
+    [demoMeetupPresenceById]
   );
 
   const resolvePresenceForSheetMeetup = useCallback(
@@ -1195,7 +1156,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       if (isDemoId(meetup.id)) {
         return (
           demoMeetupPresenceById[meetup.id] ??
-          demoBundle.meetupPresenceById[meetup.id] ??
           sheetMeetupPresenceById[meetup.id] ??
           []
         );
@@ -1204,7 +1164,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       return sheetMeetupPresenceById[meetup.id] ?? [];
     },
     [
-      demoBundle.meetupPresenceById,
       demoMeetupPresenceById,
       effectiveMeetupPresence,
       effectiveSelectedChatMeetup?.id,
@@ -1234,12 +1193,9 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const effectiveMessages = useMemo(
     () =>
       effectiveSelectedChatMeetup && selectedChatIsDemo
-        ? demoMessagesByMeetupId[effectiveSelectedChatMeetup.id] ??
-          demoBundle.messagesByMeetupId[effectiveSelectedChatMeetup.id] ??
-          []
+        ? demoMessagesByMeetupId[effectiveSelectedChatMeetup.id] ?? []
         : messages,
     [
-      demoBundle.messagesByMeetupId,
       demoMessagesByMeetupId,
       effectiveSelectedChatMeetup,
       messages,
@@ -1543,53 +1499,10 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         }
       });
 
-    if (playersByUserId.size < 3) {
-      [...demoBundle.chatMeetups]
-        .sort((left, right) => new Date(right.startsAt).getTime() - new Date(left.startsAt).getTime())
-        .forEach((meetup) => {
-          if (meetup.creatorUserId !== profile.userId) {
-            considerPlayer(
-              {
-                userId: meetup.creatorUserId,
-                displayName: meetup.creatorDisplayName,
-                handle: meetup.creatorHandle,
-                neighborhood: meetup.creatorNeighborhood,
-                bio: meetup.creatorBio,
-                avatarPath: null,
-                avatarUrl: null,
-                isOnline: false,
-                lastSeenAt: null,
-              },
-              meetup.startsAt
-            );
-          }
-
-          (demoBundle.meetupPresenceById[meetup.id] ?? []).forEach((member) => {
-            considerPlayer(
-              {
-                userId: member.userId,
-                displayName: member.displayName,
-                handle: member.handle,
-                neighborhood: meetup.locationHint,
-                bio: describeDemoPlayer(member.handle),
-                avatarPath: member.avatarPath,
-                avatarUrl: member.avatarUrl,
-                isOnline:
-                  member.attendanceStatus === "confirmed" ||
-                  member.attendanceStatus === "on_the_way" ||
-                  member.attendanceStatus === "arrived",
-                lastSeenAt: null,
-              },
-              meetup.startsAt
-            );
-          });
-        });
-    }
-
     return [...playersByUserId.values()]
       .sort((left, right) => new Date(right.playedAt).getTime() - new Date(left.playedAt).getTime())
       .slice(0, 3);
-  }, [demoBundle, memberMeetups, profile.userId, relationshipStateByUserId]);
+  }, [memberMeetups, profile.userId, relationshipStateByUserId]);
 
   const incomingRequestForViewedPlayer = useMemo(
     () =>
@@ -1697,7 +1610,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
       const created = {
         id: groupId,
-        label: gameLabel,
+        label: localizeGameLabel(gameLabel, t),
         meetups: [] as MeetupPost[],
       };
 
@@ -1710,7 +1623,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     });
 
     return Array.from(groups.values());
-  }, [sortedVisibleMeetupsForSheet]);
+  }, [sortedVisibleMeetupsForSheet, t]);
 
   const orderedGameGroups = useMemo(
     () =>
@@ -2105,8 +2018,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const venuesSheetComposer = (
     <MapCircleActionButton
       icon="add"
-      pillLabel="Novo Local"
-      accessibilityLabel="Novo Local"
+      pillLabel={t("map.newVenue")}
+      accessibilityLabel={t("map.newVenue")}
       onPress={() => setVenueComposerOpen(true)}
     />
   );
@@ -2746,15 +2659,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       return;
     }
 
-    const demoProfile = demoPublicProfilesByUserId[viewedPlayerUserId] ?? null;
-
-    if (demoProfile) {
-      setViewedPlayerProfile(demoProfile);
-      setLoadingViewedPlayer(false);
-      setViewedPlayerError(null);
-      return;
-    }
-
     const targetUserId = viewedPlayerUserId;
     let active = true;
 
@@ -2787,7 +2691,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     return () => {
       active = false;
     };
-  }, [demoPublicProfilesByUserId, profile.userId, viewedPlayerUserId]);
+  }, [profile.userId, viewedPlayerUserId]);
 
   useEffect(() => {
     if (!expandedMeetupManageId) {
@@ -2844,7 +2748,12 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     setManageVenueKind(venue.kind);
     setManageVenueGameIds(
       venueGameOptions
-        .filter((game) => inferGameLabelsFromVenue(venue).includes(game.label))
+        .filter((game) => {
+          const venueGameSlugs = venue.formats
+            .map((f) => inferCatalogGameSlugFromFormatName(f))
+            .filter((slug): slug is string => slug !== null);
+          return game.gameSlug ? venueGameSlugs.includes(game.gameSlug) : inferGameLabelsFromVenue(venue).includes(game.label);
+        })
         .map((game) => game.id)
     );
     setManageVenueAddressQuery(venue.address ?? "");
@@ -3472,8 +3381,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     }
 
     if (isDemoId(activeMeetup.id)) {
-      setMessages(demoBundle.messagesByMeetupId[activeMeetup.id] ?? []);
-      setMeetupPresence(demoBundle.meetupPresenceById[activeMeetup.id] ?? []);
+      setMessages([]);
+      setMeetupPresence([]);
       setLastMessageSyncAt(new Date());
       return;
     }
@@ -3522,8 +3431,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       }
     };
   }, [
-    demoBundle.meetupPresenceById,
-    demoBundle.messagesByMeetupId,
     scheduleDashboardRefresh,
     scheduleMeetupPresenceSync,
     scheduleMessagesSync,
@@ -3591,15 +3498,15 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       });
 
       if (!startsAt) {
-        throw new Error("Escolha uma data e um horário válidos para o jogo.");
+        throw new Error(translate("map.validDateTimeRequired"));
       }
 
       if (!selectedComposerGameId) {
-        throw new Error("Escolha primeiro o tipo de jogo da partida.");
+        throw new Error(translate("map.selectGameFirst"));
       }
 
       if (!selectedFormatId) {
-        throw new Error("Selecione um formato antes de publicar o jogo.");
+        throw new Error(translate("map.selectFormatFirst"));
       }
 
       const resolvedHostMode = mapComposerMeetupModeToHostMode(hostMode);
@@ -3614,17 +3521,17 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       const chosenCoordinate = venue ? null : searchedCoordinate;
 
       if (!venue && !chosenCoordinate) {
-        throw new Error("Selecione um local cadastrado ou pesquise um endereço para o jogo.");
+        throw new Error(translate("map.selectVenueOrAddress"));
       }
 
       const trimmedMeetupTitle = meetupTitle.trim();
       if (trimmedMeetupTitle.length < MEETUP_TITLE_MIN_LENGTH) {
         throw new Error(
-          `O título precisa ter pelo menos ${MEETUP_TITLE_MIN_LENGTH} caracteres. Acrescente um pouco mais de contexto (ex.: "EDH casual na praça").`
+          translate("map.titleTooShort", { min: MEETUP_TITLE_MIN_LENGTH })
         );
       }
       if (trimmedMeetupTitle.length > MEETUP_TITLE_MAX_LENGTH) {
-        throw new Error(`O título pode ter no máximo ${MEETUP_TITLE_MAX_LENGTH} caracteres.`);
+        throw new Error(translate("map.titleTooLong", { max: MEETUP_TITLE_MAX_LENGTH }));
       }
 
       const selectedFormatForCreate = formats.find((item) => item.id === selectedFormatId);
@@ -3673,11 +3580,11 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
           venue?.address ??
           venue?.name ??
           composerSelectedAddress?.fullLabel ??
-          "Região aproximada",
+          translate("map.approxRegion"),
         locationHint:
           venue?.name ??
           composerSelectedAddress?.title ??
-          "Região aproximada",
+          translate("map.approxRegion"),
         isLocationExact: true,
         chatImagePath: null,
         chatImageUrl: null,
@@ -3737,7 +3644,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       setSelectedChatMeetupId(meetupId);
       setExpandedMeetupInfoId(meetupId);
       setEntityActionSuccess(
-        "Você entrou na partida. Abra os detalhes para acessar o chat e marcar seu status."
+        translate("map.joinMeetupSuccess")
       );
     } catch (joinError) {
       const nextMessage = toMessage(joinError);
@@ -3760,7 +3667,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       setMessageBody("");
       await loadDashboardRef.current("refresh");
       await loadNotificationsRef.current();
-      setEntityActionSuccess("Você saiu da partida.");
+      setEntityActionSuccess(translate("map.leaveMeetupSuccess"));
     } catch (leaveError) {
       setMessageError(toMessage(leaveError));
     } finally {
@@ -3806,7 +3713,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     options?: { closeAfter?: boolean; showSuccess?: boolean }
   ) {
     if (!manageSelectedAddress) {
-      setMessageError("Pesquise e selecione um endereço antes de salvar o local.");
+      setMessageError(translate("venue.selectAddressBeforeSave"));
       return false;
     }
 
@@ -3840,7 +3747,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       await loadDashboardRef.current("refresh");
       focusMeetupOnMap(meetup.id);
       if (options?.showSuccess !== false) {
-        setEntityActionSuccess("Edições salvas.");
+        setEntityActionSuccess(translate("map.editsSaved"));
       }
       if (options?.closeAfter !== false) {
         setExpandedMeetupManageId(null);
@@ -3856,7 +3763,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
   async function handleSaveMeetupEdits(meetup: MeetupPost) {
     if (!manageDate) {
-      setMessageError("Escolha uma data antes de salvar a partida.");
+      setMessageError(translate("map.selectDateBeforeSave"));
       return;
     }
 
@@ -3874,7 +3781,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         manageSelectedAddress.fullLabel !== (meetup.addressLabel || meetup.locationHint));
 
     if (!hasScheduleChange && !hasLocationChange) {
-      setEntityActionSuccess("Nada mudou para salvar.");
+      setEntityActionSuccess(translate("map.noChanges"));
       return;
     }
 
@@ -3905,7 +3812,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     }
 
     setExpandedMeetupManageId(null);
-    setEntityActionSuccess("Edições salvas.");
+    setEntityActionSuccess(translate("map.editsSaved"));
   }
 
   async function handleUpdateChatMeetupStatus(status: "closed" | "cancelled") {
@@ -3976,11 +3883,9 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         const replySource =
           replyingToMessageId === null
             ? null
-            : (
-                demoMessagesByMeetupId[selectedChatMeetup.id] ??
-                demoBundle.messagesByMeetupId[selectedChatMeetup.id] ??
-                []
-              ).find((message) => message.id === replyingToMessageId) ?? null;
+            : (demoMessagesByMeetupId[selectedChatMeetup.id] ?? []).find(
+                (message) => message.id === replyingToMessageId
+              ) ?? null;
         const nextMessage: ChatMessage = {
           id: `demo-message-${Date.now()}`,
           authorId: profile.userId,
@@ -3997,9 +3902,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         setDemoMessagesByMeetupId((current) => ({
           ...current,
           [selectedChatMeetup.id]: [
-            ...(current[selectedChatMeetup.id] ??
-              demoBundle.messagesByMeetupId[selectedChatMeetup.id] ??
-              []),
+            ...(current[selectedChatMeetup.id] ?? []),
             nextMessage,
           ],
         }));
@@ -4068,10 +3971,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
       if (isDemoId(selectedChatMeetup.id)) {
         setDemoMeetupPresenceById((current) => {
-          const source =
-            current[selectedChatMeetup.id] ??
-            demoBundle.meetupPresenceById[selectedChatMeetup.id] ??
-            [];
+          const source = current[selectedChatMeetup.id] ?? [];
 
           return {
             ...current,
@@ -4116,7 +4016,9 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
       if (isDemoId(selectedChatMeetup.id)) {
         setEntityActionSuccess(
-          attended ? "Avaliação de demonstração registrada." : "No-show de demonstração registrado."
+          attended
+            ? translate("map.feedbackRatingDemoSuccess")
+            : translate("map.feedbackRatingDemoNoShow")
         );
         return;
       }
@@ -4128,7 +4030,9 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         rating: attended ? rating ?? 5 : null,
       });
       await loadAccountDataRef.current();
-      setEntityActionSuccess(attended ? "Avaliação registrada." : "No-show registrado.");
+      setEntityActionSuccess(
+        attended ? translate("map.feedbackRatingSuccess") : translate("map.feedbackRatingNoShow")
+      );
     } catch (ratingError) {
       setMessageError(toMessage(ratingError));
       throw ratingError;
@@ -4138,10 +4042,10 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   }
 
   function promptDeleteMeetup(meetup: MeetupPost) {
-    Alert.alert("Excluir jogo", `Excluir "${meetup.title}"? Essa ação é permanente.`, [
-      { text: "Cancelar", style: "cancel" },
+    Alert.alert(translate("map.deleteMeetupTitle"), translate("map.deleteMeetupBody", { title: meetup.title }), [
+      { text: translate("common.cancel"), style: "cancel" },
       {
-        text: "Excluir agora",
+        text: translate("map.deleteNow"),
         style: "destructive",
         onPress: () => {
           void handleDeleteMeetup(meetup);
@@ -4151,16 +4055,19 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   }
 
   function promptMeetupStatusChange(meetup: MeetupPost, status: "closed" | "cancelled") {
-    const title = status === "closed" ? "Encerrar partida" : "Cancelar partida";
+    const title =
+      status === "closed"
+        ? translate("map.closeMeetupTitle")
+        : translate("map.cancelMeetupTitle");
     const body =
       status === "closed"
-        ? `Encerrar "${meetup.title}"? Essa ação é permanente e depois você poderá consultar a partida no histórico do menu principal.`
-        : `Cancelar "${meetup.title}"? Essa ação é permanente e depois você poderá consultar a partida no histórico do menu principal.`;
+        ? translate("map.closeMeetupBody", { title: meetup.title })
+        : translate("map.cancelMeetupBody", { title: meetup.title });
 
     Alert.alert(title, body, [
-      { text: "Voltar", style: "cancel" },
+      { text: translate("common.back"), style: "cancel" },
       {
-        text: status === "closed" ? "Encerrar" : "Cancelar partida",
+        text: status === "closed" ? translate("meetup.close") : translate("meetup.cancel"),
         style: "destructive",
         onPress: () => {
           void handleUpdateMeetup({
@@ -4178,16 +4085,19 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       return;
     }
 
-    const title = status === "closed" ? "Encerrar partida" : "Cancelar partida";
+    const title =
+      status === "closed"
+        ? translate("map.closeMeetupTitle")
+        : translate("map.cancelMeetupTitle");
     const body =
       status === "closed"
-        ? `Encerrar "${selectedChatMeetup.title}"? Essa ação é permanente e depois você poderá consultar a partida no histórico do menu principal.`
-        : `Cancelar "${selectedChatMeetup.title}"? Essa ação é permanente e depois você poderá consultar a partida no histórico do menu principal.`;
+        ? translate("map.closeMeetupBody", { title: selectedChatMeetup.title })
+        : translate("map.cancelMeetupBody", { title: selectedChatMeetup.title });
 
     Alert.alert(title, body, [
-      { text: "Voltar", style: "cancel" },
+      { text: translate("common.back"), style: "cancel" },
       {
-        text: status === "closed" ? "Encerrar" : "Cancelar partida",
+        text: status === "closed" ? translate("meetup.close") : translate("meetup.cancel"),
         style: "destructive",
         onPress: () => {
           void handleUpdateChatMeetupStatus(status);
@@ -4221,22 +4131,22 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
       setExpandedMeetupInfoId((current) => (current === meetup.id ? null : current));
       setExpandedMeetupManageId((current) => (current === meetup.id ? null : current));
-      setEntityActionSuccess("Jogo excluído do mapa.");
+      setEntityActionSuccess(translate("map.deleteMeetupSuccess"));
       await loadDashboardRef.current("refresh");
     } catch (deleteError) {
       const message = toMessage(deleteError);
       setError(message);
-      Alert.alert("Não foi possível excluir o jogo", message);
+      Alert.alert(translate("map.deleteMeetupError"), message);
     } finally {
       setDeletingEntityId(null);
     }
   }
 
   function promptDeleteVenue(venue: VenueCard) {
-    Alert.alert("Excluir local", `Excluir "${venue.name}" do mapa? Essa ação é permanente.`, [
-      { text: "Cancelar", style: "cancel" },
+    Alert.alert(translate("map.deleteVenueTitle"), translate("map.deleteVenueBody", { title: venue.name }), [
+      { text: translate("common.cancel"), style: "cancel" },
       {
-        text: "Excluir agora",
+        text: translate("map.deleteNow"),
         style: "destructive",
         onPress: () => {
           void handleDeleteVenue(venue);
@@ -4249,7 +4159,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     try {
       await handleDeleteVenueAction(venue);
     } catch (deleteError) {
-      Alert.alert("Não foi possível excluir o local", toMessage(deleteError));
+      Alert.alert(translate("map.deleteVenueError"), toMessage(deleteError));
     }
   }
 
@@ -4257,7 +4167,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     try {
       await handleSaveVenueEditsAction(venue);
     } catch (updateError) {
-      Alert.alert("Não foi possível salvar o local", toMessage(updateError));
+      Alert.alert(translate("map.saveVenueError"), toMessage(updateError));
     }
   }
 
@@ -4271,12 +4181,12 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
   function handleDeleteAccountPress() {
     Alert.alert(
-      "Excluir conta",
-      "Essa ação é permanente e remove seu acesso, perfil, amizades, jogos, mensagens e demais dados associados à conta. Deseja continuar?",
+      translate("account.deleteAccount"),
+      translate("map.deleteAccountBody"),
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: translate("common.cancel"), style: "cancel" },
         {
-          text: deletingAccount ? "Excluindo..." : "Excluir conta",
+          text: deletingAccount ? "..." : translate("account.deleteAccount"),
           style: "destructive",
           onPress: () => {
             void confirmDeleteAccount();
@@ -4386,7 +4296,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     handleRespondToFriendRequest,
     handleRemoveFriend,
   } = useMapFriendActions({
-    demoFriends: demoBundle.friends,
     playerSearchQuery,
     setFriends,
     setLastFriendSyncAt,
@@ -4403,8 +4312,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     async (targetProfile: PublicPlayerProfile, reason: string) => {
       if (isDemoId(targetProfile.userId)) {
         Alert.alert(
-          "Indisponível no modo demo",
-          "Use uma conta real para testar denúncia e bloqueio."
+          translate("map.demoUnavailableTitle"),
+          translate("map.demoUnavailableBody")
         );
         return;
       }
@@ -4424,8 +4333,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         ]);
 
         Alert.alert(
-          "Jogador bloqueado",
-          `${targetProfile.displayName} foi bloqueado com sucesso.`,
+          translate("map.blockSuccessTitle"),
+          translate("map.blockSuccessBody", { name: targetProfile.displayName }),
           [
             {
               text: "OK",
@@ -4436,7 +4345,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
           ]
         );
       } catch (blockError) {
-        Alert.alert("Não foi possível bloquear", toMessage(blockError));
+        Alert.alert(translate("map.blockError"), toMessage(blockError));
       } finally {
         setSafetyActionId(null);
       }
@@ -4448,8 +4357,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     async (targetProfile: PublicPlayerProfile, reason: string) => {
       if (isDemoId(targetProfile.userId)) {
         Alert.alert(
-          "Indisponível no modo demo",
-          "Use uma conta real para testar denúncia e bloqueio."
+          translate("map.demoUnavailableTitle"),
+          translate("map.demoUnavailableBody")
         );
         return;
       }
@@ -4461,20 +4370,20 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
           reason,
         });
         Alert.alert(
-          "Denúncia enviada",
-          `Recebemos sua denúncia e vamos analisar esse comportamento. Se preferir, você também pode bloquear ${targetProfile.displayName} agora.`,
+          translate("map.reportSuccessTitle"),
+          translate("map.reportBody", { name: targetProfile.displayName }),
           [
             {
-              text: "Agora não",
+              text: translate("map.notNow"),
               style: "cancel",
             },
             {
-              text: "Bloquear também",
+              text: translate("map.blockAlso"),
               style: "destructive",
               onPress: () => {
                 void blockPlayerFromProfile(
                   targetProfile,
-                  "Bloqueado pelo usuário após denúncia no perfil público."
+                  translate("map.blockedReasonAfterReport")
                 );
               },
             },
@@ -4482,7 +4391,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
           { cancelable: true }
         );
       } catch (reportError) {
-        Alert.alert("Não foi possível denunciar", toMessage(reportError));
+        Alert.alert(translate("map.reportError"), toMessage(reportError));
       } finally {
         setSafetyActionId(null);
       }
@@ -4493,41 +4402,41 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const promptReportPlayer = useCallback(
     (targetProfile: PublicPlayerProfile) => {
       Alert.alert(
-        "Denunciar jogador",
-        "Escolha o motivo que mais se aproxima do problema.",
+        translate("map.reportPromptTitle"),
+        translate("map.reportPromptBody"),
         [
           {
-            text: "Assédio ou ameaça",
+            text: translate("map.reportCategoryHarassment"),
             onPress: () => {
-              void submitPlayerReport(targetProfile, "Assédio ou ameaça");
+              void submitPlayerReport(targetProfile, translate("map.reportCategoryHarassment"));
             },
           },
           {
-            text: "Spam ou golpe",
+            text: translate("map.reportCategoryScam"),
             onPress: () => {
-              void submitPlayerReport(targetProfile, "Spam ou golpe");
+              void submitPlayerReport(targetProfile, translate("map.reportCategoryScam"));
             },
           },
           {
-            text: "Perfil falso",
+            text: translate("map.reportCategoryFake"),
             onPress: () => {
-              void submitPlayerReport(targetProfile, "Perfil falso");
+              void submitPlayerReport(targetProfile, translate("map.reportCategoryFake"));
             },
           },
           {
-            text: "Conteúdo impróprio",
+            text: translate("map.reportCategoryInappropriate"),
             onPress: () => {
-              void submitPlayerReport(targetProfile, "Conteúdo impróprio");
+              void submitPlayerReport(targetProfile, translate("map.reportCategoryInappropriate"));
             },
           },
           {
-            text: "Outro",
+            text: translate("map.reportCategoryOther"),
             onPress: () => {
-              void submitPlayerReport(targetProfile, "Outro");
+              void submitPlayerReport(targetProfile, translate("map.reportCategoryOther"));
             },
           },
           {
-            text: "Cancelar",
+            text: translate("common.cancel"),
             style: "cancel",
           },
         ],
@@ -4540,20 +4449,20 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const handleBlockPlayer = useCallback(
     (targetProfile: PublicPlayerProfile) => {
       Alert.alert(
-        "Bloquear jogador",
-        `Você deixará de ver novas interações de ${targetProfile.displayName} e a amizade atual será encerrada, se existir.`,
+        translate("map.blockPlayerTitle"),
+        translate("map.blockPlayerBody", { name: targetProfile.displayName }),
         [
           {
-            text: "Cancelar",
+            text: translate("common.cancel"),
             style: "cancel",
           },
           {
-            text: "Bloquear",
+            text: translate("safety.block"),
             style: "destructive",
             onPress: () => {
               void blockPlayerFromProfile(
                 targetProfile,
-                "Bloqueado pelo usuário no perfil público."
+                translate("map.blockedReasonProfile")
               );
             },
           },
@@ -4566,15 +4475,15 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
   const handleUnblockPlayer = useCallback((blockedUser: BlockedUserProfile) => {
     Alert.alert(
-      "Desbloquear jogador",
-      `Deseja remover ${blockedUser.displayName} da sua lista de bloqueados?`,
+      translate("map.unblockTitle"),
+      translate("map.unblockBody", { name: blockedUser.displayName }),
       [
         {
-          text: "Cancelar",
+          text: translate("common.cancel"),
           style: "cancel",
         },
         {
-          text: "Desbloquear",
+          text: translate("blocked.unblock"),
           onPress: () => {
             void (async () => {
               try {
@@ -4605,7 +4514,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     useMapNotificationActions({
     notifications,
     effectiveNotifications,
-    demoFallbackNotifications: demoBundle.notifications,
     setNotifications,
     setDemoNotifications,
     setLastNotificationSyncAt,
@@ -4993,7 +4901,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
           null;
 
     if (targetMeetup && !targetMeetup.isMember && !targetMeetup.isCreator) {
-      setError("Entre na partida para acessar o chat.");
+      setError(translate("map.enterMeetupForChat"));
       return;
     }
 
@@ -5323,12 +5231,12 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     }
 
     Alert.alert(
-      "Remover participante",
-      `Remover ${member.displayName} desta partida? A pessoa perderá acesso ao chat e à participação.`,
+      t("meetup.removeParticipantTitle"),
+      t("meetup.removeParticipantBody", { name: member.displayName }),
       [
-        { text: "Voltar", style: "cancel" },
+        { text: t("common.back"), style: "cancel" },
         {
-          text: "Remover",
+          text: t("meetup.removeParticipant"),
           style: "destructive",
           onPress: () => {
             void handleRemoveMeetupMember(meetup.id, member.userId);
@@ -5354,7 +5262,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         setMeetupPresence(nextPresence);
       }
       setSheetMeetupPresenceById((current) => ({ ...current, [meetupId]: nextPresence }));
-      setEntityActionSuccess("Participante removido da partida e do chat.");
+      setEntityActionSuccess(t("meetup.participantRemoved"));
     } catch (removeError) {
       setMessageError(toMessage(removeError));
     } finally {
@@ -5404,9 +5312,9 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
           : String(trialError);
 
       if (message.toLowerCase().includes("trial")) {
-        Alert.alert("Teste indisponível", "O teste grátis já foi usado nesta conta.");
+        Alert.alert(translate("map.trialUnavailableTitle"), translate("map.trialUnavailableBody"));
       } else {
-        Alert.alert("Não foi possível ativar", "Tente novamente em instantes.");
+        Alert.alert(translate("map.proActivationError"), translate("map.proActivationRetry"));
       }
     } finally {
       setProTrialStarting(false);
@@ -5746,7 +5654,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       const meetup = allMeetups.find((item) => item.id === meetupId) ?? null;
 
       if (!meetup) {
-        setError("Não encontramos essa partida.");
+        setError(translate("map.meetupNotFound"));
         return;
       }
 
@@ -5763,7 +5671,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       const venue = allVenues.find((item) => item.id === venueId) ?? null;
 
       if (!venue) {
-        setError("Não encontramos esse local.");
+        setError(translate("map.venueNotFound"));
         return;
       }
 
@@ -5817,8 +5725,8 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       <SafeAreaView style={styles.loadingSafeArea}>
         <View style={styles.loadingState}>
           <LoadingSpinner size={44} />
-          <Text style={styles.loadingTitle}>Preparando o mapa</Text>
-          <Text style={styles.loadingText}>Sincronizando jogos, grupos, locais e amigos.</Text>
+          <Text style={styles.loadingTitle}>{t("map.loadingTitle")}</Text>
+          <Text style={styles.loadingText}>{t("map.loadingBody")}</Text>
         </View>
       </SafeAreaView>
     );

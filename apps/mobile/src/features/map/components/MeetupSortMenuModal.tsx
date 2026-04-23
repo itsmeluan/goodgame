@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
 import type { MeetupSortMode } from "@/features/map/mapHelpers";
+import { useTranslation, type TranslationKey } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 
 export type MeetupSortOption = {
@@ -23,6 +24,8 @@ export function MeetupSortMenuPanel({
   options,
   onSelect,
 }: MeetupSortMenuPanelProps) {
+  const { t } = useTranslation();
+
   if (!visible) {
     return null;
   }
@@ -39,12 +42,13 @@ export function MeetupSortMenuPanel({
         <View style={styles.menuInner}>
           {options.map((option, index) => {
             const active = value === option.value;
+            const label = formatMeetupSortLabel(option.value, t);
 
             return (
               <Pressable
                 key={option.value}
                 accessibilityRole="button"
-                accessibilityLabel={`Ordenar por ${option.label}`}
+                accessibilityLabel={t("map.sortBy", { label })}
                 onPress={() => onSelect(option.value)}
                 style={({ pressed }) => [
                   styles.menuItem,
@@ -54,7 +58,7 @@ export function MeetupSortMenuPanel({
                 ]}
               >
                 <Text style={[styles.menuLabel, active ? styles.menuLabelActive : null]}>
-                  {option.label}
+                  {label}
                 </Text>
                 <View style={[styles.checkWrap, active ? styles.checkWrapActive : null]}>
                   {active ? (
@@ -73,6 +77,22 @@ export function MeetupSortMenuPanel({
       </View>
     </View>
   );
+}
+
+export function formatMeetupSortLabel(
+  value: MeetupSortMode,
+  t: (key: TranslationKey) => string
+) {
+  switch (value) {
+    case "distance_desc":
+      return t("map.sortDistanceDesc");
+    case "date_asc":
+      return t("map.sortDateAsc");
+    case "date_desc":
+      return t("map.sortDateDesc");
+    default:
+      return t("map.sortDistanceAsc");
+  }
 }
 
 const styles = StyleSheet.create({

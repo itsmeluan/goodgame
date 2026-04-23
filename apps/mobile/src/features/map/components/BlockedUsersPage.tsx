@@ -8,6 +8,7 @@ import {
   MapInlineNotice,
 } from "@/features/map/components/MapFeedbackPrimitives";
 import { MapClosePageButton } from "@/features/map/components/MapClosePageButton";
+import { useTranslation } from "@/i18n";
 import { formatRelativeTimestamp } from "@/lib/formatting";
 import { palette, spacing } from "@/theme/tokens";
 import type { BlockedUserProfile } from "@/types/domain";
@@ -36,6 +37,7 @@ export function BlockedUsersPage({
   onClose,
   embeddedInAccount = false,
 }: BlockedUsersPageProps) {
+  const { t } = useTranslation();
   const scrollContentStyle = embeddedInAccount
     ? [styles.embeddedContent, { paddingBottom: bottomInset + spacing.xxl }]
     : [styles.content, { paddingBottom: bottomInset + spacing.xxl }];
@@ -52,28 +54,24 @@ export function BlockedUsersPage({
 
       {embeddedInAccount ? (
         <View style={styles.sceneLead}>
-          <Text style={styles.sceneLeadTitle}>Usuários bloqueados</Text>
-          <Text style={styles.sceneLeadSubtitle}>
-            Quem estiver aqui deixa de aparecer normalmente nas interações do GG.
-          </Text>
+          <Text style={styles.sceneLeadTitle}>{t("account.blockedUsers")}</Text>
+          <Text style={styles.sceneLeadSubtitle}>{t("blocked.intro")}</Text>
         </View>
       ) : (
         <View style={styles.introCard}>
-          <Text style={styles.introTitle}>Usuários bloqueados</Text>
-          <Text style={styles.introBody}>
-            Quem estiver aqui deixa de aparecer normalmente nas interações do GG.
-          </Text>
+          <Text style={styles.introTitle}>{t("account.blockedUsers")}</Text>
+          <Text style={styles.introBody}>{t("blocked.intro")}</Text>
         </View>
       )}
 
       {loadingBlockedUsers ? (
         <MapEmptyCard
-          title="Carregando bloqueios"
-          body="Buscando a sua lista de jogadores bloqueados."
+          title={t("blocked.loadingTitle")}
+          body={t("blocked.loadingBody")}
         />
       ) : blockedUsers.length ? (
         <AppleListSection
-          subtitle={`${blockedUsers.length} jogador(es)`}
+          subtitle={t("blocked.playerCount", { count: blockedUsers.length })}
           size="compact"
         >
           <View style={styles.list}>
@@ -97,21 +95,23 @@ export function BlockedUsersPage({
                     <Text style={styles.name}>{user.displayName}</Text>
                     <Text style={styles.meta}>@{user.handle}</Text>
                     <Text style={styles.meta}>
-                      {user.neighborhood || "Bairro não informado"} · bloqueado{" "}
-                      {formatRelativeTimestamp(user.blockedAt)}
+                      {t("blocked.blockedAt", {
+                        neighborhood: user.neighborhood || t("profile.noNeighborhood"),
+                        time: formatRelativeTimestamp(user.blockedAt),
+                      })}
                     </Text>
                   </View>
                 </View>
 
                 {user.reason ? (
                   <View style={styles.reasonWrap}>
-                    <Text style={styles.reasonLabel}>Motivo</Text>
+                    <Text style={styles.reasonLabel}>{t("blocked.reason")}</Text>
                     <Text style={styles.reasonValue}>{user.reason}</Text>
                   </View>
                 ) : null}
 
                 <PrimaryButton
-                  label="Desbloquear"
+                  label={t("blocked.unblock")}
                   onPress={() => onUnblockUser(user)}
                   tone="ghost"
                   size="compact"
@@ -123,8 +123,8 @@ export function BlockedUsersPage({
         </AppleListSection>
       ) : (
         <MapEmptyCard
-          title="Nenhum jogador bloqueado"
-          body="Se você bloquear alguém no perfil público, a pessoa vai aparecer aqui."
+          title={t("blocked.emptyTitle")}
+          body={t("blocked.emptyBody")}
         />
       )}
 

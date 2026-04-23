@@ -1,5 +1,6 @@
 import { type Dispatch, type SetStateAction, useCallback, useMemo } from "react";
 
+import { translate } from "@/i18n";
 import { createVenue, deleteMyVenue, updateMyVenue } from "@/lib/api";
 import { toMessage, resolveCurrentLocationSuggestion } from "@/features/map/mapHelpers";
 import { resolveTypedAddress, type AddressSuggestion } from "@/lib/placeSearch";
@@ -156,7 +157,7 @@ export function useMapVenueActions({
       setVenueSuggestionSuccess(null);
       setVenueAddressFocused(false);
       setVenueSelectedAddress(null);
-      setVenueAddressQuery("Buscando sua localização...");
+      setVenueAddressQuery(translate("venue.locationSearching"));
       const currentLocation = await resolveCurrentLocationSuggestion();
       setVenueSelectedAddress(currentLocation);
       setVenueAddressQuery(currentLocation.fullLabel);
@@ -209,7 +210,7 @@ export function useMapVenueActions({
     const nextQuery = venueAddressQuery.trim();
 
     if (nextQuery.length < 5) {
-      setError("Digite o endereço com rua e número para posicionar o local.");
+      setError(translate("map.typedAddressVenueHint"));
       return;
     }
 
@@ -220,7 +221,7 @@ export function useMapVenueActions({
       const resolvedAddress = await resolveTypedAddress(nextQuery, { near: nearHint });
 
       if (!resolvedAddress) {
-        throw new Error("Não conseguimos localizar esse endereço. Tente incluir número, bairro ou cidade.");
+        throw new Error(translate("map.addressResolveFailed"));
       }
 
       setVenueSelectedAddress(resolvedAddress);
@@ -258,7 +259,7 @@ export function useMapVenueActions({
     const nextQuery = manageVenueAddressQuery.trim();
 
     if (nextQuery.length < 5) {
-      setError("Digite o endereço com rua e número para posicionar o local.");
+      setError(translate("map.typedAddressVenueHint"));
       return;
     }
 
@@ -268,7 +269,7 @@ export function useMapVenueActions({
       const resolvedAddress = await resolveTypedAddress(nextQuery, { near: nearHint });
 
       if (!resolvedAddress) {
-        throw new Error("Não conseguimos localizar esse endereço. Tente incluir número, bairro ou cidade.");
+        throw new Error(translate("map.addressResolveFailed"));
       }
 
       setManageVenueSelectedAddress(resolvedAddress);
@@ -310,11 +311,11 @@ export function useMapVenueActions({
         : null;
 
       if (!coordinate) {
-        throw new Error("Pesquise um endereço ou use sua localização atual antes de sugerir o local.");
+        throw new Error(translate("venue.selectAddressBeforeSuggest"));
       }
 
       if (!selectedVenueFormatIds.length) {
-        throw new Error("Escolha ao menos um tipo de jogo para esse local.");
+        throw new Error(translate("venue.selectGameType"));
       }
 
       const createdVenueId = await createVenue({
@@ -363,7 +364,7 @@ export function useMapVenueActions({
       setSelectedVenueKind("public_place");
       setDraftCoordinate(null);
       setVenueComposerOpen(false);
-      setVenueSuggestionSuccess("Local adicionado. O pin já aparece no mapa.");
+      setVenueSuggestionSuccess(translate("venue.addedSuccess"));
       await loadAccountData();
       await loadDashboard("refresh");
       animateGamesSheet(false);
@@ -424,7 +425,7 @@ export function useMapVenueActions({
 
       setExpandedVenueInfoId((current) => (current === venue.id ? null : current));
       setExpandedVenueManageId((current) => (current === venue.id ? null : current));
-      setEntityActionSuccess("Local excluído do mapa.");
+      setEntityActionSuccess(translate("map.deleteVenueSuccess"));
       await loadDashboard("refresh");
     } catch (deleteError) {
       const message = toMessage(deleteError);
@@ -448,17 +449,17 @@ export function useMapVenueActions({
 
   const handleSaveVenueEdits = useCallback(async (venue: VenueCard) => {
     if (!manageVenueName.trim()) {
-      setError("Informe o nome do local.");
+      setError(translate("venue.nameRequired"));
       return;
     }
 
     if (!manageVenueSelectedAddress) {
-      setError("Pesquise e selecione um endereço antes de salvar o local.");
+      setError(translate("venue.selectAddressBeforeSave"));
       return;
     }
 
     if (!managedVenueFormatIds.length) {
-      setError("Escolha ao menos um tipo de jogo para esse local.");
+      setError(translate("venue.selectGameType"));
       return;
     }
 
@@ -503,7 +504,7 @@ export function useMapVenueActions({
 
       setExpandedVenueManageId(() => null);
       setSelectedVenueId(venue.id);
-      setEntityActionSuccess("Local atualizado.");
+      setEntityActionSuccess(translate("venue.updated"));
       await loadDashboard("refresh");
       focusVenueOnMap(venue.id);
     } catch (updateError) {

@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { useTranslation } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 
 type MapTimePickerPopoverProps = {
@@ -27,6 +28,8 @@ export function MapTimePickerPopover({
   onClose,
   onConfirm,
 }: MapTimePickerPopoverProps) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.overlayWrap} pointerEvents="box-none">
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
@@ -34,14 +37,14 @@ export function MapTimePickerPopover({
         <Text style={styles.timePopoverTitle}>{title}</Text>
         <View style={styles.timeWheelRow}>
           <TimeWheelColumn
-            label="Hora"
+            label={t("common.hour")}
             values={hours}
             selectedValue={selectedHour}
             onChange={onChangeHour}
           />
           <Text style={styles.timeSeparator}>:</Text>
           <TimeWheelColumn
-            label="Min"
+            label={t("common.minuteShort")}
             values={minutes}
             selectedValue={selectedMinute}
             onChange={onChangeMinute}
@@ -49,10 +52,10 @@ export function MapTimePickerPopover({
         </View>
         <View style={styles.actions}>
           <View style={styles.actionCell}>
-            <PrimaryButton label="Fechar" onPress={onClose} tone="ghost" />
+            <PrimaryButton label={t("common.close")} onPress={onClose} tone="ghost" />
           </View>
           <View style={styles.actionCell}>
-            <PrimaryButton label="Usar horário" onPress={onConfirm} />
+            <PrimaryButton label={t("time.useTime")} onPress={onConfirm} />
           </View>
         </View>
       </View>

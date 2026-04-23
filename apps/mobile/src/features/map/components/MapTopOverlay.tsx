@@ -7,6 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { GoodGameLogo } from "@/components/GoodGameLogo";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MapCircleActionButton } from "@/features/map/components/MapCircleActionButton";
+import { useTranslation } from "@/i18n";
 import { styles } from "@/features/map/MapHomeScreen.styles";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, spacing } from "@/theme/tokens";
@@ -48,6 +49,7 @@ export function MapTopOverlay({
   onOpenComposer,
   profileIsPro,
 }: MapTopOverlayProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
 
   return (
@@ -61,7 +63,7 @@ export function MapTopOverlay({
         <View style={styles.mapTopStack}>
           <MapCircleActionButton
             icon="menu"
-            accessibilityLabel="Abrir menu"
+            accessibilityLabel={t("map.openMenu")}
             onPress={() => {
               onDismissPinCallout?.();
               onOpenDrawer();
@@ -70,7 +72,7 @@ export function MapTopOverlay({
           />
           <MapCircleActionButton
             icon="filter-list"
-            accessibilityLabel="Abrir filtros"
+            accessibilityLabel={t("map.openFilters")}
             onPress={() => {
               onDismissPinCallout?.();
               onToggleFilters();
@@ -83,7 +85,7 @@ export function MapTopOverlay({
         <View style={styles.mapTopStack}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Abrir conta"
+            accessibilityLabel={t("map.openAccount")}
             onPress={() => {
               onDismissPinCallout?.();
               triggerHaptic("selection");
@@ -108,7 +110,7 @@ export function MapTopOverlay({
           </Pressable>
           <MapCircleActionButton
             icon="groups-2"
-            accessibilityLabel="Abrir amigos"
+            accessibilityLabel={t("map.openFriends")}
             onPress={() => {
               onDismissPinCallout?.();
               onOpenFriends();
@@ -117,7 +119,7 @@ export function MapTopOverlay({
           />
           <MapCircleActionButton
             icon="add"
-            accessibilityLabel="Novo jogo"
+            accessibilityLabel={t("map.newGame")}
             onPress={() => {
               onDismissPinCallout?.();
               onOpenComposer();
@@ -158,7 +160,7 @@ export function MapTopOverlay({
             <LoadingSpinner size={16} color={palette.parchment} />
           )}
           <Text style={styles.topBannerText}>
-            {error ?? "Atualizando jogos e locais do mapa..."}
+            {error ?? t("map.refreshing")}
           </Text>
         </View>
       ) : null}

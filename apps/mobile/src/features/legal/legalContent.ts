@@ -1,3 +1,4 @@
+import { getCurrentLocale, type SupportedLocale } from "@/i18n";
 import type { LegalDocumentKind } from "@/types/domain";
 
 export const legalContentVersion = "2026-04-02";
@@ -16,7 +17,7 @@ export type LegalContentDocument = {
   sections: LegalSection[];
 };
 
-export const legalContent: Record<LegalDocumentKind, LegalContentDocument> = {
+const ptBRLegalContent: Record<LegalDocumentKind, LegalContentDocument> = {
   privacy_policy: {
     kind: "privacy_policy",
     title: "Política de Privacidade",
@@ -157,3 +158,162 @@ export const legalContent: Record<LegalDocumentKind, LegalContentDocument> = {
     ],
   },
 };
+
+const enUSLegalContent: Record<LegalDocumentKind, LegalContentDocument> = {
+  privacy_policy: {
+    kind: "privacy_policy",
+    title: "Privacy Policy",
+    version: legalContentVersion,
+    effectiveDateLabel: "April 2, 2026",
+    intro:
+      "This Privacy Policy explains how Good Game collects, uses, shares, and protects personal data to connect players, organize in-person games, and keep the community safe.",
+    sections: [
+      {
+        title: "1. Data we collect",
+        paragraphs: [
+          "We collect account and profile data, such as email, display name, handle, photo, bio, played formats, availability, and hosting preferences.",
+          "We collect approximate location, suggested places, group messages, friendships, reports, blocks, game attendance, and interactions needed to operate the map and social features.",
+          "We may also collect technical data from the device, app version, notification status, and operational identifiers for security, authentication, and message delivery.",
+        ],
+      },
+      {
+        title: "2. How we use data",
+        paragraphs: [
+          "We use your data to authenticate your account, show your profile, display nearby games and places, enable group conversations, send notifications, and improve how the app works.",
+          "Location is handled approximately for discovery on the map. The exact position of a game may remain restricted until you join the group, according to the product's privacy rules.",
+          "We also use data for fraud prevention, abuse investigation, account blocking, responding to reports, and complying with legal obligations.",
+        ],
+      },
+      {
+        title: "3. Legal basis and consent",
+        paragraphs: [
+          "We process data to perform the app's terms of use, support legitimate interests in operating and securing the platform, and, when needed, based on specific consent such as location, photos, and notification permissions.",
+          "You can revoke permissions in your device operating system, but some features may stop working correctly.",
+        ],
+      },
+      {
+        title: "4. Sharing",
+        paragraphs: [
+          "Your profile, games, and social activity may be visible to other authenticated users depending on the product context.",
+          "We may share data with infrastructure, authentication, storage, notification, and analytics providers strictly to operate the service.",
+          "We may also share information with authorities or third parties when necessary to comply with legal obligations, protect rights, or investigate serious incidents.",
+        ],
+      },
+      {
+        title: "5. Retention and deletion",
+        paragraphs: [
+          "We keep data while your account is active or while it is needed for legitimate purposes, security, abuse prevention, and legal requirements.",
+          "You can request account deletion in the app. After deletion, account data is removed or anonymized according to the technical architecture and applicable legal requirements.",
+        ],
+      },
+      {
+        title: "6. Your rights",
+        paragraphs: [
+          "Under the LGPD, you may request confirmation of processing, access, correction, anonymization, blocking, deletion, portability, and information about sharing, as well as revoke consent when applicable.",
+          "You may also request review of relevant automated decisions and file a complaint with the competent authority.",
+        ],
+      },
+      {
+        title: "7. Security",
+        paragraphs: [
+          "We use reasonable technical and organizational measures to protect personal data, but no system is absolutely invulnerable.",
+          "We recommend not publishing sensitive information in your profile, chats, or game descriptions.",
+        ],
+      },
+      {
+        title: "8. Contact",
+        paragraphs: [
+          "Requests related to privacy, security, and data subject rights may be handled through the official channels provided at product launch and in the team's operational documentation.",
+        ],
+      },
+    ],
+  },
+  terms_of_service: {
+    kind: "terms_of_service",
+    title: "Terms of Use",
+    version: legalContentVersion,
+    effectiveDateLabel: "April 2, 2026",
+    intro:
+      "These Terms of Use govern access to and use of Good Game, an app for discovering players, organizing games, chats, and places for in-person tabletop play.",
+    sections: [
+      {
+        title: "1. Eligibility and account",
+        paragraphs: [
+          "You represent that you have legal capacity to accept these terms. If you are underage, you must use the app with authorization and supervision from a legal guardian when required by applicable law.",
+          "You are responsible for the security of your account, the accuracy of the information you provide, and the use of your access credentials.",
+        ],
+      },
+      {
+        title: "2. Conduct rules",
+        paragraphs: [
+          "You may not use the app for fraud, scams, harassment, discrimination, threats, spam, disclosure of third-party sensitive data, stalking, or any illegal practice.",
+          "You also may not manipulate reputation, simulate attendance, create fake places, or publish games intended to harm other users.",
+        ],
+      },
+      {
+        title: "3. In-person meetups",
+        paragraphs: [
+          "Good Game acts as a platform that connects players. We do not organize, supervise, or guarantee the safety, quality, legality, or punctuality of in-person meetups arranged between users.",
+          "Each user is responsible for assessing risks, choosing suitable places, respecting local law, and taking personal safety measures.",
+        ],
+      },
+      {
+        title: "4. Content, chats, and profile",
+        paragraphs: [
+          "You remain responsible for the content you publish in your profile, games, messages, and place suggestions.",
+          "By using the app, you grant us a non-exclusive license to host, display, and process that content only to operate and improve the service.",
+        ],
+      },
+      {
+        title: "5. Friends, blocks, and reports",
+        paragraphs: [
+          "The app provides friendship, blocking, and reporting features to protect the community.",
+          "We may investigate suspicious behavior, limit features, hide content, suspend, or terminate accounts when there are signs of abuse, safety risk, or violation of these terms.",
+        ],
+      },
+      {
+        title: "6. Reputation and attendance",
+        paragraphs: [
+          "Attendance confirmation, arrival, ratings, and reputation features exist to improve community reliability.",
+          "These signals may influence the in-app experience, but they do not represent an absolute guarantee of any user's conduct.",
+        ],
+      },
+      {
+        title: "7. Account termination",
+        paragraphs: [
+          "You may close your account at any time in the app, subject to the technical and legal limitations described in the Privacy Policy.",
+          "We may also suspend or terminate accounts in cases of fraud, safety risk, violation of these terms, or legal determination.",
+        ],
+      },
+      {
+        title: "8. Limitation of liability",
+        paragraphs: [
+          "To the maximum extent permitted by law, Good Game is not responsible for third-party conduct, damage occurring at in-person meetups, indirect losses, lost profits, or unavailability caused by factors outside our reasonable control.",
+        ],
+      },
+      {
+        title: "9. Changes",
+        paragraphs: [
+          "We may update these terms and the privacy policy. When the current version changes, we may require a new acceptance to continue using the app.",
+        ],
+      },
+    ],
+  },
+};
+
+export const legalContentByLocale: Record<
+  SupportedLocale,
+  Record<LegalDocumentKind, LegalContentDocument>
+> = {
+  "pt-BR": ptBRLegalContent,
+  "en-US": enUSLegalContent,
+};
+
+export const legalContent = ptBRLegalContent;
+
+export function getLegalContent(
+  kind: LegalDocumentKind,
+  locale: SupportedLocale = getCurrentLocale()
+) {
+  return legalContentByLocale[locale]?.[kind] ?? ptBRLegalContent[kind];
+}

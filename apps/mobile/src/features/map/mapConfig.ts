@@ -14,10 +14,10 @@ export type HostModeOption = (typeof hostModeOptions)[number];
 
 export const distanceOptions = [
   ["all", "Qualquer"],
-  [2, "Ate 2 km"],
-  [5, "Ate 5 km"],
-  [10, "Ate 10 km"],
-  [25, "Ate 25 km"],
+  [2, "Até 2 km"],
+  [5, "Até 5 km"],
+  [10, "Até 10 km"],
+  [25, "Até 25 km"],
 ] as const satisfies readonly (readonly [DistanceFilter, string])[];
 
 export const periodOptions = [

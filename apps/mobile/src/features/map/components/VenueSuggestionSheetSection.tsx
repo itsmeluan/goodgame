@@ -12,6 +12,8 @@ import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { TextField } from "@/components/TextField";
 import { AddressAutocompleteField } from "@/features/map/components/AddressAutocompleteField";
 import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
+import { useTranslation } from "@/i18n";
+import { formatVenueKind } from "@/lib/formatting";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 import { palette, sheetContentGutter, spacing } from "@/theme/tokens";
 import type { VenueKind } from "@/types/domain";
@@ -79,6 +81,7 @@ export function VenueSuggestionSheetSection({
   submitting,
   submitDisabled,
 }: VenueSuggestionSheetSectionProps) {
+  const { t } = useTranslation();
   const [cardWidth, setCardWidth] = useState(0);
 
   const routes = useMemo(
@@ -89,8 +92,8 @@ export function VenueSuggestionSheetSection({
           <AppleListGroup>
             <AppleListRow
               icon={{ iosName: "plus.circle.fill", fallbackName: "add-circle" }}
-              label="Sugerir local"
-              subtitle="Adicionar ao mapa"
+              label={t("venue.suggest")}
+              subtitle={t("venue.addToMap")}
               trailingValue={selectedVenueGameIds.length ? String(selectedVenueGameIds.length) : null}
               onPress={onToggleOpen}
               size="compact"
@@ -106,19 +109,19 @@ export function VenueSuggestionSheetSection({
               content: (
                 <View style={styles.formCard}>
                   <View style={styles.formLead}>
-                    <Text style={styles.eyebrow}>Novo local</Text>
-                    <Text style={styles.formTitle}>Sugerir ponto no mapa</Text>
+                    <Text style={styles.eyebrow}>{t("venue.new")}</Text>
+                    <Text style={styles.formTitle}>{t("venue.suggestPoint")}</Text>
                   </View>
 
-                  <AppleListSection title="Dados" size="compact">
+                  <AppleListSection title={t("venue.data")} size="compact">
                     <TextField
-                      label="Nome do local"
+                      label={t("venue.name")}
                       value={name}
                       onChangeText={onChangeName}
-                      placeholder="Ex.: Loja da Galera"
+                      placeholder={t("venue.namePlaceholder")}
                     />
                     <AddressAutocompleteField
-                      label="Endereço"
+                      label={t("venue.address")}
                       value={addressQuery}
                       focused={addressFocused}
                       onFocusChange={onChangeAddressFocused}
@@ -128,23 +131,23 @@ export function VenueSuggestionSheetSection({
                       onUseCurrentLocation={onUseCurrentLocation}
                       onUseTypedAddress={onUseTypedAddress}
                       onSelectSuggestion={onSelectAddressSuggestion}
-                      placeholder="Digite rua, avenida ou nome do lugar"
+                      placeholder={t("venue.searchAddressPlaceholder")}
                     />
                     <TextField
-                      label="Detalhes"
+                      label={t("common.details")}
                       value={details}
                       onChangeText={onChangeDetails}
-                      placeholder="Partidas, horários, consumo mínimo"
+                      placeholder={t("venue.detailsPlaceholder")}
                       multiline
                     />
                   </AppleListSection>
 
-                  <AppleListSection title="Tipo de local" size="compact">
+                  <AppleListSection title={t("venue.type")} size="compact">
                     <View style={styles.chipWrap}>
-                      {venueKindOptions.map(([kind, label]) => (
+                      {venueKindOptions.map(([kind]) => (
                         <ChoiceChip
                           key={kind}
-                          label={label}
+                          label={formatVenueKind(kind)}
                           selected={selectedVenueKind === kind}
                           onPress={() => onSelectVenueKind(kind)}
                         />
@@ -152,7 +155,7 @@ export function VenueSuggestionSheetSection({
                     </View>
                   </AppleListSection>
 
-                  <AppleListSection title="Jogos" size="compact">
+                  <AppleListSection title={t("common.games")} size="compact">
                     <View style={styles.chipWrap}>
                       {venueGameOptions.map((game) => (
                         <ChoiceChip
@@ -170,11 +173,11 @@ export function VenueSuggestionSheetSection({
                     ) : null}
                     <View style={styles.rowActions}>
                       <View style={styles.rowActionCell}>
-                        <PrimaryButton label="Cancelar" onPress={onCancel} tone="ghost" />
+                        <PrimaryButton label={t("common.cancel")} onPress={onCancel} tone="ghost" />
                       </View>
                       <View style={styles.rowActionCell}>
                         <PrimaryButton
-                          label="Sugerir local"
+                          label={t("venue.suggest")}
                           onPress={onSubmit}
                           loading={submitting}
                           disabled={submitDisabled}
@@ -215,6 +218,7 @@ export function VenueSuggestionSheetSection({
       successMessage,
       venueGameOptions,
       venueKindOptions,
+      t,
     ]
   );
 

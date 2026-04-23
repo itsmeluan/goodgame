@@ -11,6 +11,7 @@ import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { ChatMeetupListLeading } from "@/features/map/components/ChatMeetupListLeading";
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
+import { useTranslation } from "@/i18n";
 import { formatDateTime, formatMeetupStatus } from "@/lib/formatting";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, sheetContentGutter, spacing } from "@/theme/tokens";
@@ -47,6 +48,7 @@ export function DrawerChatsPanel({
   onToggleGroup: _onToggleGroup,
   onOpenChat,
 }: DrawerChatsPanelProps) {
+  const { t } = useTranslation();
   const [routeKeys, setRouteKeys] = useState<string[]>([]);
 
   const rootGroups = useMemo<DrawerChatStackGroup[]>(
@@ -56,14 +58,14 @@ export function DrawerChatsPanel({
         ? [
             ({
               id: "archived",
-              label: "Encerrados",
+              label: t("chat.archived"),
               chats: archivedChats,
               archived: true,
             } satisfies DrawerChatStackGroup),
           ]
         : []),
     ],
-    [archivedChats, groups]
+    [archivedChats, groups, t]
   );
 
   const pushRoute = (key: string) => {
@@ -95,7 +97,7 @@ export function DrawerChatsPanel({
                     fallbackName: game.archived ? "inventory-2" : "forum",
                   }}
                   label={game.label}
-                  subtitle={`${game.chats.length} grupo(s)`}
+                  subtitle={t("chat.groupCount", { count: game.chats.length })}
                   trailingValue={String(game.chats.length)}
                   onPress={() => pushRoute(game.id)}
                   separator={index > 0}
@@ -106,8 +108,8 @@ export function DrawerChatsPanel({
             </AppleListGroup>
           ) : (
             <MapEmptyCard
-              title="Nenhum chat ainda"
-              body="Entre em uma partida para ela aparecer aqui."
+              title={t("chat.emptyDrawerTitle")}
+              body={t("chat.emptyDrawerBody")}
             />
           )}
         </ScrollView>
@@ -118,8 +120,8 @@ export function DrawerChatsPanel({
 
       return {
         key: routeKey,
-        title: group?.label ?? "Chats",
-        subtitle: group ? `${group.chats.length} grupo(s)` : undefined,
+        title: group?.label ?? t("nav.chats"),
+        subtitle: group ? t("chat.groupCount", { count: group.chats.length }) : undefined,
         content: (
           <DrawerChatListScene
             meetups={group?.chats ?? []}
@@ -138,7 +140,7 @@ export function DrawerChatsPanel({
       <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Voltar para o menu"
+          accessibilityLabel={t("chat.backToMenu")}
           onPress={() => {
             triggerHaptic("selection");
             onBack();
@@ -157,9 +159,9 @@ export function DrawerChatsPanel({
             size={18}
             color={palette.sand}
           />
-          <Text style={styles.backButtonLabel}>Menu</Text>
+          <Text style={styles.backButtonLabel}>{t("common.menu")}</Text>
         </Pressable>
-        <Text style={styles.title}>Chats</Text>
+        <Text style={styles.title}>{t("nav.chats")}</Text>
       </View>
 
       <SlidingSheetStack
@@ -186,6 +188,8 @@ function DrawerChatListScene({
   nowTimestamp: number;
   onOpenChat: (meetupId: string) => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
       {meetups.length ? (
@@ -198,7 +202,7 @@ function DrawerChatListScene({
               effectiveStatus === "closed" || effectiveStatus === "cancelled"
                 ? formatMeetupStatus(effectiveStatus)
                 : null;
-            const overdueLine = overdue ? "Horário em atraso" : null;
+            const overdueLine = overdue ? t("chat.overdue") : null;
 
             return (
               <AppleListRow
@@ -208,7 +212,7 @@ function DrawerChatListScene({
                 subtitle={[formatDateTime(meetup.startsAt), statusLine, overdueLine]
                   .filter(Boolean)
                   .join("\n")}
-                trailingValue={unreadChatMeetupIds.has(meetup.id) ? "Novo" : null}
+                trailingValue={unreadChatMeetupIds.has(meetup.id) ? t("chat.new") : null}
                 onPress={() => onOpenChat(meetup.id)}
                 separator={index > 0}
                 tone={
@@ -224,7 +228,7 @@ function DrawerChatListScene({
           })}
         </AppleListGroup>
       ) : (
-        <MapEmptyCard title="Sem grupos nessa categoria" body="Quando houver conversas aqui, elas aparecem nesta lista." />
+        <MapEmptyCard title={t("chat.sectionEmptyTitle")} body={t("chat.sectionEmptyBody")} />
       )}
     </ScrollView>
   );

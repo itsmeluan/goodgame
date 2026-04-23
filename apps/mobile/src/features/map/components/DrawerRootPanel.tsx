@@ -7,6 +7,7 @@ import {
 } from "@/components/AppleListNavigation";
 import { AppIcon } from "@/components/AppIcon";
 import { Avatar } from "@/components/Avatar";
+import { useTranslation } from "@/i18n";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, spacing } from "@/theme/tokens";
 import type { FriendProfile } from "@/types/domain";
@@ -64,6 +65,8 @@ export function DrawerRootPanel({
   onOpenFeedback,
   onOpenPlayerProfile,
 }: DrawerRootPanelProps) {
+  const { t } = useTranslation();
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -76,7 +79,7 @@ export function DrawerRootPanel({
         <AppleListGroup>
           <AppleListRow
             icon={{ iosName: "map.fill", fallbackName: "map" }}
-            label="Mapa"
+            label={t("nav.map")}
             onPress={onOpenMap}
             tone={mapActive ? "accent" : "default"}
             size="compact"
@@ -84,7 +87,7 @@ export function DrawerRootPanel({
           <AppleListRow
             separator
             icon={{ iosName: "dice.fill", fallbackName: "casino" }}
-            label="Jogos"
+            label={t("common.games")}
             onPress={onOpenGames}
             tone={gamesActive ? "accent" : "default"}
             size="compact"
@@ -92,7 +95,7 @@ export function DrawerRootPanel({
           <AppleListRow
             separator
             icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
-            label="Locais"
+            label={t("nav.places")}
             onPress={onOpenPlaces}
             tone={placesActive ? "accent" : "default"}
             size="compact"
@@ -100,7 +103,7 @@ export function DrawerRootPanel({
           <AppleListRow
             separator
             icon={{ iosName: "location.magnifyingglass", fallbackName: "travel-explore" }}
-            label="Jogadores próximos"
+            label={t("nav.nearbyPlayers")}
             onPress={onOpenNearbyPlayers}
             tone={nearbyPlayersActive ? "accent" : "default"}
             size="compact"
@@ -111,7 +114,7 @@ export function DrawerRootPanel({
               iosName: "bubble.left.and.bubble.right.fill",
               fallbackName: "forum",
             }}
-            label="Chats"
+            label={t("nav.chats")}
             onPress={onOpenChats}
             trailingValue={unreadChatCount ? String(unreadChatCount) : null}
             tone={unreadChatCount || chatsActive ? "accent" : "default"}
@@ -120,7 +123,7 @@ export function DrawerRootPanel({
           <AppleListRow
             separator
             icon={{ iosName: "bell.fill", fallbackName: "notifications" }}
-            label="Avisos"
+            label={t("nav.alerts")}
             onPress={onOpenAlerts}
             trailingValue={unreadAlertCount ? String(unreadAlertCount) : null}
             tone={unreadAlertCount || alertsActive ? "accent" : "default"}
@@ -129,7 +132,7 @@ export function DrawerRootPanel({
           <AppleListRow
             separator
             icon={{ iosName: "sparkles", fallbackName: "auto-awesome" }}
-            label="Novidades"
+            label={t("nav.news")}
             showUnreadDot={unreadNovidadesCount > 0}
             onPress={onOpenNovidades}
             tone={novidadesActive || unreadNovidadesCount > 0 ? "accent" : "default"}
@@ -138,7 +141,7 @@ export function DrawerRootPanel({
           <AppleListRow
             separator
             icon={{ iosName: "clock.arrow.circlepath", fallbackName: "history" }}
-            label="Histórico"
+            label={t("nav.history")}
             onPress={onOpenHistory}
             tone={historyActive ? "accent" : "default"}
             size="compact"
@@ -146,7 +149,7 @@ export function DrawerRootPanel({
           <AppleListRow
             separator
             icon={{ iosName: "envelope.open.fill", fallbackName: "mail-outline" }}
-            label="Feedback"
+            label={t("nav.feedback")}
             onPress={onOpenFeedback}
             tone={feedbackActive ? "accent" : "default"}
             size="compact"
@@ -154,7 +157,7 @@ export function DrawerRootPanel({
         </AppleListGroup>
       </AppleListSection>
 
-      <AppleListSection title="Amigos online" size="compact">
+      <AppleListSection title={t("drawer.onlineFriends")} size="compact">
         {onlineFriends.length ? (
           <AppleListGroup>
             {onlineFriends.slice(0, 6).map((friend, index) => (
@@ -190,11 +193,11 @@ export function DrawerRootPanel({
             ))}
           </AppleListGroup>
         ) : (
-          <Text style={styles.drawerFriendsEmpty}>Nenhum amigo online agora.</Text>
+          <Text style={styles.drawerFriendsEmpty}>{t("drawer.noOnlineFriends")}</Text>
         )}
       </AppleListSection>
 
-      <Text style={styles.drawerVersionLabel}>Versão {appVersion}</Text>
+      <Text style={styles.drawerVersionLabel}>{t("drawer.version", { version: appVersion })}</Text>
     </ScrollView>
   );
 }

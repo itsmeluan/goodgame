@@ -6,6 +6,7 @@ import {
   resolveMeetupGameListIconVariant,
 } from "@/components/icons/ListRowGameListIcon";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
+import { useTranslation } from "@/i18n";
 import {
   formatCompactAddress,
   formatDateTime,
@@ -35,6 +36,7 @@ export function MeetupSheetListRowContainer({
   separator,
   onPress,
 }: MeetupSheetListRowContainerProps) {
+  const { t } = useTranslation();
   const effectiveStatus = resolveMeetupEffectiveStatus(meetup, nowTimestamp);
   const overdue = isMeetupOverdue(meetup, nowTimestamp);
   const distanceLabel = formatDistanceKm(profileLat, profileLng, meetup.lat, meetup.lng);
@@ -44,11 +46,11 @@ export function MeetupSheetListRowContainer({
     meetup.locationHint;
   const creatorLabel = `${meetup.creatorDisplayName}${distanceLabel ? ` · ${distanceLabel}` : ""}`;
   const badgeLabel = overdue
-    ? "Passou"
+    ? t("meetup.overdueBadge")
     : meetup.isCreator
-      ? "Você"
+      ? t("meetup.youBadge")
       : meetup.isMember
-        ? "Chat"
+        ? t("format.notification.chat")
         : formatMeetupStatus(effectiveStatus);
   const badgeTone = overdue
     ? styles.badgeOverdue
@@ -70,7 +72,9 @@ export function MeetupSheetListRowContainer({
           variant={listIconVariant}
           size={APPLE_LIST_COMPACT_ICON_SIZE}
           accessibilityLabel={
-            overdue ? `${meetup.title}, horário passou` : `${meetup.title}, tipo de jogo`
+            overdue
+              ? `${meetup.title}, ${t("meetup.overdueBadge")}`
+              : `${meetup.title}, ${t("composer.sectionGameType")}`
           }
         />
       }

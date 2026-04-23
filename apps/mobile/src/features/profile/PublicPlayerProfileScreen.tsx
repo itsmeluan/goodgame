@@ -6,6 +6,7 @@ import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { Avatar } from "@/components/Avatar";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
+import { useTranslation } from "@/i18n";
 import { isUserPro } from "@/lib/proPlayer";
 import { palette, radius, spacing } from "@/theme/tokens";
 import { formatAverageRating, formatRelativeTimestamp, summarizeAvailabilityPeriods } from "@/lib/formatting";
@@ -27,6 +28,7 @@ export function PublicPlayerProfileScreen({
   onOpenPrivateChat,
   actions,
 }: PublicPlayerProfileScreenProps) {
+  const { t } = useTranslation();
   const [detailScene, setDetailScene] = useState<
     { type: "formats"; gameName: string } | { type: "availability" } | null
   >(null);
@@ -39,8 +41,8 @@ export function PublicPlayerProfileScreen({
     return (
       <View style={styles.stateWrap}>
         <LoadingSpinner size={42} />
-        <Text style={styles.stateTitle}>Carregando perfil</Text>
-        <Text style={styles.stateBody}>Buscando os detalhes públicos do jogador.</Text>
+        <Text style={styles.stateTitle}>{t("publicProfile.loadingTitle")}</Text>
+        <Text style={styles.stateBody}>{t("publicProfile.loadingBody")}</Text>
       </View>
     );
   }
@@ -48,7 +50,7 @@ export function PublicPlayerProfileScreen({
   if (showBlockingError) {
     return (
       <View style={styles.stateWrap}>
-        <Text style={styles.stateTitle}>Não foi possível abrir o perfil</Text>
+        <Text style={styles.stateTitle}>{t("publicProfile.openErrorTitle")}</Text>
         <Text style={styles.stateBody}>{error}</Text>
       </View>
     );
@@ -57,16 +59,14 @@ export function PublicPlayerProfileScreen({
   if (!profile) {
     return (
       <View style={styles.stateWrap}>
-        <Text style={styles.stateTitle}>Perfil indisponível</Text>
-        <Text style={styles.stateBody}>
-          Esse jogador não está disponível para visualização agora.
-        </Text>
+        <Text style={styles.stateTitle}>{t("publicProfile.unavailableTitle")}</Text>
+        <Text style={styles.stateBody}>{t("publicProfile.unavailableBody")}</Text>
       </View>
     );
   }
 
   const availabilityLabels = summarizeAvailabilityPeriods(profile.availability);
-  const formatRows = profile.formatNames.length ? profile.formatNames : ["Formatos não informados."];
+  const formatRows = profile.formatNames.length ? profile.formatNames : [t("publicProfile.formatsUnavailable")];
 
   const rootRoute = {
     key: "root",
@@ -79,13 +79,13 @@ export function PublicPlayerProfileScreen({
         {showRefreshingState ? (
           <View style={styles.inlineStatusCard}>
             <LoadingSpinner size={18} />
-            <Text style={styles.inlineStatusText}>Atualizando dados públicos…</Text>
+            <Text style={styles.inlineStatusText}>{t("publicProfile.refreshing")}</Text>
           </View>
         ) : null}
 
         {showInlineError ? (
           <View style={styles.inlineErrorCard}>
-            <Text style={styles.inlineErrorTitle}>Alguns dados podem estar desatualizados</Text>
+            <Text style={styles.inlineErrorTitle}>{t("publicProfile.refreshingError")}</Text>
             <Text style={styles.inlineErrorText}>{error}</Text>
           </View>
         ) : null}
@@ -114,12 +114,12 @@ export function PublicPlayerProfileScreen({
             <View style={styles.heroCopy}>
               <View style={styles.heroNameBlock}>
                 <View style={styles.heroEyebrowRow}>
-                  <Text style={styles.heroEyebrow}>Jogador</Text>
+                  <Text style={styles.heroEyebrow}>{t("publicProfile.player")}</Text>
                   <Text style={styles.heroSeenAtInline}>
                     {profile.isOnline
-                      ? "online agora"
+                      ? t("publicProfile.onlineNow")
                       : profile.lastSeenAt
-                        ? `visto ${formatRelativeTimestamp(profile.lastSeenAt)}`
+                        ? t("publicProfile.seen", { time: formatRelativeTimestamp(profile.lastSeenAt) })
                         : ""}
                   </Text>
                 </View>
@@ -127,29 +127,29 @@ export function PublicPlayerProfileScreen({
                 <Text style={styles.handle}>@{profile.handle}</Text>
               </View>
               <Text style={styles.heroNeighborhood}>
-                {profile.neighborhood || "Bairro não informado"}
+                {profile.neighborhood || t("profile.noNeighborhood")}
               </Text>
             </View>
           </View>
 
           <View style={styles.heroMetaRow}>
             <StatusPill
-              label={profile.canHost ? "Recebe pessoas" : "Encontro externo"}
+              label={profile.canHost ? t("profile.receivesPeople") : t("publicProfile.availableExternal")}
               tone="neutral"
             />
-            <StatusPill label={formatRelationship(profile.relationshipState)} tone="subtle" />
+            <StatusPill label={formatRelationship(profile.relationshipState, t)} tone="subtle" />
           </View>
 
           {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         </View>
 
-        <AppleListSection title="Resumo" size="compact">
+        <AppleListSection title={t("publicProfile.summary")} size="compact">
           <AppleListGroup>
             {onOpenPrivateChat ? (
               <AppleListRow
                 icon={{ iosName: "bubble.left.and.bubble.right.fill", fallbackName: "chat" }}
-                label="Chat"
-                subtitle="Conversa direta"
+                label={t("nav.chats")}
+                subtitle={t("publicProfile.chatSubtitle")}
                 onPress={onOpenPrivateChat}
                 showChevron
                 size="compact"
@@ -158,7 +158,7 @@ export function PublicPlayerProfileScreen({
             <AppleListRow
               separator={Boolean(onOpenPrivateChat)}
               icon={{ iosName: "star.fill", fallbackName: "grade" }}
-              label="Nota média"
+              label={t("publicProfile.averageRating")}
               trailingValue={formatAverageRating(profile.averageRating)}
               showChevron={false}
               size="compact"
@@ -166,7 +166,7 @@ export function PublicPlayerProfileScreen({
             <AppleListRow
               separator
               icon={{ iosName: "checkmark.seal.fill", fallbackName: "verified" }}
-              label="Avaliações"
+              label={t("publicProfile.ratings")}
               trailingValue={String(profile.ratingsCount)}
               showChevron={false}
               size="compact"
@@ -174,7 +174,7 @@ export function PublicPlayerProfileScreen({
             <AppleListRow
               separator
               icon={{ iosName: "person.crop.circle.badge.checkmark", fallbackName: "task-alt" }}
-              label="Presenças"
+              label={t("account.attendances")}
               trailingValue={String(profile.attendedCount)}
               showChevron={false}
               size="compact"
@@ -182,7 +182,7 @@ export function PublicPlayerProfileScreen({
             <AppleListRow
               separator
               icon={{ iosName: "dice.fill", fallbackName: "casino" }}
-              label="Jogos criados"
+              label={t("account.gamesCreated")}
               trailingValue={String(profile.hostedCount)}
               showChevron={false}
               size="compact"
@@ -190,7 +190,7 @@ export function PublicPlayerProfileScreen({
             <AppleListRow
               separator
               icon={{ iosName: "calendar", fallbackName: "calendar-today" }}
-              label="Disponibilidade"
+              label={t("profile.availability")}
               onPress={() => setDetailScene({ type: "availability" })}
               size="compact"
             />
@@ -198,10 +198,10 @@ export function PublicPlayerProfileScreen({
         </AppleListSection>
 
         <ListRowsSection
-          title="Interesses"
+          title={t("profile.interests")}
           icon={{ iosName: "gamecontroller.fill", fallbackName: "sports-esports" }}
           values={profile.gameNames}
-          emptyValue="Interesses não informados."
+          emptyValue={t("publicProfile.interestsUnavailable")}
           showChevron={profile.gameNames.length > 0}
           onPressValue={
             profile.gameNames.length > 0
@@ -224,7 +224,7 @@ export function PublicPlayerProfileScreen({
             ? {
                 key: `formats:${detailScene.gameName}`,
                 title: detailScene.gameName,
-                subtitle: "Formatos",
+                subtitle: t("profile.formats"),
                 content: (
                   <ScrollView
                     style={styles.scroll}
@@ -232,18 +232,18 @@ export function PublicPlayerProfileScreen({
                     showsVerticalScrollIndicator={false}
                   >
                     <ListRowsSection
-                      title="Formatos"
+                      title={t("profile.formats")}
                       icon={{ iosName: "square.grid.2x2.fill", fallbackName: "grid-view" }}
                       values={formatRows}
-                      emptyValue="Formatos não informados."
+                      emptyValue={t("publicProfile.formatsUnavailable")}
                     />
                   </ScrollView>
                 ),
               }
             : {
                 key: "availability",
-                title: "Disponibilidade",
-                subtitle: "Horários do jogador",
+                title: t("profile.availability"),
+                subtitle: t("publicProfile.availabilitySubtitle"),
                 content: (
                   <ScrollView
                     style={styles.scroll}
@@ -251,10 +251,10 @@ export function PublicPlayerProfileScreen({
                     showsVerticalScrollIndicator={false}
                   >
                     <ListRowsSection
-                      title="Disponibilidade"
+                      title={t("profile.availability")}
                       icon={{ iosName: "calendar", fallbackName: "calendar-today" }}
                       values={availabilityLabels}
-                      emptyValue="Disponibilidade não informada."
+                      emptyValue={t("publicProfile.availabilityUnavailable")}
                     />
                   </ScrollView>
                 ),
@@ -344,20 +344,20 @@ function StatusPill({
   );
 }
 
-function formatRelationship(value: PublicPlayerProfile["relationshipState"]) {
+function formatRelationship(value: PublicPlayerProfile["relationshipState"], t: ReturnType<typeof useTranslation>["t"]) {
   if (value === "friend") {
-    return "Amigo";
+    return t("publicProfile.friend");
   }
 
   if (value === "incoming") {
-    return "Convite recebido";
+    return t("publicProfile.incomingInvite");
   }
 
   if (value === "outgoing") {
-    return "Convite enviado";
+    return t("publicProfile.outgoingInvite");
   }
 
-  return "Comunidade";
+  return t("publicProfile.community");
 }
 
 const styles = StyleSheet.create({

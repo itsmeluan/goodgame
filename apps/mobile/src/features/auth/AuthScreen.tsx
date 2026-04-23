@@ -18,7 +18,8 @@ import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { TextField } from "@/components/TextField";
 import { LegalDocumentModal } from "@/features/legal/LegalDocumentModal";
-import { legalContent } from "@/features/legal/legalContent";
+import { getLegalContent } from "@/features/legal/legalContent";
+import { useTranslation, translate } from "@/i18n";
 import { sendPasswordResetEmail, signInWithPassword, signUpWithPassword } from "@/lib/api";
 import { env } from "@/lib/env";
 import { triggerHaptic } from "@/lib/haptics";
@@ -28,6 +29,7 @@ import type { LegalDocumentKind } from "@/types/domain";
 type AuthMode = "chooser" | "sign-in" | "sign-up" | "forgot-password";
 
 export function AuthScreen() {
+  const { t, locale } = useTranslation();
   const { height } = useWindowDimensions();
   const [mode, setMode] = useState<AuthMode>("chooser");
   const [email, setEmail] = useState("");
@@ -43,8 +45,8 @@ export function AuthScreen() {
   const [error, setError] = useState<string | null>(null);
 
   const selectedDocument = useMemo(
-    () => (selectedDocumentKind ? legalContent[selectedDocumentKind] : null),
-    [selectedDocumentKind]
+    () => (selectedDocumentKind ? getLegalContent(selectedDocumentKind, locale) : null),
+    [locale, selectedDocumentKind]
   );
 
   async function handleSignIn() {
@@ -68,9 +70,7 @@ export function AuthScreen() {
       const result = await signUpWithPassword(email.trim(), password);
 
       if (!result.session) {
-        setMessage(
-          "Conta criada. Se o projeto exigir confirmação de e-mail, confirme sua caixa de entrada e depois entre."
-        );
+        setMessage(t("auth.accountCreated"));
       }
     } catch (authError) {
       setError(toMessage(authError));
@@ -100,7 +100,7 @@ export function AuthScreen() {
       setMessage(null);
       await sendPasswordResetEmail(email.trim());
       setMessage(
-        "Se existir uma conta com esse e-mail, enviamos um link para redefinir sua senha."
+        t("auth.resetEmailSent")
       );
     } catch (authError) {
       setError(toMessage(authError));
@@ -153,7 +153,7 @@ export function AuthScreen() {
                   adjustsFontSizeToFit
                   minimumFontScale={0.55}
                 >
-                  Sua próxima jogada começa aqui
+                  {t("auth.heroTitle")}
                 </Text>
               </View>
             </View>
@@ -166,7 +166,7 @@ export function AuthScreen() {
                 adjustsFontSizeToFit
                 minimumFontScale={0.55}
               >
-                Sua próxima jogada começa aqui
+                {t("auth.heroTitle")}
               </Text>
             </View>
           )}
@@ -178,13 +178,13 @@ export function AuthScreen() {
                   <>
                     <EntryButton
                       icon="language"
-                      label="Continuar com Google"
+                      label={t("auth.google")}
                       onPress={() => void handleSocialAuth("google")}
                       loading={loadingAction === "google"}
                     />
                     <EntryButton
                       icon="apple"
-                      label="Continuar com Apple"
+                      label={t("auth.apple")}
                       onPress={() => void handleSocialAuth("apple")}
                       loading={loadingAction === "apple"}
                       dark
@@ -193,7 +193,7 @@ export function AuthScreen() {
                 ) : null}
                 <EntryButton
                   icon="mail-outline"
-                  label="Entrar com e-mail"
+                  label={t("auth.emailSignIn")}
                   accent
                   onPress={() => {
                     setError(null);
@@ -215,12 +215,11 @@ export function AuthScreen() {
                     pressed ? styles.createAccountButtonPressed : null,
                   ]}
                 >
-                  <Text style={styles.createAccountLabel}>Criar conta</Text>
+                  <Text style={styles.createAccountLabel}>{t("auth.createAccount")}</Text>
                 </Pressable>
               </View>
               <Text style={styles.footerText}>
-                Localização aproximada, grupos, avisos, amizades e reputação foram pensados
-                para encontros presenciais ficarem mais seguros.
+                {t("auth.footer")}
               </Text>
             </View>
           ) : (
@@ -235,20 +234,20 @@ export function AuthScreen() {
                 <View style={styles.formHeaderCopy}>
                   <Text style={styles.sectionTitle}>
                     {mode === "sign-in"
-                      ? "Entrar com e-mail"
+                      ? t("auth.emailSignIn")
                       : mode === "sign-up"
-                        ? "Criar conta com e-mail"
-                        : "Recuperar acesso"}
+                        ? t("auth.createAccountWithEmail")
+                        : t("auth.recoverAccess")}
                   </Text>
                   {mode === "forgot-password" ? (
                     <Text style={styles.formSubtitle}>
-                      Digite seu e-mail e enviaremos um link para redefinir sua senha no app.
+                      {t("auth.recoverSubtitle")}
                     </Text>
                   ) : null}
                 </View>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Fechar formulário de e-mail"
+                  accessibilityLabel={t("auth.formClose")}
                   onPress={() => {
                     triggerHaptic("selection");
                     setMode("chooser");
@@ -266,19 +265,19 @@ export function AuthScreen() {
               </View>
 
               <TextField
-                label="E-mail"
+                label={t("auth.email")}
                 value={email}
                 onChangeText={setEmail}
-                placeholder="voce@email.com"
+                placeholder={t("auth.emailPlaceholder")}
                 autoCapitalize="none"
                 keyboardType="email-address"
               />
               {mode !== "forgot-password" ? (
                 <TextField
-                  label="Senha"
+                  label={t("auth.password")}
                   value={password}
                   onChangeText={setPassword}
-                  placeholder="Mínimo de 6 caracteres"
+                  placeholder={t("auth.passwordPlaceholder")}
                   autoCapitalize="none"
                   secureTextEntry
                 />
@@ -298,7 +297,7 @@ export function AuthScreen() {
                     pressed ? styles.inlineActionPressed : null,
                   ]}
                 >
-                  <Text style={styles.inlineActionLabel}>Esqueci minha senha</Text>
+                  <Text style={styles.inlineActionLabel}>{t("auth.forgotPassword")}</Text>
                 </Pressable>
               ) : null}
 
@@ -324,38 +323,38 @@ export function AuthScreen() {
                     {acceptedLegal ? <View style={styles.checkboxDot} /> : null}
                   </View>
                   <Text style={styles.legalText}>
-                    Li e aceito os{" "}
+                    {t("auth.legalAcceptPrefix")}{" "}
                     <Text
                       style={styles.linkText}
                       onPress={() => setSelectedDocumentKind("terms_of_service")}
                     >
-                      Termos de Uso
+                      {t("auth.termsOfUse")}
                     </Text>{" "}
-                    e a{" "}
+                    {t("auth.legalAnd")}{" "}
                     <Text
                       style={styles.linkText}
                       onPress={() => setSelectedDocumentKind("privacy_policy")}
                     >
-                      Política de Privacidade
+                      {t("auth.privacyPolicy")}
                     </Text>
                     .
                   </Text>
                 </Pressable>
               ) : (
                 <Text style={styles.footnote}>
-                  Ao continuar, você concorda com os{" "}
+                  {t("auth.legalContinuePrefix")}{" "}
                   <Text
                     style={styles.linkText}
                     onPress={() => setSelectedDocumentKind("terms_of_service")}
                   >
-                    Termos de Uso
+                    {t("auth.termsOfUse")}
                   </Text>{" "}
-                  e a{" "}
+                  {t("auth.legalAnd")}{" "}
                   <Text
                     style={styles.linkText}
                     onPress={() => setSelectedDocumentKind("privacy_policy")}
                   >
-                    Política de Privacidade
+                    {t("auth.privacyPolicy")}
                   </Text>
                   .
                 </Text>
@@ -368,10 +367,10 @@ export function AuthScreen() {
                 <PrimaryButton
                   label={
                     mode === "sign-in"
-                      ? "Entrar"
+                      ? t("auth.signIn")
                       : mode === "sign-up"
-                        ? "Criar conta"
-                        : "Enviar link"
+                        ? t("auth.createAccount")
+                        : t("auth.sendLink")
                   }
                   onPress={() =>
                     void (
@@ -392,10 +391,10 @@ export function AuthScreen() {
                 <PrimaryButton
                   label={
                     mode === "sign-in"
-                      ? "Criar conta"
+                      ? t("auth.createAccount")
                       : mode === "sign-up"
-                        ? "Já tenho conta"
-                        : "Voltar ao login"
+                        ? t("auth.hasAccount")
+                        : t("auth.backToLogin")
                   }
                   onPress={() =>
                     setMode(
@@ -436,6 +435,7 @@ function EntryButton({
   dark = false,
   accent = false,
 }: EntryButtonProps) {
+  const { t } = useTranslation();
   const iconConfig =
     icon === "language"
       ? { iosName: "globe" as const, fallbackName: "language" as const }
@@ -472,7 +472,7 @@ function EntryButton({
           accent ? styles.entryButtonLabelAccent : null,
         ]}
       >
-        {loading ? "Abrindo..." : label}
+        {loading ? t("auth.opening") : label}
       </Text>
     </Pressable>
   );
@@ -483,7 +483,7 @@ function toMessage(error: unknown) {
     return error.message;
   }
 
-  return "Não foi possível autenticar agora.";
+  return translate("auth.error");
 }
 
 const styles = StyleSheet.create({

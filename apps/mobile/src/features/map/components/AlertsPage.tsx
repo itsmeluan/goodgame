@@ -6,6 +6,7 @@ import { PrimaryButton } from "@/components/PrimaryButton";
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
+import { useTranslation } from "@/i18n";
 import { formatNotificationKind, formatRelativeTimestamp } from "@/lib/formatting";
 import { palette, spacing } from "@/theme/tokens";
 import type { InAppNotification } from "@/types/domain";
@@ -33,6 +34,7 @@ export function AlertsPage({
   onOpenNotification,
   onClose,
 }: AlertsPageProps) {
+  const { t } = useTranslation();
   const [routeKeys, setRouteKeys] = useState<AlertsRouteKey[]>([]);
 
   const unreadNotifications = useMemo(
@@ -68,7 +70,7 @@ export function AlertsPage({
                     iosName: "bell.badge.fill",
                     fallbackName: "notifications-active",
                   }}
-                  label="Não lidos"
+                  label={t("alerts.unread")}
                   trailingValue={String(unreadNotifications.length)}
                   onPress={() => pushRoute("unread")}
                   tone={unreadNotifications.length ? "accent" : "default"}
@@ -80,7 +82,7 @@ export function AlertsPage({
                     iosName: "tray.full.fill",
                     fallbackName: "inbox",
                   }}
-                  label="Todos os avisos"
+                  label={t("alerts.all")}
                   trailingValue={String(notifications.length)}
                   onPress={() => pushRoute("all")}
                   size="compact"
@@ -102,15 +104,15 @@ export function AlertsPage({
         key: routeKey,
         content: (
           <NotificationScene
-            subtitle={`${routeNotifications.length} item(ns)`}
+            subtitle={t("alerts.itemCount", { count: routeNotifications.length })}
             notifications={routeNotifications}
             emptyTitle={
-              routeKey === "unread" ? "Nenhum aviso pendente" : "Sem avisos ainda"
+              routeKey === "unread" ? t("alerts.emptyUnreadTitle") : t("alerts.emptyAllTitle")
             }
             emptyBody={
               routeKey === "unread"
-                ? "Quando algo novo acontecer, ele aparece aqui."
-                : "Mensagens de grupo, lembretes e eventos do GG aparecem aqui."
+                ? t("alerts.emptyUnreadBody")
+                : t("alerts.emptyAllBody")
             }
             onOpenNotification={onOpenNotification}
             markAll={
@@ -157,6 +159,8 @@ function NotificationScene({
     disabled: boolean;
   };
 }) {
+  const { t } = useTranslation();
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -167,7 +171,7 @@ function NotificationScene({
         {markAll ? (
           <View style={styles.markAllRow}>
             <PrimaryButton
-              label="Marcar todos como lidos"
+              label={t("alerts.markAllRead")}
               onPress={markAll.onPress}
               tone="ghost"
               loading={markAll.loading}

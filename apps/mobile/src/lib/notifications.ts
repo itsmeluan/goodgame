@@ -3,6 +3,8 @@ import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+import { translate } from "@/i18n";
+
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -18,7 +20,7 @@ export async function registerForPushNotificationsAsync() {
     return {
       token: null,
       permissionStatus: "unsupported",
-      reason: "Push remoto exige um aparelho físico.",
+      reason: translate("notifications.physicalDeviceRequired"),
     };
   }
 
@@ -43,7 +45,7 @@ export async function registerForPushNotificationsAsync() {
     return {
       token: null,
       permissionStatus: finalStatus,
-      reason: "As notificações estão desativadas neste aparelho.",
+      reason: translate("notifications.disabled"),
     };
   }
 
@@ -61,8 +63,7 @@ export async function registerForPushNotificationsAsync() {
     return {
       token: null,
       permissionStatus: finalStatus,
-      reason:
-        "Defina o projectId do EAS para ativar push remoto nas builds do app.",
+      reason: translate("notifications.easProjectRequired"),
     };
   }
 

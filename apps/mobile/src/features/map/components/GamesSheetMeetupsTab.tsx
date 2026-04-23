@@ -16,10 +16,12 @@ import {
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { VirtualizedListBoundary } from "@/components/VirtualizedListBoundary";
 import {
+  formatMeetupSortLabel,
   MeetupSortMenuPanel,
   type MeetupSortOption,
 } from "@/features/map/components/MeetupSortMenuModal";
 import type { MeetupSortMode } from "@/features/map/mapHelpers";
+import { useTranslation } from "@/i18n";
 import type { MeetupPost, MeetupStatus } from "@/types/domain";
 import { palette, radius, spacing } from "@/theme/tokens";
 
@@ -135,11 +137,11 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
   onConsumedExternalDetailRequest = () => {},
   resolveMeetupById,
 }: GamesSheetMeetupsTabProps<Item>) {
+  const { t } = useTranslation();
   const [routeStack, setRouteStack] = useState<MeetupRoute[]>([]);
   const onOpenManageMeetupRef = useRef(onOpenManageMeetup);
   onOpenManageMeetupRef.current = onOpenManageMeetup;
-  const currentSortLabel =
-    sortOptions.find((option) => option.value === sortMode)?.label ?? "Mais perto";
+  const currentSortLabel = formatMeetupSortLabel(sortMode, t);
 
   const visibleGroups = useMemo(
     () => groups.filter((group) => group.meetups.length > 0),
@@ -333,7 +335,7 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
               <View style={styles.sortRow}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Ordenar jogos"
+                  accessibilityLabel={t("map.sortGames")}
                   onPress={onToggleSortMenu}
                   style={({ pressed }) => [
                     styles.sortButton,
@@ -398,7 +400,10 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
                       />
                     }
                     label={group.label}
-                    subtitle={`${group.meetups.length} visíve${group.meetups.length === 1 ? "l" : "is"}`}
+                    subtitle={t("common.visibleCount", {
+                      count: group.meetups.length,
+                      suffix: group.meetups.length === 1 ? "l" : "is",
+                    })}
                     trailingValue={String(group.meetups.length)}
                     onPress={() => pushGroupRoute(group.id)}
                     separator={index > 0}
@@ -428,7 +433,10 @@ export function GamesSheetMeetupsTab<Item extends GamesSheetMeetupListItem>({
     ...routeStack.map((route) => {
       const group = visibleGroups.find((item) => item.id === route.groupId);
       const groupCount = group?.meetups.length ?? 0;
-      const groupSubtitle = `${groupCount} visíve${groupCount === 1 ? "l" : "is"}`;
+      const groupSubtitle = t("common.visibleCount", {
+        count: groupCount,
+        suffix: groupCount === 1 ? "l" : "is",
+      });
 
       if (route.type === "group") {
         return {

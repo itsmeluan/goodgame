@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 
+import { translate } from "@/i18n";
 import type { MapCoordinate } from "@/types/domain";
 
 export async function ensureForegroundLocationPermission() {
@@ -10,7 +11,7 @@ export async function ensureForegroundLocationPermission() {
   }
 
   if (permission.status !== "granted") {
-    throw new Error("Permita o acesso à localização para usar essa função.");
+    throw new Error(translate("location.permissionRequired"));
   }
 
   return permission;

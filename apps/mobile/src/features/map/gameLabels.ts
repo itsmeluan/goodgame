@@ -20,7 +20,7 @@ export const GAME_SLUG_TO_FILTER_LABEL: Record<string, string> = {
 
 export type MeetupMarkerVisualKind = "magic" | "board" | "yugioh" | "pokemon";
 
-function inferCatalogGameSlugFromFormatName(formatName: string): string | null {
+export function inferCatalogGameSlugFromFormatName(formatName: string): string | null {
   const n = formatName.toLowerCase();
   if (n.includes("pokémon tcg") || n.includes("pokemon tcg")) {
     return GAME_SLUG.pokemon;
@@ -141,4 +141,18 @@ export function slugifyGameLabel(label: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
+}
+
+/**
+ * Translates internal game label strings that are locale-dependent
+ * ("Tabuleiro", "Comunidade") into the active locale. Proper nouns
+ * (Magic, Yu-Gi-Oh!, Pokémon TCG) are returned unchanged.
+ */
+export function localizeGameLabel(
+  label: string,
+  t: (key: "map.gameLabelBoard" | "map.gameLabelCommunity") => string
+): string {
+  if (label === "Tabuleiro") return t("map.gameLabelBoard");
+  if (label === "Comunidade") return t("map.gameLabelCommunity");
+  return label;
 }

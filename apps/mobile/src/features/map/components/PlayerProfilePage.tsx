@@ -4,6 +4,7 @@ import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { GlassCard } from "@/components/GlassCard";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { PublicPlayerProfileScreen } from "@/features/profile/PublicPlayerProfileScreen";
+import { useTranslation } from "@/i18n";
 import type { FriendActionCandidate } from "@/features/map/friendTypes";
 import { palette, spacing } from "@/theme/tokens";
 import type { PublicPlayerProfile } from "@/types/domain";
@@ -41,6 +42,8 @@ export function PlayerProfilePage({
   onBlockUser,
   onOpenPrivateChat,
 }: PlayerProfilePageProps) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.wrap}>
       <PublicPlayerProfileScreen
@@ -58,14 +61,12 @@ export function PlayerProfilePage({
                   intensity="clear"
                   style={styles.safetyCardSurface}
                 />
-                <Text style={styles.safetyTitle}>Segurança</Text>
-                <Text style={styles.safetyBody}>
-                  Se algo te incomodou, você pode denunciar ou bloquear este jogador.
-                </Text>
+                <Text style={styles.safetyTitle}>{t("safety.title")}</Text>
+                <Text style={styles.safetyBody}>{t("safety.body")}</Text>
                 <View style={styles.dualActions}>
                   <View style={styles.rowActionCell}>
                     <PrimaryButton
-                      label="Denunciar"
+                      label={t("safety.report")}
                       onPress={() => onReportUser(profile)}
                       tone="dangerGhost"
                       size="compact"
@@ -74,7 +75,7 @@ export function PlayerProfilePage({
                   </View>
                   <View style={styles.rowActionCell}>
                     <PrimaryButton
-                      label="Bloquear"
+                      label={t("safety.block")}
                       onPress={() => onBlockUser(profile)}
                       tone="ghost"
                       size="compact"
@@ -86,7 +87,7 @@ export function PlayerProfilePage({
 
               {profile.relationshipState === "none" ? (
                 <PrimaryButton
-                  label="Adicionar amigo"
+                  label={t("safety.sendFriendRequest")}
                   onPress={() =>
                     onSendFriendRequest({
                       userId: profile.userId,
@@ -106,7 +107,7 @@ export function PlayerProfilePage({
                 <View style={styles.dualActions}>
                   <View style={styles.rowActionCell}>
                     <PrimaryButton
-                      label="Recusar"
+                      label={t("safety.reject")}
                       onPress={() =>
                         onRespondToFriendRequest(incomingRequestFriendshipId, false, {
                           userId: profile.userId,
@@ -126,7 +127,7 @@ export function PlayerProfilePage({
                   </View>
                   <View style={styles.rowActionCell}>
                     <PrimaryButton
-                      label="Aceitar"
+                      label={t("common.accept")}
                       onPress={() =>
                         onRespondToFriendRequest(incomingRequestFriendshipId, true, {
                           userId: profile.userId,
@@ -146,14 +147,14 @@ export function PlayerProfilePage({
                 </View>
               ) : profile.relationshipState === "friend" ? (
                 <PrimaryButton
-                  label="Remover amigo"
+                  label={t("safety.removeFriend")}
                   onPress={() => onRemoveFriend(profile.userId)}
                   tone="ghost"
                   loading={friendActionId === profile.userId}
                 />
               ) : (
                 <PrimaryButton
-                  label="Cancelar convite"
+                  label={t("safety.cancelInvite")}
                   onPress={() => onRemoveFriend(profile.userId)}
                   tone="ghost"
                   loading={friendActionId === profile.userId}

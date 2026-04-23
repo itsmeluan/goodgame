@@ -1,4 +1,5 @@
 import { inferGameLabelsFromVenue } from "@/features/map/gameLabels";
+import { translate } from "@/i18n";
 import { formatCompactAddress, formatDistanceKm } from "@/lib/formatting";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 import type { VenueCard, VenueKind } from "@/types/domain";
@@ -93,7 +94,7 @@ export function VenueSheetCardContainer({
       distanceLabel={distanceLabel}
       venueGameLabels={venueGameLabels}
       locationLabel={
-        formatCompactAddress(venue.address) || venue.neighborhood || "Sem endereço informado"
+        formatCompactAddress(venue.address) || venue.neighborhood || translate("venue.noAddress")
       }
       updatingVenue={updatingVenueId === venue.id}
       deletingVenue={deletingEntityId === venue.id}

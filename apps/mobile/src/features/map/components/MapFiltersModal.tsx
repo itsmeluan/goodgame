@@ -17,6 +17,7 @@ import type {
   MapEntityFilter,
   PeriodFilter,
 } from "@/features/map/mapFilters";
+import { useTranslation } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 
 type FilterFormat = {
@@ -126,6 +127,8 @@ export function MapFiltersModal({
   onUseFilterDate,
   onClose,
 }: MapFiltersModalProps) {
+  const { t } = useTranslation();
+
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <View style={styles.modalLayer}>
@@ -145,7 +148,7 @@ export function MapFiltersModal({
           >
             <MapCircleActionButton
               icon="close"
-              accessibilityLabel="Fechar filtros"
+              accessibilityLabel={t("map.closeFilters")}
               onPress={onClose}
             />
           </View>
@@ -166,9 +169,12 @@ export function MapFiltersModal({
               <View style={styles.filterHeaderSection}>
                 <View style={styles.overlayHeader}>
                   <View>
-                    <Text style={styles.overlayTitle}>Filtros</Text>
+                    <Text style={styles.overlayTitle}>{t("map.filterTitle")}</Text>
                     <Text style={styles.overlaySubtitle}>
-                      {filteredMeetupCount} partidas · {filteredVenueCount} locais
+                      {t("map.filterSummary", {
+                        meetups: filteredMeetupCount,
+                        venues: filteredVenueCount,
+                      })}
                     </Text>
                   </View>
                 </View>
@@ -182,12 +188,12 @@ export function MapFiltersModal({
                 alwaysBounceVertical={false}
                 overScrollMode="never"
               >
-                <SectionBlock title="Mostrar no mapa">
+                <SectionBlock title={t("map.filterShowOnMap")}>
                   <HorizontalChipRail>
-                    {entityFilterOptions.map(([value, label]) => (
+                    {entityFilterOptions.map(([value]) => (
                       <ChoiceChip
                         key={value}
-                        label={label}
+                        label={formatEntityFilterLabel(value, t)}
                         selected={entityFilters.includes(value)}
                         onPress={() => onToggleEntityFilter(value)}
                       />
@@ -195,7 +201,7 @@ export function MapFiltersModal({
                   </HorizontalChipRail>
                 </SectionBlock>
 
-                <SectionBlock title="Tipo de jogo">
+                <SectionBlock title={t("map.filterGameType")}>
                   <HorizontalChipRail>
                     {venueGameOptions.map((game) => (
                       <ChoiceChip
@@ -209,7 +215,7 @@ export function MapFiltersModal({
                 </SectionBlock>
 
                 {visibleFormatGroups.length ? (
-                  <SectionBlock title="Formato">
+                  <SectionBlock title={t("map.filterFormat")}>
                     {visibleFormatGroups.map((group) => (
                       <GroupedSectionContent key={group.id} compact style={styles.filterFormatGroupWrap}>
                         <View style={styles.filterFormatGroup}>
@@ -231,7 +237,7 @@ export function MapFiltersModal({
                 ) : null}
 
                 {filterDetailSections.length ? (
-                  <SectionBlock title="Detalhes do formato">
+                  <SectionBlock title={t("map.filterFormatDetails")}>
                     {filterDetailSections.map((section) => (
                       <FormatDetailTagBlock
                         key={section.kind}
@@ -243,12 +249,12 @@ export function MapFiltersModal({
                   </SectionBlock>
                 ) : null}
 
-                <SectionBlock title="Distância">
+                <SectionBlock title={t("map.filterDistance")}>
                   <HorizontalChipRail>
-                    {distanceOptions.map(([value, label]) => (
+                    {distanceOptions.map(([value]) => (
                       <ChoiceChip
                         key={String(value)}
-                        label={label}
+                        label={formatDistanceFilterLabel(value, t)}
                         selected={distanceFilter === value}
                         onPress={() => onSelectDistanceFilter(value)}
                       />
@@ -256,7 +262,7 @@ export function MapFiltersModal({
                   </HorizontalChipRail>
                 </SectionBlock>
 
-                <SectionBlock title="Quando">
+                <SectionBlock title={t("map.filterWhen")}>
                   <View style={styles.scheduleStrip}>
                     <AppleGlassSurface
                       pointerEvents="none"
@@ -266,7 +272,7 @@ export function MapFiltersModal({
                     />
                     <Pressable
                       accessibilityRole="button"
-                      accessibilityLabel="Alterar intervalo de datas do filtro"
+                      accessibilityLabel={t("map.filterChangeDateRange")}
                       onPress={() => {
                         triggerHaptic("selection");
                         onOpenDatePicker();
@@ -277,7 +283,7 @@ export function MapFiltersModal({
                         pressed ? styles.scheduleStripPressed : null,
                       ]}
                     >
-                      <Text style={styles.scheduleStripLabel}>Data</Text>
+                      <Text style={styles.scheduleStripLabel}>{t("common.date")}</Text>
                       <Text style={styles.scheduleStripValue} numberOfLines={1}>
                         {filterDateSummary}
                       </Text>
@@ -285,13 +291,13 @@ export function MapFiltersModal({
                   </View>
                 </SectionBlock>
 
-                <SectionBlock title="Períodos">
+                <SectionBlock title={t("map.filterPeriods")}>
                   <HorizontalChipRail>
-                    <ChoiceChip label="Todos" selected={periodFilters.length === 0} onPress={onClearPeriods} />
-                    {periodOptions.map(([value, label]) => (
+                    <ChoiceChip label={t("map.filterAllPeriods")} selected={periodFilters.length === 0} onPress={onClearPeriods} />
+                    {periodOptions.map(([value]) => (
                       <ChoiceChip
                         key={value}
-                        label={label}
+                        label={formatPeriodFilterLabel(value, t)}
                         selected={periodFilters.includes(value)}
                         onPress={() => onTogglePeriodFilter(value)}
                       />
@@ -305,10 +311,10 @@ export function MapFiltersModal({
                 <View style={styles.filterFooterActions}>
                   <View style={styles.rowActions}>
                     <View style={styles.rowActionCell}>
-                      <PrimaryButton label="Limpar" onPress={onResetFilters} tone="ghost" />
+                      <PrimaryButton label={t("common.clear")} onPress={onResetFilters} tone="ghost" />
                     </View>
                     <View style={styles.rowActionCell}>
-                      <PrimaryButton label="Aplicar" onPress={onApplyFilters} />
+                      <PrimaryButton label={t("common.apply")} onPress={onApplyFilters} />
                     </View>
                   </View>
                 </View>
@@ -331,10 +337,10 @@ export function MapFiltersModal({
                 footer={
                   <View style={styles.rowActions}>
                     <View style={styles.rowActionCell}>
-                      <PrimaryButton label="Limpar" onPress={onClearFilterDate} tone="ghost" />
+                      <PrimaryButton label={t("common.clear")} onPress={onClearFilterDate} tone="ghost" />
                     </View>
                     <View style={styles.rowActionCell}>
-                      <PrimaryButton label="Aplicar" onPress={onUseFilterDate} />
+                      <PrimaryButton label={t("common.apply")} onPress={onUseFilterDate} />
                     </View>
                   </View>
                 }
@@ -371,6 +377,57 @@ function SectionBlock({
       {children}
     </View>
   );
+}
+
+function formatEntityFilterLabel(
+  value: MapEntityFilter,
+  t: (key: "map.entityMeetups" | "map.entityVenues") => string
+) {
+  return value === "venues" ? t("map.entityVenues") : t("map.entityMeetups");
+}
+
+function formatDistanceFilterLabel(
+  value: DistanceFilter,
+  t: (
+    key:
+      | "map.distanceAny"
+      | "map.distance2"
+      | "map.distance5"
+      | "map.distance10"
+      | "map.distance25"
+  ) => string
+) {
+  if (value === 2) {
+    return t("map.distance2");
+  }
+  if (value === 5) {
+    return t("map.distance5");
+  }
+  if (value === 10) {
+    return t("map.distance10");
+  }
+  if (value === 25) {
+    return t("map.distance25");
+  }
+  return t("map.distanceAny");
+}
+
+function formatPeriodFilterLabel(
+  value: PeriodFilter,
+  t: (
+    key:
+      | "format.period.morning"
+      | "format.period.afternoon"
+      | "format.period.night"
+  ) => string
+) {
+  if (value === "afternoon") {
+    return t("format.period.afternoon");
+  }
+  if (value === "night") {
+    return t("format.period.night");
+  }
+  return t("format.period.morning");
 }
 
 const styles = StyleSheet.create({

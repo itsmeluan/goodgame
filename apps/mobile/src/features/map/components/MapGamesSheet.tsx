@@ -13,6 +13,7 @@ import { GamesSheetVenuesTab } from "@/features/map/components/GamesSheetVenuesT
 import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import type { MeetupSortMode } from "@/features/map/mapHelpers";
 import { styles } from "@/features/map/MapHomeScreen.styles";
+import { useTranslation } from "@/i18n";
 import { screenEdgeGlassBleed } from "@/theme/tokens";
 
 type ScreenSection = "meetups" | "venues";
@@ -143,6 +144,7 @@ export function MapGamesSheet<
   onConsumedExternalVenueDetailRequest = () => {},
   resolveVenueById,
 }: MapGamesSheetProps<MeetupItem, VenueItem>) {
+  const { t } = useTranslation();
   const [sheetWidth, setSheetWidth] = useState(0);
   const { width: windowWidth } = useWindowDimensions();
 
@@ -235,8 +237,8 @@ export function MapGamesSheet<
               resolveMeetupById={resolveMeetupById}
               emptyState={
                 <MapEmptyCard
-                  title="Nenhum jogo encontrado"
-                  body="Ajuste os filtros para ampliar a busca."
+                  title={t("map.emptyMeetupsTitle")}
+                  body={t("map.emptyMeetupsBody")}
                 />
               }
             />
@@ -259,8 +261,8 @@ export function MapGamesSheet<
               resolveVenueById={resolveVenueById}
               emptyState={
                 <MapEmptyCard
-                  title="Nenhum local encontrado"
-                  body="Tente abrir os filtros e ampliar o raio da busca."
+                  title={t("map.emptyVenuesTitle")}
+                  body={t("map.emptyVenuesBody")}
                 />
               }
             />

@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native";
 
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { PublicPlayerProfileScreen } from "@/features/profile/PublicPlayerProfileScreen";
+import { translate, useTranslation } from "@/i18n";
 import { getPublicPlayerProfile } from "@/lib/api";
 import type { PlayerProfile, PublicPlayerProfile } from "@/types/domain";
 
@@ -16,6 +17,7 @@ type AccountOwnPublicProfileSceneProps = {
  * Sem bloco de segurança/amigos; só o CTA de edição no fim.
  */
 export function AccountOwnPublicProfileScene({ profile, onEditProfile }: AccountOwnPublicProfileSceneProps) {
+  const { t } = useTranslation();
   const [publicProfile, setPublicProfile] = useState<PublicPlayerProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +54,7 @@ export function AccountOwnPublicProfileScene({ profile, onEditProfile }: Account
           setError(
             fetchError && typeof fetchError === "object" && "message" in fetchError
               ? String((fetchError as { message?: string }).message)
-              : "Não foi possível carregar o perfil público."
+              : translate("account.publicProfileError")
           );
         }
       })
@@ -76,7 +78,7 @@ export function AccountOwnPublicProfileScene({ profile, onEditProfile }: Account
         actions={
           publicProfile ? (
             <View style={styles.actions}>
-              <PrimaryButton label="Editar perfil e foto" onPress={onEditProfile} />
+              <PrimaryButton label={t("account.editProfileAndPhoto")} onPress={onEditProfile} />
             </View>
           ) : null
         }

@@ -14,13 +14,14 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { useTranslation, type TranslationKey } from "@/i18n";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 
 const BENEFITS = [
-  "Veja todos os jogadores próximos",
-  "Encontre partidas mais rápido",
-  "Tenha prioridade na comunidade (em breve)",
+  "pro.benefitNearbyPlayers",
+  "pro.benefitFindGames",
+  "pro.benefitCommunityPriority",
 ] as const;
 
 type ProPlayerPaywallModalProps = {
@@ -36,6 +37,7 @@ export function ProPlayerPaywallModal({
   onStartTrial,
   startingTrial,
 }: ProPlayerPaywallModalProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const opacity = useRef(new Animated.Value(0)).current;
@@ -104,17 +106,15 @@ export function ProPlayerPaywallModal({
                 },
               ]}
             >
-              <Text style={styles.kicker}>Pro Player</Text>
-              <Text style={styles.title}>Jogue mais. Encontre jogadores mais rápido.</Text>
-              <Text style={styles.subtitle}>
-                Torne-se Pro Player e desbloqueie toda a comunidade ao seu redor.
-              </Text>
+              <Text style={styles.kicker}>{t("pro.kicker")}</Text>
+              <Text style={styles.title}>{t("pro.title")}</Text>
+              <Text style={styles.subtitle}>{t("pro.subtitle")}</Text>
 
               <View style={styles.benefits}>
                 {BENEFITS.map((line) => (
                   <View key={line} style={styles.benefitRow}>
                     <View style={styles.benefitDot} />
-                    <Text style={styles.benefitText}>{line}</Text>
+                    <Text style={styles.benefitText}>{t(line as TranslationKey)}</Text>
                   </View>
                 ))}
               </View>
@@ -135,10 +135,10 @@ export function ProPlayerPaywallModal({
                 {startingTrial ? (
                   <LoadingSpinner size={20} color={palette.ink} />
                 ) : (
-                  <Text style={styles.primaryLabel}>Iniciar teste grátis de 7 dias</Text>
+                  <Text style={styles.primaryLabel}>{t("pro.ctaTrial")}</Text>
                 )}
               </Pressable>
-              <Text style={styles.priceHint}>Depois R$14,90/mês. Cancele a qualquer momento.</Text>
+              <Text style={styles.priceHint}>{t("pro.priceHint")}</Text>
 
               <Pressable
                 accessibilityRole="button"
@@ -148,7 +148,7 @@ export function ProPlayerPaywallModal({
                 }}
                 style={styles.secondary}
               >
-                <Text style={styles.secondaryLabel}>Talvez depois</Text>
+                <Text style={styles.secondaryLabel}>{t("pro.maybeLater")}</Text>
               </Pressable>
             </ScrollView>
           </View>

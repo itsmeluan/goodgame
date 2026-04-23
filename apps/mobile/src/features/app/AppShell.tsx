@@ -38,6 +38,7 @@ import { appInfo } from "@/lib/appInfo";
 import { clearMonitoringUser, setMonitoringUser } from "@/lib/monitoring";
 import { registerForPushNotificationsAsync } from "@/lib/notifications";
 import { trackProductEvent } from "@/lib/productAnalytics";
+import { I18nProvider, useTranslation } from "@/i18n";
 import {
   clearPendingAppNewsMapOverlayAfterSignIn,
   requestAppNewsMapOverlayAfterSignIn,
@@ -51,6 +52,15 @@ import type { CatalogFormat, CatalogGame, LegalDocument, PlayerProfile } from "@
 LogBox.ignoreLogs(["Deep imports from the 'react-native' package are deprecated"]);
 
 export function AppShell() {
+  return (
+    <I18nProvider>
+      <AppShellContent />
+    </I18nProvider>
+  );
+}
+
+function AppShellContent() {
+  const { t } = useTranslation();
   const [booting, setBooting] = useState(true);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
@@ -367,7 +377,7 @@ export function AppShell() {
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.loadingState}>
               <LoadingSpinner size={42} />
-              <Text style={styles.loadingText}>Conectando sua sessão e preparando o app...</Text>
+              <Text style={styles.loadingText}>{t("app.loading")}</Text>
             </View>
           </SafeAreaView>
         ) : !session ? (

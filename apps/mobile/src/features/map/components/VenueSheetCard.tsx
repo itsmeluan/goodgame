@@ -7,6 +7,7 @@ import { ChoiceChip } from "@/components/ChoiceChip";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { TextField } from "@/components/TextField";
 import { AddressAutocompleteField } from "@/features/map/components/AddressAutocompleteField";
+import { useTranslation } from "@/i18n";
 import { formatVenueKind } from "@/lib/formatting";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, spacing } from "@/theme/tokens";
@@ -93,6 +94,7 @@ export function VenueSheetCard({
   onSaveVenueEdits,
   onPromptDeleteVenue,
 }: VenueSheetCardProps) {
+  const { t } = useTranslation();
   const ownerLine = `${venue.ownerDisplayName}${distanceLabel ? ` · ${distanceLabel}` : ""}`;
   const pageIntro = useRef(new Animated.Value(1)).current;
 
@@ -127,21 +129,21 @@ export function VenueSheetCard({
       <View style={[styles.listCard, selected ? styles.listCardSelected : null]}>
         <Animated.View style={[styles.page, pageMotionStyle]}>
           <View style={styles.leadCompact}>
-            <Text style={styles.eyebrow}>Editar local</Text>
+            <Text style={styles.eyebrow}>{t("venue.edit")}</Text>
             <Text style={styles.titleCompact}>{venue.name}</Text>
-            <Text style={styles.supportText}>Atualize nome, endereço e categorias do local.</Text>
+            <Text style={styles.supportText}>{t("venue.editSupport")}</Text>
           </View>
 
           <View style={styles.formBlock}>
             <TextField
-              label="Nome do local"
+              label={t("venue.name")}
               labelTone="light"
               value={manageVenueName}
               onChangeText={onManageVenueNameChange}
-              placeholder="Ex.: Loja da Galera"
+              placeholder={t("venue.namePlaceholder")}
             />
             <AddressAutocompleteField
-              label="Endereço"
+              label={t("venue.address")}
               labelTone="light"
               value={manageVenueAddressQuery}
               focused={manageVenueAddressFocused}
@@ -152,25 +154,25 @@ export function VenueSheetCard({
               onUseCurrentLocation={onManageVenueAddressUseCurrentLocation}
               onUseTypedAddress={onManageVenueAddressUseTyped}
               onSelectSuggestion={onManageVenueAddressSelect}
-              placeholder="Digite rua, avenida ou nome do lugar"
+              placeholder={t("venue.searchAddressPlaceholder")}
             />
             <TextField
-              label="Detalhes"
+              label={t("common.details")}
               labelTone="light"
               value={manageVenueDetails}
               onChangeText={onManageVenueDetailsChange}
-              placeholder="Partidas, horários, consumo mínimo"
+              placeholder={t("venue.detailsPlaceholder")}
               multiline
             />
           </View>
 
           <View style={styles.block}>
-            <Text style={styles.blockLabel}>Tipo de local</Text>
+            <Text style={styles.blockLabel}>{t("venue.type")}</Text>
             <View style={styles.chipWrap}>
-              {venueKindOptions.map(([kind, label]) => (
+              {venueKindOptions.map(([kind]) => (
                 <ChoiceChip
                   key={`manage-venue-kind-${kind}`}
-                  label={label}
+                  label={formatVenueKind(kind)}
                   selected={manageVenueKind === kind}
                   onPress={() => onSelectManageVenueKind(kind)}
                 />
@@ -179,7 +181,7 @@ export function VenueSheetCard({
           </View>
 
           <View style={styles.block}>
-            <Text style={styles.blockLabel}>Jogos</Text>
+            <Text style={styles.blockLabel}>{t("common.games")}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -199,7 +201,7 @@ export function VenueSheetCard({
           <View style={styles.manageActionsRow}>
             <View style={styles.manageActionCell}>
               <PrimaryButton
-                label="Excluir"
+                label={t("common.delete")}
                 tone="danger"
                 onPress={onPromptDeleteVenue}
                 loading={deletingVenue}
@@ -209,7 +211,7 @@ export function VenueSheetCard({
             </View>
             <View style={styles.manageActionCell}>
               <PrimaryButton
-                label="Salvar"
+                label={t("common.save")}
                 onPress={onSaveVenueEdits}
                 loading={updatingVenue}
                 disabled={deletingVenue}
@@ -240,7 +242,7 @@ export function VenueSheetCard({
             {onShareVenue ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Compartilhar local"
+                accessibilityLabel={t("venue.share")}
                 onPress={() => {
                   triggerHaptic("selection");
                   onShareVenue();
@@ -262,7 +264,7 @@ export function VenueSheetCard({
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Ver no mapa"
+              accessibilityLabel={t("venue.viewOnMap")}
               onPress={() => {
                 triggerHaptic("selection");
                 onFocusVenueOnMap();
@@ -279,7 +281,7 @@ export function VenueSheetCard({
             {canManage ? (
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Editar local"
+                accessibilityLabel={t("venue.edit")}
                 onPress={() => {
                   triggerHaptic("selection");
                   onToggleManage?.();
@@ -296,7 +298,7 @@ export function VenueSheetCard({
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Criar partida neste local"
+              accessibilityLabel={t("venue.createMeetupHere")}
               onPress={() => {
                 triggerHaptic("soft");
                 onCreateMeetupAtVenue();
@@ -315,7 +317,7 @@ export function VenueSheetCard({
         <AppleListGroup>
           <AppleListRow
             icon={{ iosName: "mappin.and.ellipse", fallbackName: "location-on" }}
-            label="Endereço"
+            label={t("venue.address")}
             subtitle={locationLabel}
             showChevron={false}
             size="compact"
@@ -323,7 +325,7 @@ export function VenueSheetCard({
           <AppleListRow
             separator
             icon={{ iosName: "figure.stand", fallbackName: "person" }}
-            label="Indicado por"
+            label={t("venue.indicatedBy")}
             subtitle={ownerLine}
             showChevron={false}
             size="compact"
@@ -331,7 +333,7 @@ export function VenueSheetCard({
           <AppleListRow
             separator
             icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
-            label="Tipo de local"
+            label={t("venue.type")}
             subtitle={formatVenueKind(venue.kind)}
             showChevron={false}
             size="compact"
@@ -339,8 +341,8 @@ export function VenueSheetCard({
           <AppleListRow
             separator
             icon={{ iosName: "square.grid.2x2.fill", fallbackName: "grid-view" }}
-            label="Jogos"
-            subtitle={venueGameLabels.join(" · ") || "Comunidade"}
+            label={t("common.games")}
+            subtitle={venueGameLabels.join(" · ") || t("venue.community")}
             showChevron={false}
             size="compact"
           />
@@ -348,7 +350,7 @@ export function VenueSheetCard({
 
         {venue.details?.trim() ? (
           <View style={styles.noteBlock}>
-            <Text style={styles.noteLabel}>Detalhes</Text>
+            <Text style={styles.noteLabel}>{t("common.details")}</Text>
             <Text style={styles.description}>{venue.details.trim()}</Text>
           </View>
         ) : null}

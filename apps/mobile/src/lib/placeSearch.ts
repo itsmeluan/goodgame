@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 
+import { getCurrentLocale, translate } from "@/i18n";
 import { env } from "@/lib/env";
 
 export type AddressSuggestion = {
@@ -298,7 +299,7 @@ async function fetchMapboxStructuredVariant(
   );
 
   if (!response.ok) {
-    throw new Error("Não foi possível buscar o endereço exato agora.");
+    throw new Error(translate("address.exactSearchError"));
   }
 
   const data = (await response.json()) as MapboxGeocodingResponse;
@@ -322,7 +323,7 @@ async function fetchMapboxTextVariant(
   );
 
   if (!response.ok) {
-    throw new Error("Não foi possível buscar endereços agora.");
+    throw new Error(translate("address.searchError"));
   }
 
   const data = (await response.json()) as MapboxGeocodingResponse;
@@ -401,7 +402,7 @@ function mapMapboxFeatureToRow(
     feature.properties?.name ||
     feature.text ||
     feature.properties?.full_address ||
-    "Endereço";
+    translate("address.defaultTitle");
   const displayName =
     feature.properties?.full_address ||
     [
@@ -559,13 +560,13 @@ async function fetchNominatimVariant(
   const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`, {
     headers: {
       Accept: "application/json",
-      "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.7",
+      "Accept-Language": getCurrentLocale() === "pt-BR" ? "pt-BR,pt;q=0.9,en;q=0.7" : "en-US,en;q=0.9,pt;q=0.7",
       "User-Agent": "GoodGameMobile/0.1",
     },
   });
 
   if (!response.ok) {
-    throw new Error("Não foi possível buscar endereços agora.");
+    throw new Error(translate("address.searchError"));
   }
 
   const rows = (await response.json()) as AddressSearchRow[];
@@ -593,7 +594,7 @@ function mapRowsToSuggestions(
         row.name?.trim() ||
         [row.address?.road, row.address?.house_number].filter(Boolean).join(", ") ||
         row.display_name.split(",")[0]?.trim() ||
-        "Endereço";
+        translate("address.defaultTitle");
       const subtitle = [
         row.address?.suburb,
         row.address?.city ?? row.address?.town,

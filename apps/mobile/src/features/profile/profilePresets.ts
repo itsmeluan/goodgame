@@ -1,13 +1,14 @@
+import type { TranslationKey } from "@/i18n";
 import type { AvailabilitySlot } from "@/types/domain";
 
 export const availabilityPresets: {
   id: string;
-  label: string;
+  labelKey: TranslationKey;
   slots: AvailabilitySlot[];
 }[] = [
   {
     id: "weekday-evening",
-    label: "Seg a sex 19:00-23:00",
+    labelKey: "profileSetup.presetWeekdayEvening",
     slots: [1, 2, 3, 4, 5].map((weekday) => ({
       weekday,
       start_time: "19:00",
@@ -17,7 +18,7 @@ export const availabilityPresets: {
   },
   {
     id: "wednesday-night",
-    label: "Qua 19:00-22:30",
+    labelKey: "profileSetup.presetWednesdayNight",
     slots: [
       {
         weekday: 3,
@@ -29,7 +30,7 @@ export const availabilityPresets: {
   },
   {
     id: "saturday-afternoon",
-    label: "Sab 14:00-20:00",
+    labelKey: "profileSetup.presetSaturdayAfternoon",
     slots: [
       {
         weekday: 6,
@@ -41,7 +42,7 @@ export const availabilityPresets: {
   },
   {
     id: "sunday-afternoon",
-    label: "Dom 14:00-20:00",
+    labelKey: "profileSetup.presetSundayAfternoon",
     slots: [
       {
         weekday: 0,

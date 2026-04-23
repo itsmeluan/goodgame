@@ -8,7 +8,6 @@ import { toMessage } from "@/features/map/mapHelpers";
 type UseMapNotificationActionsParams = {
   notifications: InAppNotification[];
   effectiveNotifications: InAppNotification[];
-  demoFallbackNotifications: InAppNotification[];
   setNotifications: Dispatch<SetStateAction<InAppNotification[]>>;
   setDemoNotifications: Dispatch<SetStateAction<InAppNotification[]>>;
   setLastNotificationSyncAt: Dispatch<SetStateAction<Date | null>>;
@@ -24,7 +23,6 @@ type UseMapNotificationActionsParams = {
 export function useMapNotificationActions({
   notifications,
   effectiveNotifications,
-  demoFallbackNotifications,
   setNotifications,
   setDemoNotifications,
   setLastNotificationSyncAt,
@@ -67,9 +65,7 @@ export function useMapNotificationActions({
           );
 
         if (notifications.length === 0) {
-          setDemoNotifications((current) =>
-            markRead(current.length ? current : demoFallbackNotifications)
-          );
+          setDemoNotifications((current) => markRead(current));
         } else {
           setNotifications((current) => markRead(current));
         }
@@ -82,7 +78,6 @@ export function useMapNotificationActions({
       }
     },
     [
-      demoFallbackNotifications,
       effectiveNotifications,
       notifications.length,
       setDemoNotifications,

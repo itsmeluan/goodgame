@@ -1,4 +1,4 @@
-import { inferGameLabelsFromVenue, inferGameNameFromMeetup } from "@/features/map/gameLabels";
+import { inferCatalogGameSlugFromFormatName, resolveCatalogGameSlugForMeetup } from "@/features/map/gameLabels";
 import { calculateDistanceKm } from "@/lib/formatting";
 import {
   isNonEmptyDetailTagFilter,
@@ -14,7 +14,8 @@ export type PeriodFilter = "morning" | "afternoon" | "night";
 export type MapEntityFilter = "meetups" | "venues";
 
 type FilterOptions = {
-  gameTypes: string[];
+  /** Game slugs to filter by (e.g. "magic-the-gathering"). Empty = no filter. */
+  gameSlugs: string[];
   formatNames: string[];
   userLat: number | null;
   userLng: number | null;
@@ -33,10 +34,10 @@ export function filterMeetups(
   }
 ) {
   return meetups.filter((meetup) => {
-    if (options.gameTypes.length) {
-      const gameType = inferGameNameFromMeetup(meetup);
+    if (options.gameSlugs.length) {
+      const gameSlug = resolveCatalogGameSlugForMeetup(meetup) ?? "";
 
-      if (!options.gameTypes.includes(gameType)) {
+      if (!options.gameSlugs.includes(gameSlug)) {
         return false;
       }
     }
@@ -78,10 +79,12 @@ export function filterMeetups(
 
 export function filterVenues(venues: VenueCard[], options: FilterOptions) {
   return venues.filter((venue) => {
-    if (options.gameTypes.length) {
-      const venueGameTypes = inferGameLabelsFromVenue(venue);
+    if (options.gameSlugs.length) {
+      const venueGameSlugs = venue.formats
+        .map((format) => inferCatalogGameSlugFromFormatName(format))
+        .filter((slug): slug is string => slug !== null);
 
-      if (!venueGameTypes.some((gameType) => options.gameTypes.includes(gameType))) {
+      if (!venueGameSlugs.some((slug) => options.gameSlugs.includes(slug))) {
         return false;
       }
     }

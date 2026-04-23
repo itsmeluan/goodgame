@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AppIcon } from "@/components/AppIcon";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
+import { useTranslation } from "@/i18n";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { AppNewsItem } from "@/types/domain";
@@ -26,6 +27,7 @@ type AppNewsDetailOverlayProps = {
 };
 
 export function AppNewsDetailOverlay({ visible, item, onClose }: AppNewsDetailOverlayProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
 
@@ -55,7 +57,7 @@ export function AppNewsDetailOverlay({ visible, item, onClose }: AppNewsDetailOv
       <View style={styles.root}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Fechar"
+          accessibilityLabel={t("common.close")}
           style={styles.backdropFill}
           onPress={onClose}
         />
@@ -75,7 +77,7 @@ export function AppNewsDetailOverlay({ visible, item, onClose }: AppNewsDetailOv
             <View style={styles.cardHeader}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Fechar"
+                accessibilityLabel={t("common.close")}
                 hitSlop={10}
                 onPress={() => {
                   triggerHaptic("selection");
@@ -112,7 +114,7 @@ export function AppNewsDetailOverlay({ visible, item, onClose }: AppNewsDetailOv
               {item.body.trim() ? (
                 <Text style={styles.body}>{item.body}</Text>
               ) : (
-                <Text style={styles.bodyMuted}>Sem texto adicional.</Text>
+                <Text style={styles.bodyMuted}>{t("news.emptyDetail")}</Text>
               )}
             </ScrollView>
           </View>

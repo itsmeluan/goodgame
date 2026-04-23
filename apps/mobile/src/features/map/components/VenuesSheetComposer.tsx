@@ -10,6 +10,8 @@ import { AddressAutocompleteField } from "@/features/map/components/AddressAutoc
 import { HorizontalChipRail } from "@/features/map/components/HorizontalChipRail";
 import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import { NewMeetupComposerSectionBlock } from "@/features/map/components/NewMeetupComposerPrimitives";
+import { useTranslation } from "@/i18n";
+import { formatVenueKind } from "@/lib/formatting";
 import type { AddressSuggestion } from "@/lib/placeSearch";
 import { triggerHaptic } from "@/lib/haptics";
 import { meetupSheetEdgePadding, palette, screenEdgeGlassBleed, spacing } from "@/theme/tokens";
@@ -83,6 +85,7 @@ export function VenuesSheetComposer({
   onToggleVenueGameId,
   onSubmit,
 }: VenuesSheetComposerProps) {
+  const { t } = useTranslation();
   const { width: windowWidth } = useWindowDimensions();
   const sheetWidth = windowWidth - spacing.sm * 2;
   const submitDisabled =
@@ -112,11 +115,11 @@ export function VenuesSheetComposer({
           <View style={styles.sheetDragZone}>
             <View style={styles.overlayHeader}>
               <View style={styles.overlayTitleWrap}>
-                <Text style={styles.overlayTitle}>Novo local</Text>
+                <Text style={styles.overlayTitle}>{t("venue.new")}</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Fechar sugestão de local"
+                accessibilityLabel={t("common.close")}
                 onPress={() => {
                   triggerHaptic("selection");
                   onClose();
@@ -148,15 +151,15 @@ export function VenuesSheetComposer({
           ]}
           showsVerticalScrollIndicator={false}
         >
-          <NewMeetupComposerSectionBlock title="Dados">
+          <NewMeetupComposerSectionBlock title={t("venue.data")}>
             <TextField
-              label="Nome do local"
+              label={t("venue.name")}
               value={name}
               onChangeText={onChangeName}
-              placeholder="Ex.: Loja da Galera"
+              placeholder={t("venue.namePlaceholder")}
             />
             <AddressAutocompleteField
-              label="Endereço"
+              label={t("venue.address")}
               value={addressQuery}
               focused={addressFocused}
               onFocusChange={onChangeAddressFocused}
@@ -166,23 +169,23 @@ export function VenuesSheetComposer({
               onUseCurrentLocation={onUseCurrentLocation}
               onUseTypedAddress={onUseTypedAddress}
               onSelectSuggestion={onSelectAddressSuggestion}
-              placeholder="Digite rua, avenida ou nome do lugar"
+              placeholder={t("venue.searchAddressPlaceholder")}
             />
             <TextField
-              label="Detalhes"
+              label={t("common.details")}
               value={details}
               onChangeText={onChangeDetails}
-              placeholder="Partidas, horários, consumo mínimo"
+              placeholder={t("venue.detailsPlaceholder")}
               multiline
             />
           </NewMeetupComposerSectionBlock>
 
-          <NewMeetupComposerSectionBlock title="Tipo de local">
+          <NewMeetupComposerSectionBlock title={t("venue.type")}>
             <HorizontalChipRail>
-              {venueKindOptions.map(([kind, label]) => (
+              {venueKindOptions.map(([kind]) => (
                 <ChoiceChip
                   key={kind}
-                  label={label}
+                  label={formatVenueKind(kind)}
                   selected={selectedVenueKind === kind}
                   onPress={() => onSelectVenueKind(kind)}
                 />
@@ -190,7 +193,7 @@ export function VenuesSheetComposer({
             </HorizontalChipRail>
           </NewMeetupComposerSectionBlock>
 
-          <NewMeetupComposerSectionBlock title="Jogos">
+          <NewMeetupComposerSectionBlock title={t("common.games")}>
             <HorizontalChipRail>
               {venueGameOptions.map((game) => (
                 <ChoiceChip
@@ -208,11 +211,11 @@ export function VenuesSheetComposer({
 
         <View style={[styles.footerBar, { paddingBottom: spacing.lg + bottomInset }]}>
           <View style={styles.footerButtonCell}>
-            <PrimaryButton label="Cancelar" onPress={onClose} tone="ghost" />
+            <PrimaryButton label={t("common.cancel")} onPress={onClose} tone="ghost" />
           </View>
           <View style={styles.footerButtonCell}>
             <PrimaryButton
-              label="Enviar sugestão"
+              label={t("venue.submitSuggestion")}
               onPress={onSubmit}
               loading={submitting}
               disabled={submitDisabled}

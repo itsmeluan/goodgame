@@ -99,7 +99,7 @@ android {
         applicationId 'com.martinsluan.goodgame'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8
+        versionCode 9
         versionName "1.1.0"
 
         manifestPlaceholders = [

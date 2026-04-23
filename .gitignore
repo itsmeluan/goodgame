@@ -10,3 +10,4 @@ coverage
 .env
 .env.local
 supabase/.temp
+site-public/dashboard/dashboard.local-config.js

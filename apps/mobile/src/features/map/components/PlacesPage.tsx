@@ -18,6 +18,7 @@ import { TextField } from "@/components/TextField";
 import { AddressAutocompleteField } from "@/features/map/components/AddressAutocompleteField";
 import { MapClosePageButton } from "@/features/map/components/MapClosePageButton";
 import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
+import { useTranslation } from "@/i18n";
 import {
   formatCompactAddress,
   formatDistanceKm,
@@ -115,6 +116,7 @@ export function PlacesPage({
   onCreateMeetupAtVenue,
   onClose,
 }: PlacesPageProps) {
+  const { t } = useTranslation();
   const [routeKeys, setRouteKeys] = useState<PlacesRouteKey[]>([]);
 
   const venuesById = useMemo(
@@ -148,9 +150,9 @@ export function PlacesPage({
         >
           <GlassCard style={styles.summaryCard}>
             <View style={styles.summaryCopy}>
-              <Text style={styles.summaryEyebrow}>Locais</Text>
+              <Text style={styles.summaryEyebrow}>{t("nav.places")}</Text>
               <Text style={styles.summaryMeta}>
-                {venues.length} visíveis · {venueSuggestions.length} envio(s) ·{" "}
+                {t("places.visibleCount", { count: venues.length })} · {t("places.submissionCount", { count: venueSuggestions.length })} ·{" "}
                 {formatSyncLabel(lastDashboardSyncAt)}
               </Text>
             </View>
@@ -162,7 +164,7 @@ export function PlacesPage({
             <AppleListGroup>
               <AppleListRow
                 icon={{ iosName: "map.fill", fallbackName: "map" }}
-                label="Locais visíveis"
+                label={t("places.visible")}
                 trailingValue={String(venues.length)}
                 onPress={() => pushRoute("venues")}
                 tone="accent"
@@ -171,14 +173,14 @@ export function PlacesPage({
               <AppleListRow
                 separator
                 icon={{ iosName: "plus.circle.fill", fallbackName: "add-circle" }}
-                label="Sugerir novo local"
+                label={t("venue.suggest")}
                 onPress={() => pushRoute("suggest")}
                 size="compact"
               />
               <AppleListRow
                 separator
                 icon={{ iosName: "clock.badge.checkmark.fill", fallbackName: "schedule" }}
-                label="Seus envios"
+                label={t("places.submissions")}
                 trailingValue={String(venueSuggestions.length)}
                 onPress={() => pushRoute("submissions")}
                 size="compact"
@@ -201,8 +203,8 @@ export function PlacesPage({
               contentContainerStyle={styles.sceneContent}
             >
               <View style={styles.sceneLead}>
-                <Text style={styles.sceneLeadTitle}>Locais visíveis</Text>
-                <Text style={styles.sceneLeadSubtitle}>{venues.length} local(is)</Text>
+                <Text style={styles.sceneLeadTitle}>{t("places.visible")}</Text>
+                <Text style={styles.sceneLeadSubtitle}>{t("places.visibleCount", { count: venues.length })}</Text>
               </View>
               {venues.length ? (
                 <AppleListGroup>
@@ -228,7 +230,7 @@ export function PlacesPage({
                           <ListRowGameListIcon
                             variant="venue"
                             size={APPLE_LIST_COMPACT_ICON_SIZE}
-                            accessibilityLabel={`Local: ${venue.name}`}
+                            accessibilityLabel={t("places.venueA11y", { name: venue.name })}
                           />
                         }
                         label={venue.name}
@@ -242,8 +244,8 @@ export function PlacesPage({
                 </AppleListGroup>
               ) : (
                 <MapEmptyCard
-                  title="Nenhum local encontrado"
-                  body="Tente abrir os filtros e aumentar a distância da busca."
+                  title={t("map.emptyVenuesTitle")}
+                  body={t("places.emptyVisibleBody")}
                 />
               )}
             </ScrollView>
@@ -261,19 +263,19 @@ export function PlacesPage({
               contentContainerStyle={styles.sceneContent}
             >
               <View style={styles.sceneLead}>
-                <Text style={styles.sceneLeadTitle}>Sugerir novo local</Text>
+                <Text style={styles.sceneLeadTitle}>{t("venue.suggest")}</Text>
                 <Text style={styles.sceneLeadSubtitle}>{formatSyncLabel(lastAccountSyncAt)}</Text>
               </View>
               <GlassCard style={styles.formCard}>
-                <AppleListSection title="Dados" size="compact">
+                <AppleListSection title={t("venue.data")} size="compact">
                   <TextField
-                    label="Nome do local"
+                    label={t("venue.name")}
                     value={venueSuggestionName}
                     onChangeText={onChangeVenueSuggestionName}
-                    placeholder="Ex.: Loja da Galera"
+                    placeholder={t("venue.namePlaceholder")}
                   />
                   <AddressAutocompleteField
-                    label="Endereço"
+                    label={t("venue.address")}
                     value={venueAddressQuery}
                     focused={venueAddressFocused}
                     onFocusChange={onChangeVenueAddressFocused}
@@ -283,23 +285,23 @@ export function PlacesPage({
                     onUseCurrentLocation={onUseCurrentLocation}
                     onUseTypedAddress={onUseTypedAddress}
                     onSelectSuggestion={onSelectAddressSuggestion}
-                    placeholder="Rua, número ou referência"
+                    placeholder={t("composer.addressPlaceholder")}
                   />
                   <TextField
-                    label="Detalhes"
+                    label={t("common.details")}
                     value={venueSuggestionDetails}
                     onChangeText={onChangeVenueSuggestionDetails}
-                    placeholder="Partidas, horários, taxa de consumo, formatos"
+                    placeholder={t("venue.detailsPlaceholder")}
                     multiline
                   />
                 </AppleListSection>
 
-                <AppleListSection title="Tipo de local" size="compact">
+                <AppleListSection title={t("venue.type")} size="compact">
                   <View style={styles.chipWrap}>
-                    {venueKindOptions.map(([kind, label]) => (
+                    {venueKindOptions.map(([kind]) => (
                       <ChoiceChip
                         key={`places-${kind}`}
-                        label={label}
+                        label={formatVenueKind(kind)}
                         selected={selectedVenueKind === kind}
                         onPress={() => onSelectVenueKind(kind)}
                       />
@@ -307,7 +309,7 @@ export function PlacesPage({
                   </View>
                 </AppleListSection>
 
-                <AppleListSection title="Jogos" size="compact">
+                <AppleListSection title={t("common.games")} size="compact">
                   <View style={styles.chipWrap}>
                     {venueGameOptions.map((game) => (
                       <ChoiceChip
@@ -327,7 +329,7 @@ export function PlacesPage({
                   <View style={styles.rowActions}>
                     <View style={styles.rowActionCell}>
                       <PrimaryButton
-                        label="Enviar sugestão"
+                        label={t("venue.submitSuggestion")}
                         onPress={onCreateVenueSuggestion}
                         loading={creatingMeetup}
                         disabled={
@@ -356,13 +358,13 @@ export function PlacesPage({
               contentContainerStyle={styles.sceneContent}
             >
               <View style={styles.sceneLead}>
-                <Text style={styles.sceneLeadTitle}>Seus envios</Text>
-                <Text style={styles.sceneLeadSubtitle}>{venueSuggestions.length} envio(s)</Text>
+                <Text style={styles.sceneLeadTitle}>{t("places.submissions")}</Text>
+                <Text style={styles.sceneLeadSubtitle}>{t("places.submissionCount", { count: venueSuggestions.length })}</Text>
               </View>
               {venueSuggestions.length ? (
                 <AppleListSection
-                  title="Sugestões"
-                  subtitle={`${venueSuggestions.length} envio(s) · ${formatSyncLabel(
+                  title={t("places.suggestions")}
+                  subtitle={`${t("places.submissionCount", { count: venueSuggestions.length })} · ${formatSyncLabel(
                     lastAccountSyncAt
                   )}`}
                   size="compact"
@@ -375,12 +377,12 @@ export function PlacesPage({
                           <ListRowGameListIcon
                             variant="venue"
                             size={APPLE_LIST_COMPACT_ICON_SIZE}
-                            accessibilityLabel={`Sugestão de local: ${suggestion.name}`}
+                            accessibilityLabel={t("places.venueA11y", { name: suggestion.name })}
                           />
                         }
                         label={suggestion.name}
                         subtitle={[
-                          `${formatVenueKind(suggestion.kind)} · ${suggestion.neighborhood || "Sem bairro"}`,
+                          `${formatVenueKind(suggestion.kind)} · ${suggestion.neighborhood || t("venue.noNeighborhood")}`,
                           formatVenueSuggestionStatus(suggestion.status),
                           formatRelativeTimestamp(suggestion.createdAt),
                         ].join("\n")}
@@ -393,8 +395,8 @@ export function PlacesPage({
                 </AppleListSection>
               ) : (
                 <MapEmptyCard
-                  title="Nenhuma sugestão enviada"
-                  body="Quando você sugerir um local novo, ele aparece aqui com o status da análise."
+                  title={t("places.suggestionsEmptyTitle")}
+                  body={t("places.suggestionsEmptyBody")}
                 />
               )}
             </ScrollView>
@@ -411,8 +413,8 @@ export function PlacesPage({
             key: routeKey,
             content: (
               <MapEmptyCard
-                title="Local indisponível"
-                body="Atualize o mapa e tente abrir outro local."
+                title={t("places.venueUnavailableTitle")}
+                body={t("places.venueUnavailableBody")}
               />
             ),
           };
@@ -438,24 +440,24 @@ export function PlacesPage({
               <View style={styles.rowActions}>
                 <View style={styles.rowActionCell}>
                   <PrimaryButton
-                    label="Ver no mapa"
+                    label={t("venue.viewOnMap")}
                     onPress={() => onFocusVenueOnMap(venue.id)}
                     tone="ghost"
                   />
                 </View>
                 <View style={styles.rowActionCell}>
                   <PrimaryButton
-                    label="Criar aqui"
+                    label={t("places.createHere")}
                     onPress={() => onCreateMeetupAtVenue(venue.id)}
                   />
                 </View>
               </View>
 
-              <AppleListSection title="Detalhes" size="compact">
+              <AppleListSection title={t("common.details")} size="compact">
                 <AppleListGroup>
                   <AppleListRow
                     icon={{ iosName: "mappin.and.ellipse", fallbackName: "location-on" }}
-                    label="Endereço"
+                    label={t("venue.address")}
                     subtitle={formatCompactAddress(venue.address) || venue.neighborhood}
                     showChevron={false}
                     size="compact"
@@ -463,7 +465,7 @@ export function PlacesPage({
                   <AppleListRow
                     separator
                     icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
-                    label="Tipo de local"
+                    label={t("venue.type")}
                     subtitle={formatVenueKind(venue.kind)}
                     showChevron={false}
                     size="compact"
@@ -471,7 +473,7 @@ export function PlacesPage({
                   <AppleListRow
                     separator
                     icon={{ iosName: "person.fill", fallbackName: "person" }}
-                    label="Indicado por"
+                    label={t("venue.indicatedBy")}
                     subtitle={venue.ownerDisplayName}
                     showChevron={false}
                     size="compact"
@@ -480,7 +482,7 @@ export function PlacesPage({
                     <AppleListRow
                       separator
                       icon={{ iosName: "figure.walk", fallbackName: "directions-walk" }}
-                      label="Distância"
+                      label={t("map.filterDistance")}
                       subtitle={distanceLabel}
                       showChevron={false}
                       size="compact"
@@ -490,7 +492,7 @@ export function PlacesPage({
                     <AppleListRow
                       separator
                       icon={{ iosName: "text.alignleft", fallbackName: "notes" }}
-                      label="Detalhes"
+                      label={t("common.details")}
                       subtitle={venue.details}
                       showChevron={false}
                       size="compact"
@@ -511,8 +513,8 @@ export function PlacesPage({
           key: routeKey,
           content: (
             <MapEmptyCard
-              title="Sugestão indisponível"
-              body="Atualize seus dados de conta e tente abrir outro envio."
+              title={t("places.submissionUnavailableTitle")}
+              body={t("places.submissionUnavailableBody")}
             />
           ),
         };
@@ -533,13 +535,13 @@ export function PlacesPage({
               </Text>
             </View>
             <AppleListSection
-              title="Resumo do envio"
+              title={t("places.submissionSummary")}
               size="compact"
             >
               <AppleListGroup>
                 <AppleListRow
                   icon={{ iosName: "checkmark.seal.fill", fallbackName: "verified" }}
-                  label="Status"
+                  label={t("format.notification.status")}
                   subtitle={formatVenueSuggestionStatus(suggestion.status)}
                   showChevron={false}
                   size="compact"
@@ -547,7 +549,7 @@ export function PlacesPage({
                 <AppleListRow
                   separator
                   icon={{ iosName: "clock.arrow.circlepath", fallbackName: "history" }}
-                  label="Enviado em"
+                  label={t("places.sentAt")}
                   subtitle={formatRelativeTimestamp(suggestion.createdAt)}
                   showChevron={false}
                   size="compact"
@@ -555,7 +557,7 @@ export function PlacesPage({
                 <AppleListRow
                   separator
                   icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
-                  label="Tipo de local"
+                  label={t("venue.type")}
                   subtitle={formatVenueKind(suggestion.kind)}
                   showChevron={false}
                   size="compact"
@@ -563,8 +565,8 @@ export function PlacesPage({
                 <AppleListRow
                   separator
                   icon={{ iosName: "mappin.and.ellipse", fallbackName: "location-on" }}
-                  label="Bairro"
-                  subtitle={suggestion.neighborhood || "Sem bairro informado"}
+                  label={t("profileSetup.neighborhood")}
+                  subtitle={suggestion.neighborhood || t("profile.noNeighborhood")}
                   showChevron={false}
                   size="compact"
                 />

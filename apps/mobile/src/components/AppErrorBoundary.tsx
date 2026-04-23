@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { GlassCard } from "@/components/GlassCard";
+import { translate } from "@/i18n";
 import { captureException } from "@/lib/monitoring";
 import { palette, radius, spacing } from "@/theme/tokens";
 
@@ -45,17 +46,17 @@ export class AppErrorBoundary extends Component<
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.content}>
           <GlassCard style={styles.card}>
-            <Text style={styles.title}>Algo saiu do trilho</Text>
+            <Text style={styles.title}>{translate("errors.title")}</Text>
             <Text style={styles.body}>
-              O app encontrou um problema inesperado. Você pode tentar abrir novamente sem perder sua sessão.
+              {translate("errors.unexpected")}
             </Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Tentar novamente"
+              accessibilityLabel={translate("errors.retry")}
               onPress={this.handleRetry}
               style={({ pressed }) => [styles.button, pressed ? styles.buttonPressed : null]}
             >
-              <Text style={styles.buttonLabel}>Tentar novamente</Text>
+              <Text style={styles.buttonLabel}>{translate("errors.retry")}</Text>
             </Pressable>
           </GlassCard>
         </View>

@@ -1,5 +1,6 @@
 import { analyticsCapture, analyticsFlush, analyticsReset } from "@/lib/analytics";
 import { clearPendingPasswordRecoveryState, getAuthRedirectUri } from "@/lib/authRedirect";
+import { translate } from "@/i18n";
 import { trackProductEvent } from "@/lib/productAnalytics";
 import { supabase } from "@/lib/supabase";
 import {
@@ -598,7 +599,7 @@ export async function uploadMyAvatar(input: {
   }
 
   if (!user) {
-    throw new Error("Usuário não autenticado");
+    throw new Error(translate("api.notAuthenticated"));
   }
 
   const fileBytes = input.base64
@@ -651,7 +652,7 @@ export async function uploadMeetupChatImage(input: {
   }
 
   if (!user) {
-    throw new Error("Usuário não autenticado");
+    throw new Error(translate("api.notAuthenticated"));
   }
 
   const fileBytes = input.base64
@@ -1180,7 +1181,7 @@ export async function getOrCreatePrivateChat(otherUserId: string) {
   const row = (data?.[0] ?? null) as { chat_id: string; can_send_messages: boolean } | null;
 
   if (!row) {
-    throw new Error("Não foi possível abrir o chat.");
+    throw new Error(translate("api.chatOpenError"));
   }
 
   return {
@@ -1334,9 +1335,7 @@ export async function removeMeetupMember(meetupId: string, memberUserId: string)
       typeof error.message === "string" &&
       error.message.toLowerCase().includes("remove_meetup_member")
     ) {
-      throw new Error(
-        "A remoção de participantes ainda depende da atualização do banco neste ambiente."
-      );
+      throw new Error(translate("api.removeParticipantMigrationRequired"));
     }
 
     throw error;
@@ -1679,7 +1678,7 @@ export async function deleteMyAccount() {
   }
 
   if (!user) {
-    throw new Error("Usuário não autenticado");
+    throw new Error(translate("api.notAuthenticated"));
   }
 
   const avatarListResult = await supabase.storage.from("avatars").list(user.id, {
@@ -1881,13 +1880,13 @@ export async function submitAppFeedback(input: {
   if (error) {
     const msg = (error.message ?? "").toLowerCase();
     if (msg.includes("not_authenticated")) {
-      throw new Error("Faça login para enviar feedback.");
+      throw new Error(translate("feedback.loginRequired"));
     }
     if (msg.includes("invalid_feedback_type")) {
-      throw new Error("Selecione um tipo de feedback válido.");
+      throw new Error(translate("feedback.validationType"));
     }
     if (msg.includes("message_required")) {
-      throw new Error("Escreva uma mensagem antes de enviar.");
+      throw new Error(translate("feedback.validationMessage"));
     }
     throw error;
   }

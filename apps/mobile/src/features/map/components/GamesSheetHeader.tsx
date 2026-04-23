@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View, type ViewProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useTranslation } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 
 export const GAMES_SHEET_HEADER_COLLAPSED_HEIGHT = 116;
@@ -26,6 +27,7 @@ export function GamesSheetHeader({
   onSelectMeetups,
   onSelectVenues,
 }: GamesSheetHeaderProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [tabsRailWidth, setTabsRailWidth] = useState(0);
   const tabHighlightProgress = useRef(new Animated.Value(section === "venues" ? 1 : 0)).current;
@@ -60,7 +62,9 @@ export function GamesSheetHeader({
       onTouchStart={onDismissPinCallout}
     >
       <View style={styles.handle} />
-      <Text style={styles.subtitle}>{meetupCount} partidas · {venueCount} locais por perto</Text>
+      <Text style={styles.subtitle}>
+        {t("map.sheetSummary", { meetups: meetupCount, venues: venueCount })}
+      </Text>
 
       <View style={styles.tabsRow}>
         <View
@@ -86,7 +90,7 @@ export function GamesSheetHeader({
           ) : null}
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Ver lista de jogos"
+            accessibilityLabel={t("map.viewGamesList")}
             onPress={onSelectMeetups}
             style={({ pressed }) => [
               styles.tabButton,
@@ -100,12 +104,12 @@ export function GamesSheetHeader({
                 section === "meetups" ? styles.tabLabelActive : styles.tabLabelInactive,
               ]}
             >
-              Jogos
+              {t("common.games")}
             </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Ver lista de locais"
+            accessibilityLabel={t("map.viewVenuesList")}
             onPress={onSelectVenues}
             style={({ pressed }) => [
               styles.tabButton,
@@ -119,7 +123,7 @@ export function GamesSheetHeader({
                 section === "venues" ? styles.tabLabelActive : styles.tabLabelInactive,
               ]}
             >
-              Locais
+              {t("common.venues")}
             </Text>
           </Pressable>
         </View>

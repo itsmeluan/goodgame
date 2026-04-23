@@ -3,6 +3,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { GlassCard } from "@/components/GlassCard";
+import { useTranslation } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 
 import type { LegalContentDocument } from "./legalContent";
@@ -16,6 +17,8 @@ export function LegalDocumentModal({
   document,
   onClose,
 }: LegalDocumentModalProps) {
+  const { t } = useTranslation();
+
   return (
     <Modal visible={Boolean(document)} animationType="slide" onRequestClose={onClose}>
       <SafeAreaView style={styles.safeArea}>
@@ -23,7 +26,7 @@ export function LegalDocumentModal({
           <Text style={styles.title}>{document?.title}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Fechar documento"
+            accessibilityLabel={t("legal.closeDocument")}
             hitSlop={12}
             onPress={onClose}
             style={styles.closeButton}
@@ -34,14 +37,14 @@ export function LegalDocumentModal({
               intensity="clear"
               style={styles.closeButtonSurface}
             />
-            <Text style={styles.closeLabel}>Fechar</Text>
+            <Text style={styles.closeLabel}>{t("common.close")}</Text>
           </Pressable>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
           <GlassCard style={styles.introCard}>
             <Text style={styles.intro}>{document?.intro}</Text>
-            <Text style={styles.version}>Vigência: {document?.effectiveDateLabel}</Text>
+            <Text style={styles.version}>{t("legal.effective", { date: document?.effectiveDateLabel ?? "" })}</Text>
           </GlassCard>
 
           {document?.sections.map((section) => (

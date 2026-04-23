@@ -5,6 +5,7 @@ import { AppleListGroup, AppleListRow, AppleListSection } from "@/components/App
 import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
+import { useTranslation } from "@/i18n";
 import {
   formatCompactAddress,
   formatDateTime,
@@ -43,6 +44,7 @@ export function HistoryPage({
   bottomInset,
   onClose,
 }: HistoryPageProps) {
+  const { t } = useTranslation();
   const [routeKeys, setRouteKeys] = useState<HistoryRouteKey[]>([]);
 
   const groupedHistory = useMemo(
@@ -64,19 +66,19 @@ export function HistoryPage({
   const routeOptions = [
     {
       key: "completed",
-      label: "Concluídas",
+      label: t("history.completed"),
       icon: { iosName: "checkmark", fallbackName: "check" },
       items: groupedHistory.completed,
     },
     {
       key: "cancelled",
-      label: "Canceladas",
+      label: t("history.cancelled"),
       icon: { iosName: "xmark", fallbackName: "close" },
       items: groupedHistory.cancelled,
     },
     {
       key: "other",
-      label: "Outros registros",
+      label: t("history.other"),
       icon: { iosName: "clock.arrow.circlepath", fallbackName: "history" },
       items: groupedHistory.other,
     },
@@ -104,8 +106,8 @@ export function HistoryPage({
           >
             {visibleRouteOptions.length ? (
               <AppleListSection
-                title="Histórico"
-                subtitle={`${meetups.length} registro(s) · ${formatSyncLabel(lastDashboardSyncAt)}`}
+                title={t("nav.history")}
+                subtitle={`${t("history.itemCount", { count: meetups.length })} · ${formatSyncLabel(lastDashboardSyncAt)}`}
                 size="compact"
               >
                 <AppleListGroup>
@@ -125,8 +127,8 @@ export function HistoryPage({
               </AppleListSection>
             ) : (
               <MapEmptyCard
-                title="Nenhuma partida no histórico"
-                body="Partidas encerradas ou canceladas em que você participou vão aparecer aqui."
+                title={t("history.emptyTitle")}
+                body={t("history.emptyBody")}
               />
             )}
           </ScrollView>
@@ -141,10 +143,10 @@ export function HistoryPage({
         key: routeKey,
         content: (
           <HistoryScene
-            subtitle={`${section?.items.length ?? 0} registro(s)`}
+            subtitle={t("history.itemCount", { count: section?.items.length ?? 0 })}
             meetups={section?.items ?? []}
-            emptyTitle="Sem itens nesta categoria"
-            emptyBody="Quando houver partidas desse tipo, elas aparecem aqui."
+            emptyTitle={t("history.sectionEmptyTitle")}
+            emptyBody={t("history.sectionEmptyBody")}
           />
         ),
       };

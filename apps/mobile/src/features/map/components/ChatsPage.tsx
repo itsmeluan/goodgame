@@ -9,6 +9,7 @@ import { ChatMeetupListLeading } from "@/features/map/components/ChatMeetupListL
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
+import { useTranslation } from "@/i18n";
 import { formatCompactAddress, formatDateTime, formatMeetupStatus, formatRelativeTimestamp } from "@/lib/formatting";
 import { palette, spacing } from "@/theme/tokens";
 import type { MeetupPost, PrivateChatSummary } from "@/types/domain";
@@ -56,6 +57,7 @@ export function ChatsPage({
   onOpenPrivateChat,
   onClose,
 }: ChatsPageProps) {
+  const { t } = useTranslation();
   const [internalRouteKeys, setInternalRouteKeys] = useState<string[]>([]);
   const isControlled = onRouteStackChange != null;
   const routeKeys = isControlled ? (controlledRouteKeys ?? []) : internalRouteKeys;
@@ -107,8 +109,8 @@ export function ChatsPage({
                     iosName: "person.fill",
                     fallbackName: "person",
                   }}
-                  label="Chats privados"
-                  subtitle="Conversas diretas com outros jogadores"
+                  label={t("chat.privateChats")}
+                  subtitle={t("chat.directSubtitle")}
                   trailingValue={String(privateChats.length)}
                   showUnreadDot={privateGroupingHasUnread}
                   onPress={() => pushRoute(PRIVATE_CHATS_ROUTE_KEY)}
@@ -141,8 +143,8 @@ export function ChatsPage({
             </AppleListSection>
             {!availableSections.length ? (
               <MapEmptyCard
-                title="Nenhum chat de partida ainda"
-                body="Entre em uma partida para ela aparecer aqui, organizada por tipo de jogo."
+                title={t("chat.emptyMeetupTitle")}
+                body={t("chat.emptyMeetupBody")}
               />
             ) : null}
           </ScrollView>
@@ -171,7 +173,7 @@ export function ChatsPage({
         key: routeKey,
         content: (
           <ChatsSectionScene
-            title={section?.title ?? "Chats"}
+            title={section?.title ?? t("nav.chats")}
             subtitle={section?.meta}
             meetups={section?.chats ?? []}
             sectionArchived={Boolean(section?.archived)}
@@ -205,14 +207,16 @@ function PrivateChatsListScene({
   unreadPrivateChatIds: Set<string>;
   onOpenPrivateChat: (thread: PrivateChatSummary) => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
       contentContainerStyle={[styles.sceneContent, styles.sceneContentCompactLead]}
     >
       <View style={styles.sceneLeadMinimal}>
-        <Text style={styles.sceneLeadTitle}>Chats privados</Text>
-        <Text style={styles.sceneLeadSubtitle}>Mensagens diretas com outros jogadores</Text>
+        <Text style={styles.sceneLeadTitle}>{t("chat.privateChats")}</Text>
+        <Text style={styles.sceneLeadSubtitle}>{t("chat.directSubtitle")}</Text>
       </View>
       {loading ? (
         <View style={styles.privateLoading}>
@@ -222,7 +226,7 @@ function PrivateChatsListScene({
         <AppleListGroup>
           {threads.map((thread, index) => {
             const hasUnread = unreadPrivateChatIds.has(thread.chatId);
-            const preview = thread.lastMessageBody?.trim() || "Sem mensagens ainda";
+            const preview = thread.lastMessageBody?.trim() || t("chat.noMessagesYet");
             const timeLine = thread.lastMessageAt
               ? formatRelativeTimestamp(thread.lastMessageAt)
               : "—";
@@ -240,7 +244,7 @@ function PrivateChatsListScene({
                 }
                 label={thread.otherDisplayName}
                 subtitle={[preview, timeLine].join("\n")}
-                trailingValue={hasUnread ? "Novo" : null}
+                trailingValue={hasUnread ? t("chat.new") : null}
                 onPress={() => onOpenPrivateChat(thread)}
                 separator={index > 0}
                 tone={hasUnread ? "accent" : "default"}
@@ -251,8 +255,8 @@ function PrivateChatsListScene({
         </AppleListGroup>
       ) : (
         <MapEmptyCard
-          title="Nenhum chat privado ainda"
-          body="Abra o perfil de um jogador e toque em Chat no resumo, ou aguarde uma mensagem direta."
+          title={t("chat.emptyPrivateTitle")}
+          body={t("chat.emptyPrivateBody")}
         />
       )}
     </ScrollView>
@@ -276,6 +280,8 @@ function ChatsSectionScene({
   nowTimestamp: number;
   onOpenChat: (meetupId: string) => void;
 }) {
+  const { t } = useTranslation();
+
   return (
     <ScrollView
       showsVerticalScrollIndicator={false}
@@ -299,7 +305,7 @@ function ChatsSectionScene({
             const addressLine =
               formatCompactAddress(meetup.addressLabel || meetup.locationHint) ||
               meetup.locationHint;
-            const overdueLine = overdue ? "Horário em atraso" : null;
+            const overdueLine = overdue ? t("chat.overdue") : null;
 
             return (
               <AppleListRow
@@ -309,7 +315,7 @@ function ChatsSectionScene({
                 subtitle={[formatDateTime(meetup.startsAt), addressLine, statusLine, overdueLine]
                   .filter(Boolean)
                   .join("\n")}
-                trailingValue={hasUnread ? "Novo" : null}
+                trailingValue={hasUnread ? t("chat.new") : null}
                 onPress={() => onOpenChat(meetup.id)}
                 separator={index > 0}
                 tone={
@@ -322,8 +328,8 @@ function ChatsSectionScene({
         </AppleListGroup>
       ) : (
         <MapEmptyCard
-          title="Nenhum grupo nessa categoria"
-          body="Assim que você entrar em uma partida desse tipo, ela aparece aqui."
+          title={t("chat.emptyCategoryTitle")}
+          body={t("chat.emptyCategoryBody")}
         />
       )}
     </ScrollView>

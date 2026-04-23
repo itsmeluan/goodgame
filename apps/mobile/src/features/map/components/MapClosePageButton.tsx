@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 
 import { AppIcon } from "@/components/AppIcon";
+import { useTranslation } from "@/i18n";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 
@@ -12,10 +13,12 @@ export function MapClosePageButton({
   /** `footer`: sem margem superior, largura total (barra fixa no rodapé). */
   variant?: "default" | "footer";
 }) {
+  const { t } = useTranslation();
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Fechar e voltar ao mapa"
+      accessibilityLabel={t("map.closeBackToMap")}
       onPress={() => {
         triggerHaptic("selection");
         onPress();
@@ -27,7 +30,7 @@ export function MapClosePageButton({
       ]}
     >
       <AppIcon iosName="xmark" fallbackName="close" size={18} color={palette.parchment} />
-      <Text style={styles.buttonLabel}>Voltar ao mapa</Text>
+      <Text style={styles.buttonLabel}>{t("map.backToMap")}</Text>
     </Pressable>
   );
 }

@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import type { Provider } from "@supabase/supabase-js";
 
+import { translate } from "@/i18n";
 import { consumeAuthRedirectUrl, getAuthRedirectUri } from "@/lib/authRedirect";
 import { supabase } from "@/lib/supabase";
 
@@ -32,7 +33,7 @@ export async function signInWithOAuthProvider(provider: Extract<Provider, "apple
   }
 
   if (!data.url) {
-    throw new Error("Não foi possível iniciar o login social agora.");
+    throw new Error(translate("auth.socialStartError"));
   }
 
   const authResult = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
@@ -42,13 +43,13 @@ export async function signInWithOAuthProvider(provider: Extract<Provider, "apple
   }
 
   if (authResult.type !== "success" || !authResult.url) {
-    throw new Error("O login social foi interrompido antes da conclusão.");
+    throw new Error(translate("auth.socialInterrupted"));
   }
 
   const handled = await consumeAuthRedirectUrl(authResult.url);
 
   if (!handled) {
-    throw new Error("Não foi possível concluir o login social.");
+    throw new Error(translate("auth.socialCompleteError"));
   }
 
   return { cancelled: false };

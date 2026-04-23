@@ -15,6 +15,7 @@ import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { TextField } from "@/components/TextField";
 import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
+import { useTranslation, type TranslationKey } from "@/i18n";
 import { appInfo } from "@/lib/appInfo";
 import { submitAppFeedback } from "@/lib/api";
 import { triggerHaptic } from "@/lib/haptics";
@@ -22,11 +23,11 @@ import { trackProductEvent } from "@/lib/productAnalytics";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { AppFeedbackType } from "@/types/domain";
 
-const FEEDBACK_TYPE_OPTIONS: { type: AppFeedbackType; label: string }[] = [
-  { type: "bug", label: "Bug" },
-  { type: "suggestion", label: "Sugestão" },
-  { type: "praise", label: "Elogio" },
-  { type: "question", label: "Dúvida" },
+const FEEDBACK_TYPE_OPTIONS: { type: AppFeedbackType; labelKey: TranslationKey }[] = [
+  { type: "bug", labelKey: "feedback.typeBug" },
+  { type: "suggestion", labelKey: "feedback.typeSuggestion" },
+  { type: "praise", labelKey: "feedback.typePraise" },
+  { type: "question", labelKey: "feedback.typeQuestion" },
 ];
 
 type FeedbackPageProps = {
@@ -35,6 +36,7 @@ type FeedbackPageProps = {
 };
 
 export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
+  const { t } = useTranslation();
   const [feedbackType, setFeedbackType] = useState<AppFeedbackType | null>(null);
   const [message, setMessage] = useState("");
   const [appArea, setAppArea] = useState("");
@@ -45,8 +47,8 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
 
   const typeLabel =
     feedbackType === null
-      ? "Selecione o tipo"
-      : FEEDBACK_TYPE_OPTIONS.find((o) => o.type === feedbackType)?.label ?? "";
+      ? t("feedback.selectType")
+      : t(FEEDBACK_TYPE_OPTIONS.find((o) => o.type === feedbackType)?.labelKey ?? "feedback.selectType");
 
   useEffect(() => {
     void trackProductEvent({
@@ -68,12 +70,12 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
     setValidationError(null);
 
     if (feedbackType === null) {
-      setValidationError("Escolha o tipo de feedback.");
+      setValidationError(t("feedback.validationType"));
       return;
     }
     const trimmed = message.trim();
     if (!trimmed) {
-      setValidationError("Escreva sua mensagem.");
+      setValidationError(t("feedback.validationMessage"));
       return;
     }
 
@@ -87,19 +89,19 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
         platform: Platform.OS === "ios" ? "ios" : Platform.OS === "android" ? "android" : Platform.OS,
       });
       triggerHaptic("success");
-      Alert.alert("Enviado", "Obrigado pelo seu feedback! Isso ajuda muito a melhorar o app.", [
+      Alert.alert(t("feedback.submittedTitle"), t("feedback.submittedBody"), [
         { text: "OK", onPress: onClose },
       ]);
     } catch (e) {
       const msg =
         e && typeof e === "object" && "message" in e
           ? String((e as { message?: string }).message)
-          : "Não foi possível enviar agora. Tente de novo em instantes.";
+          : t("feedback.submitFallbackError");
       setSubmitError(msg);
     } finally {
       setSubmitting(false);
     }
-  }, [appArea, feedbackType, message, onClose]);
+  }, [appArea, feedbackType, message, onClose, t]);
 
   return (
     <View style={styles.screen}>
@@ -114,15 +116,14 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
         automaticallyAdjustKeyboardInsets={Platform.OS === "ios"}
       >
         <Text style={styles.intro}>
-          Seu feedback é muito importante para evoluir o app. Se encontrou um problema, tem uma sugestão ou
-          quer compartilhar uma ideia, envie por aqui.
+          {t("feedback.intro")}
         </Text>
 
         <View style={styles.fieldBlock}>
-          <Text style={styles.label}>Tipo de feedback</Text>
+          <Text style={styles.label}>{t("feedback.typeLabel")}</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Tipo de feedback"
+            accessibilityLabel={t("feedback.typeLabel")}
             onPress={() => {
               triggerHaptic("selection");
               setTypeModalOpen(true);
@@ -138,21 +139,21 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
         </View>
 
         <TextField
-          label="Mensagem"
+          label={t("feedback.messageLabel")}
           labelTone="light"
           value={message}
           onChangeText={setMessage}
-          placeholder="Escreva seu feedback aqui"
+          placeholder={t("feedback.messagePlaceholder")}
           multiline
           maxLength={8000}
         />
 
         <TextField
-          label="Tela ou área do app (opcional)"
+          label={t("feedback.areaLabel")}
           labelTone="light"
           value={appArea}
           onChangeText={setAppArea}
-          placeholder="Ex.: mapa, lista de jogos, perfil, criação de partida"
+          placeholder={t("feedback.areaPlaceholder")}
           autoCapitalize="sentences"
         />
 
@@ -161,7 +162,7 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Enviar feedback"
+          accessibilityLabel={t("feedback.submitA11y")}
           disabled={submitting}
           onPress={() => void handleSubmit()}
           style={({ pressed }) => [
@@ -173,13 +174,13 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
           {submitting ? (
             <LoadingSpinner size={20} color={palette.parchment} />
           ) : (
-            <Text style={styles.primaryButtonLabel}>Enviar</Text>
+            <Text style={styles.primaryButtonLabel}>{t("feedback.submit")}</Text>
           )}
         </Pressable>
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Cancelar"
+          accessibilityLabel={t("feedback.cancel")}
           disabled={submitting}
           onPress={handleCancel}
           style={({ pressed }) => [
@@ -187,7 +188,7 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
             pressed && !submitting ? styles.secondaryButtonPressed : null,
           ]}
         >
-          <Text style={styles.secondaryButtonLabel}>Cancelar</Text>
+          <Text style={styles.secondaryButtonLabel}>{t("feedback.cancel")}</Text>
         </Pressable>
       </KeyboardAwareScrollView>
 
@@ -199,7 +200,7 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
       >
         <Pressable style={styles.modalBackdrop} onPress={() => setTypeModalOpen(false)}>
           <Pressable style={styles.modalCard} onPress={(e) => e.stopPropagation()}>
-            <Text style={styles.modalTitle}>Tipo de feedback</Text>
+            <Text style={styles.modalTitle}>{t("feedback.typeLabel")}</Text>
             {FEEDBACK_TYPE_OPTIONS.map((opt, index) => (
               <Pressable
                 key={opt.type}
@@ -215,7 +216,7 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
                   feedbackType === opt.type ? styles.modalRowSelected : null,
                 ]}
               >
-                <Text style={styles.modalRowLabel}>{opt.label}</Text>
+                <Text style={styles.modalRowLabel}>{t(opt.labelKey)}</Text>
                 {feedbackType === opt.type ? (
                   <AppIcon
                     iosName="checkmark.circle.fill"
@@ -230,7 +231,7 @@ export function FeedbackPage({ bottomInset, onClose }: FeedbackPageProps) {
               onPress={() => setTypeModalOpen(false)}
               style={({ pressed }) => [styles.modalDismiss, pressed ? styles.modalDismissPressed : null]}
             >
-              <Text style={styles.modalDismissLabel}>Fechar</Text>
+              <Text style={styles.modalDismissLabel}>{t("feedback.closeTypePicker")}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

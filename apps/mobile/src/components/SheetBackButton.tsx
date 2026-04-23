@@ -4,6 +4,7 @@ import type { SFSymbol, SymbolType } from "expo-symbols";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
+import { translate } from "@/i18n";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
 
@@ -23,17 +24,18 @@ type SheetBackButtonProps = {
 
 export function SheetBackButton({
   onPress,
-  accessibilityLabel = "Voltar",
-  label = "Voltar",
+  accessibilityLabel,
+  label,
   compact = false,
   iconCircle = false,
 }: SheetBackButtonProps) {
   const chevronSize = iconCircle ? 13 : compact ? 17 : 18;
+  const fallbackLabel = translate("common.back");
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ?? fallbackLabel}
       onPress={() => {
         triggerHaptic("selection");
         onPress();
@@ -56,7 +58,7 @@ export function SheetBackButton({
         size={chevronSize}
         color={palette.sand}
       />
-      {iconCircle ? null : <Text style={styles.backButtonLabel}>{label}</Text>}
+      {iconCircle ? null : <Text style={styles.backButtonLabel}>{label ?? fallbackLabel}</Text>}
     </Pressable>
   );
 }

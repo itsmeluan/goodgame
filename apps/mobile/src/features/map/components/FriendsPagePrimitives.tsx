@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
+import { translate } from "@/i18n";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, spacing } from "@/theme/tokens";
 import type { PublicPlayerProfile } from "@/types/domain";
@@ -11,18 +12,18 @@ export function formatRelationshipStateLabel(
   relationshipState: PublicPlayerProfile["relationshipState"]
 ) {
   if (relationshipState === "friend") {
-    return "Amigo";
+    return translate("publicProfile.friend");
   }
 
   if (relationshipState === "incoming") {
-    return "Convite recebido";
+    return translate("publicProfile.incomingInvite");
   }
 
   if (relationshipState === "outgoing") {
-    return "Convite enviado";
+    return translate("publicProfile.outgoingInvite");
   }
 
-  return "Disponível";
+  return translate("friends.available");
 }
 
 export function FriendsPageSectionBlock({

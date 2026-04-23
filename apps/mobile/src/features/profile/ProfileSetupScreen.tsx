@@ -15,6 +15,7 @@ import { TextField } from "@/components/TextField";
 import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import { FormatDetailTagBlock, toggleMultiValue } from "@/features/map/components/FormatDetailTagBlock";
 import { AvailabilityMatrix } from "@/features/profile/AvailabilityMatrix";
+import { translate, useTranslation } from "@/i18n";
 import {
   detailTagsSatisfiedForFormat,
   getFormatDetailKind,
@@ -61,6 +62,7 @@ export function ProfileSetupScreen({
   onCancel,
   onSaved,
 }: ProfileSetupScreenProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [displayName, setDisplayName] = useState(profile?.displayName ?? "");
   const [handle, setHandle] = useState(profile?.handle ?? "");
@@ -165,7 +167,7 @@ export function ProfileSetupScreen({
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
 
       if (!permissionResult.granted) {
-        throw new Error("Permita o acesso a Fotos para escolher sua imagem de perfil.");
+        throw new Error(t("profileSetup.photoPermission"));
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -218,9 +220,7 @@ export function ProfileSetupScreen({
             formatRow.name
           )
         ) {
-          throw new Error(
-            "Para Magic, Yu-Gi-Oh! e Pokémon, marque pelo menos uma opção em bracket, tipo de partida, power level ou nível de baralho em cada formato selecionado."
-          );
+          throw new Error(t("profileSetup.formatDetailsRequired"));
         }
       }
 
@@ -254,7 +254,7 @@ export function ProfileSetupScreen({
       const refreshed = await getMyProfile();
       if (!refreshed) {
         setError(
-          "Seus dados foram salvos, mas não foi possível confirmar o perfil. Verifique a conexão e toque em salvar de novo."
+          t("profileSetup.savedButNotConfirmed")
         );
       }
 
@@ -321,7 +321,7 @@ export function ProfileSetupScreen({
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.pageIntro}>
-          <Text style={styles.title}>Vamos preparar como você aparece no Good Game</Text>
+          <Text style={styles.title}>{t("profileSetup.title")}</Text>
         </View>
 
         <View style={styles.section}>
@@ -336,7 +336,7 @@ export function ProfileSetupScreen({
                 />
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Trocar foto do perfil"
+                  accessibilityLabel={t("profileSetup.changeProfilePhoto")}
                   onPress={() => void handlePickAvatar()}
                   style={({ pressed }) => [
                     styles.photoActionButton,
@@ -356,7 +356,7 @@ export function ProfileSetupScreen({
                     color={palette.ink}
                   />
                   <Text style={styles.photoActionLabel} numberOfLines={1}>
-                    Trocar foto
+                    {t("profileSetup.changePhoto")}
                   </Text>
                 </Pressable>
               </View>
@@ -367,7 +367,7 @@ export function ProfileSetupScreen({
                   adjustsFontSizeToFit
                   minimumFontScale={0.42}
                 >
-                  {displayName || "Seu nome"}
+                  {displayName || t("profileSetup.yourName")}
                 </Text>
                 <Text
                   style={styles.heroHandleText}
@@ -375,10 +375,10 @@ export function ProfileSetupScreen({
                   adjustsFontSizeToFit
                   minimumFontScale={0.55}
                 >
-                  @{handle || "seuhandle"}
+                  @{handle || t("profileSetup.yourHandle")}
                 </Text>
                 <View style={styles.heroEmailBlock}>
-                  <Text style={styles.heroEmailLabel}>E-mail da conta</Text>
+                  <Text style={styles.heroEmailLabel}>{t("profileSetup.accountEmail")}</Text>
                   <Text
                     style={styles.heroEmailValue}
                     numberOfLines={2}
@@ -396,17 +396,17 @@ export function ProfileSetupScreen({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Informações públicas</Text>
+          <Text style={styles.sectionTitle}>{t("profileSetup.publicInfo")}</Text>
           <View style={styles.fieldStack}>
             <TextField
-              label="Nome de exibição"
+              label={t("profileSetup.displayName")}
               value={displayName}
               onChangeText={setDisplayName}
               placeholder={displayNamePlaceholder}
               density="compact"
             />
             <TextField
-              label="Handle"
+              label={t("profileSetup.handle")}
               value={handle}
               onChangeText={setHandle}
               placeholder={handlePlaceholder}
@@ -414,42 +414,41 @@ export function ProfileSetupScreen({
               density="compact"
             />
             <TextField
-              label="Bio"
+              label={t("profileSetup.bio")}
               value={bio}
               onChangeText={setBio}
-              placeholder="Fale sobre formatos, power level e estilo de jogo"
+              placeholder={t("profileSetup.bioPlaceholder")}
               multiline
               density="compact"
             />
             <TextField
-              label="Bairro"
+              label={t("profileSetup.neighborhood")}
               value={neighborhood}
               onChangeText={setNeighborhood}
-              placeholder="Ex.: Pinheiros"
+              placeholder={t("profileSetup.neighborhoodPlaceholder")}
               density="compact"
             />
           </View>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Interesses</Text>
+          <Text style={styles.sectionTitle}>{t("profile.interests")}</Text>
           <Text style={styles.helpText}>
-            Escolha os tipos de jogo que você curte. Os formatos aparecem só depois que
-            o jogo correspondente estiver selecionado.
+            {t("profileSetup.interestsHelp")}
           </Text>
           {catalogState === "loading" && catalogGames.length === 0 ? (
             <View style={styles.catalogLoadingRow}>
               <LoadingSpinner size={20} />
-              <Text style={styles.helpText}>Carregando jogos e formatos…</Text>
+              <Text style={styles.helpText}>{t("profileSetup.catalogLoading")}</Text>
             </View>
           ) : null}
           {catalogState === "error" && catalogGames.length === 0 ? (
             <View style={styles.catalogErrorBlock}>
               <MapInlineNotice
                 tone="error"
-                message="Não foi possível carregar o catálogo. Verifique a conexão."
+                message={t("profileSetup.catalogError")}
               />
-              <PrimaryButton label="Tentar de novo" onPress={() => void loadCatalog()} tone="ghost" />
+              <PrimaryButton label={t("errors.retry")} onPress={() => void loadCatalog()} tone="ghost" />
             </View>
           ) : null}
           <View style={styles.chips}>
@@ -503,7 +502,9 @@ export function ProfileSetupScreen({
 
             return (
               <View key={game.id} style={styles.gameFormatGroup}>
-                <Text style={styles.gameFormatTitle}>Formatos de {game.name}</Text>
+                <Text style={styles.gameFormatTitle}>
+                  {t("profileSetup.formatsOf", { game: game.name })}
+                </Text>
                 <View style={styles.chips}>
                   {gameFormats.map((format) => (
                     <ChoiceChip
@@ -587,17 +588,17 @@ export function ProfileSetupScreen({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferências de encontro</Text>
+          <Text style={styles.sectionTitle}>{t("profileSetup.meetupPreferences")}</Text>
           <View style={styles.switchBlock}>
             <View style={styles.switchCopy}>
-              <Text style={styles.switchTitle}>Pode receber pessoas?</Text>
+              <Text style={styles.switchTitle}>{t("profileSetup.hostQuestion")}</Text>
               <Text style={styles.helpText}>
-                Isso aparece no seu perfil e ajuda a indicar se você topa hospedar partidas.
+                {t("profileSetup.hostHelp")}
               </Text>
             </View>
             <View style={styles.hostToggleRow}>
               <Text style={styles.hostStateLabel}>
-                {canHost ? "Sim, posso receber" : "Não, prefiro local externo"}
+                {canHost ? t("profileSetup.hostYes") : t("profileSetup.hostNo")}
               </Text>
               <Switch
                 value={canHost}
@@ -610,17 +611,16 @@ export function ProfileSetupScreen({
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Disponibilidade</Text>
+          <Text style={styles.sectionTitle}>{t("profile.availability")}</Text>
           <Text style={styles.helpText}>
-            Marque os dias e períodos em que você costuma topar jogar. Isso ajuda
-            outras pessoas a chamarem você no momento certo.
+            {t("profileSetup.availabilityHelp")}
           </Text>
           <AvailabilityMatrix value={availability} onChange={setAvailability} />
           <View style={styles.selectionWrap}>
             {availabilityPreview.length ? (
               availabilityPreview.map((label) => <IdentityChip key={label} label={label} />)
             ) : (
-              <Text style={styles.helpText}>Nenhum período selecionado ainda.</Text>
+              <Text style={styles.helpText}>{t("profileSetup.noAvailabilitySelected")}</Text>
             )}
           </View>
         </View>
@@ -631,14 +631,14 @@ export function ProfileSetupScreen({
           <View style={styles.footerPrimaryRow}>
             {canCancel && onCancel ? (
               <View style={styles.footerSecondaryAction}>
-                <PrimaryButton label="Cancelar" onPress={onCancel} tone="ghost" />
+                <PrimaryButton label={t("profileSetup.cancel")} onPress={onCancel} tone="ghost" />
               </View>
             ) : null}
             <View style={styles.footerPrimaryAction}>
-              <PrimaryButton label="Salvar perfil" onPress={handleSave} loading={loading} />
+              <PrimaryButton label={t("profileSetup.save")} onPress={handleSave} loading={loading} />
             </View>
           </View>
-          <PrimaryButton label="Desconectar" onPress={handleSignOut} tone="ghost" />
+          <PrimaryButton label={t("profileSetup.signOut")} onPress={handleSignOut} tone="ghost" />
         </View>
       </KeyboardAwareScrollView>
     </SafeAreaView>
@@ -653,7 +653,7 @@ function inputValueOrNull(value: string | null | undefined) {
 function toMessage(error: unknown) {
   const raw = extractErrorText(error);
   if (!raw) {
-    return "Não foi possível salvar o perfil. Tente de novo.";
+    return translate("profileSetup.saveFailed");
   }
 
   const lower = raw.toLowerCase();
@@ -664,7 +664,7 @@ function toMessage(error: unknown) {
     lower.includes("idx_profiles_handle") ||
     (lower.includes("handle") && lower.includes("unique"))
   ) {
-    return "Esse @handle já está em uso. Escolha outro identificador.";
+    return translate("profileSetup.handleTaken");
   }
 
   return raw;
@@ -959,7 +959,7 @@ function displayNameExampleFromEmail(email: string | null): string {
     .filter((segment) => segment.length > 0 && /[a-zA-ZÀ-ÿ]/.test(segment));
 
   if (!segments.length) {
-    return "Ex.: o mesmo estilo do seu nome no e-mail";
+    return translate("profileSetup.displayNameFallbackPlaceholder");
   }
 
   const titled = segments.slice(0, 3).map((word) => {
@@ -974,7 +974,7 @@ function displayNameExampleFromEmail(email: string | null): string {
 /** Placeholder do handle a partir do e-mail (ex.: ana.silva@ → "Ex.: anasilva"). */
 function handleExampleFromEmail(email: string | null): string {
   if (!email?.includes("@")) {
-    return "Ex.: um identificador curto, estilo e-mail";
+    return translate("profileSetup.handleFallbackPlaceholder");
   }
 
   const local = email.split("@")[0]?.trim().toLowerCase() ?? "";
@@ -984,7 +984,7 @@ function handleExampleFromEmail(email: string | null): string {
     return `Ex.: ${compact.slice(0, 24)}`;
   }
 
-  return "Ex.: combine com seu e-mail, sem espaços";
+  return translate("profileSetup.handleSuggestionFallback");
 }
 
 function deriveSelectedGameIds(

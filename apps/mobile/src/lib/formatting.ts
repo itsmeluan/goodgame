@@ -7,29 +7,28 @@ import type {
   VenueKind,
   VenueSuggestionStatus,
 } from "@/types/domain";
-
-const weekdayNames = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+import { getCurrentLocale, translate } from "@/i18n";
 
 const periodDefinitions = [
-  { id: "morning", label: "Manhã", start: "09:00", end: "12:00" },
-  { id: "afternoon", label: "Tarde", start: "14:00", end: "18:00" },
-  { id: "night", label: "Noite", start: "19:00", end: "23:00" },
+  { id: "morning", labelKey: "format.period.morning", start: "09:00", end: "12:00" },
+  { id: "afternoon", labelKey: "format.period.afternoon", start: "14:00", end: "18:00" },
+  { id: "night", labelKey: "format.period.night", start: "19:00", end: "23:00" },
 ] as const;
 
 export function formatHostMode(mode: HostMode) {
   if (mode === "can_host") {
-    return "Posso receber";
+    return translate("format.host.canHost");
   }
 
   if (mode === "looking_for_host") {
-    return "Preciso de anfitrião";
+    return translate("format.host.lookingForHost");
   }
 
-  return "Local público";
+  return translate("format.host.publicVenue");
 }
 
 export function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
+  return new Intl.DateTimeFormat(getCurrentLocale(), {
     dateStyle: "short",
     timeStyle: "short",
   }).format(new Date(value));
@@ -37,66 +36,66 @@ export function formatDateTime(value: string) {
 
 export function formatMeetupStatus(status: MeetupStatus) {
   if (status === "closed") {
-    return "Encerrado";
+    return translate("format.meetup.closed");
   }
 
   if (status === "cancelled") {
-    return "Cancelado";
+    return translate("format.meetup.cancelled");
   }
 
-  return "Aberto";
+  return translate("format.meetup.open");
 }
 
 export function formatVenueKind(kind: VenueKind) {
   if (kind === "specialty_store") {
-    return "Loja especializada";
+    return translate("format.venue.specialtyStore");
   }
 
-  return "Local público";
+  return translate("format.venue.public");
 }
 
 export function formatAttendanceStatus(status: AttendanceStatus) {
   if (status === "interested") {
-    return "Tenho interesse";
+    return translate("format.attendance.interested");
   }
 
   if (status === "confirmed") {
-    return "Confirmado";
+    return translate("format.attendance.confirmed");
   }
 
   if (status === "not_going") {
-    return "Não vou";
+    return translate("format.attendance.notGoing");
   }
 
   if (status === "on_the_way") {
-    return "Confirmado";
+    return translate("format.attendance.confirmed");
   }
 
   if (status === "arrived") {
-    return "Confirmado";
+    return translate("format.attendance.confirmed");
   }
 
   if (status === "left") {
-    return "Confirmado";
+    return translate("format.attendance.confirmed");
   }
 
   if (status === "cant_make_it") {
-    return "Não vou";
+    return translate("format.attendance.notGoing");
   }
 
-  return "Tenho interesse";
+  return translate("format.attendance.interested");
 }
 
 export function formatVenueSuggestionStatus(status: VenueSuggestionStatus) {
   if (status === "approved") {
-    return "Aprovado";
+    return translate("format.venueSuggestion.approved");
   }
 
   if (status === "rejected") {
-    return "Recusado";
+    return translate("format.venueSuggestion.rejected");
   }
 
-  return "Em análise";
+  return translate("format.venueSuggestion.pending");
 }
 
 export function formatLocationPrivacy(isLocationExact: boolean, locationHint: string) {
@@ -104,7 +103,7 @@ export function formatLocationPrivacy(isLocationExact: boolean, locationHint: st
     return locationHint;
   }
 
-  return `${locationHint} · ponto exato liberado ao entrar`;
+  return `${locationHint} · ${translate("format.locationExactHidden")}`;
 }
 
 export function formatCompactAddress(value: string | null | undefined) {
@@ -169,35 +168,37 @@ function isBroadAddressPart(value: string) {
 
 export function formatNotificationKind(kind: NotificationKind) {
   if (kind === "member_joined") {
-    return "Grupo";
+    return translate("format.notification.group");
   }
 
   if (kind === "message_received") {
-    return "Chat";
+    return translate("format.notification.chat");
   }
 
   if (kind === "meetup_reminder") {
-    return "Lembrete";
+    return translate("format.notification.reminder");
   }
 
   if (kind === "nearby_meetup_created" || kind === "nearby_venue_created") {
-    return "Perto de você";
+    return translate("format.notification.nearby");
   }
 
-  return "Status";
+  return translate("format.notification.status");
 }
 
 export function formatAvailabilitySlot(slot: AvailabilitySlot) {
-  return `${weekdayNames[slot.weekday] ?? "Dia"} ${slot.start_time}-${slot.end_time}`;
+  return `${formatWeekday(slot.weekday)} ${slot.start_time}-${slot.end_time}`;
 }
 
 export function formatAvailabilityPeriod(slot: AvailabilitySlot) {
-  const period =
-    periodDefinitions.find(
-      (item) => item.start === slot.start_time && item.end === slot.end_time
-    )?.label ?? "Período";
+  const periodDefinition = periodDefinitions.find(
+    (item) => item.start === slot.start_time && item.end === slot.end_time
+  );
+  const period = periodDefinition
+    ? translate(periodDefinition.labelKey)
+    : translate("format.availabilityPeriod.fallback");
 
-  return `${weekdayNames[slot.weekday] ?? "Dia"} · ${period}`;
+  return `${formatWeekday(slot.weekday)} · ${period}`;
 }
 
 export function summarizeAvailabilityPeriods(slots: AvailabilitySlot[]) {
@@ -259,13 +260,15 @@ export function calculateDistanceKm(
 
 export function formatSyncLabel(value: Date | null) {
   if (!value) {
-    return "Aguardando sincronização";
+    return translate("format.sync.empty");
   }
 
-  return `Sincronizado às ${new Intl.DateTimeFormat("pt-BR", {
+  const time = new Intl.DateTimeFormat(getCurrentLocale(), {
     hour: "2-digit",
     minute: "2-digit",
-  }).format(value)}`;
+  }).format(value);
+
+  return translate("format.sync.ready", { time });
 }
 
 export function formatRelativeTimestamp(value: string) {
@@ -273,18 +276,18 @@ export function formatRelativeTimestamp(value: string) {
   const deltaMinutes = Math.round((target - Date.now()) / 60000);
 
   if (Math.abs(deltaMinutes) < 1) {
-    return "Agora";
+    return translate("format.now");
   }
 
   const formatter =
     typeof Intl !== "undefined" && typeof Intl.RelativeTimeFormat === "function"
-      ? new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" })
+      ? new Intl.RelativeTimeFormat(getCurrentLocale(), { numeric: "auto" })
       : null;
 
   if (Math.abs(deltaMinutes) < 60) {
     return formatter
       ? formatter.format(deltaMinutes, "minute")
-      : formatRelativeFallback(deltaMinutes, "minuto", "minutos");
+      : formatRelativeFallback(deltaMinutes, "minute");
   }
 
   const deltaHours = Math.round(deltaMinutes / 60);
@@ -292,28 +295,28 @@ export function formatRelativeTimestamp(value: string) {
   if (Math.abs(deltaHours) < 24) {
     return formatter
       ? formatter.format(deltaHours, "hour")
-      : formatRelativeFallback(deltaHours, "hora", "horas");
+      : formatRelativeFallback(deltaHours, "hour");
   }
 
   const deltaDays = Math.round(deltaHours / 24);
   return formatter
     ? formatter.format(deltaDays, "day")
-    : formatRelativeFallback(deltaDays, "dia", "dias");
+    : formatRelativeFallback(deltaDays, "day");
 }
 
 export function formatParticipantSummary(joinedPlayers: number, _maxPlayers = 0) {
   const count = Math.max(joinedPlayers, 0);
 
   if (count === 1) {
-    return "1 participante";
+    return translate("format.participant.one");
   }
 
-  return `${count} participantes`;
+  return translate("format.participant.other", { count });
 }
 
 export function formatAverageRating(value: number) {
   if (!Number.isFinite(value) || value <= 0) {
-    return "Ainda sem nota";
+    return translate("format.averageRatingEmpty");
   }
 
   return `${value.toFixed(1)} / 5`;
@@ -339,17 +342,38 @@ function toRadians(value: number) {
   return (value * Math.PI) / 180;
 }
 
-function formatRelativeFallback(
-  amount: number,
-  singularLabel: string,
-  pluralLabel: string
-) {
+function formatRelativeFallback(amount: number, unit: "minute" | "hour" | "day") {
   const absoluteAmount = Math.abs(amount);
-  const label = absoluteAmount === 1 ? singularLabel : pluralLabel;
+  const label = translate(
+    absoluteAmount === 1
+      ? `format.unit.${unit}.one`
+      : `format.unit.${unit}.other`
+  );
 
   if (amount < 0) {
-    return `há ${absoluteAmount} ${label}`;
+    return translate("format.relative.past", { count: absoluteAmount, unit: label });
   }
 
-  return `em ${absoluteAmount} ${label}`;
+  return translate("format.relative.future", { count: absoluteAmount, unit: label });
+}
+
+function formatWeekday(weekday: number) {
+  switch (weekday) {
+    case 0:
+      return translate("format.weekday.0");
+    case 1:
+      return translate("format.weekday.1");
+    case 2:
+      return translate("format.weekday.2");
+    case 3:
+      return translate("format.weekday.3");
+    case 4:
+      return translate("format.weekday.4");
+    case 5:
+      return translate("format.weekday.5");
+    case 6:
+      return translate("format.weekday.6");
+    default:
+      return translate("format.day.fallback");
+  }
 }

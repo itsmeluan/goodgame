@@ -1,0 +1,4 @@
+/* iOS permission dialogs - Português */
+
+NSLocationWhenInUseUsageDescription = "Permita que o GG use sua localização aproximada para mostrar mesas e locais próximos.";
+NSPhotoLibraryUsageDescription = "Permita que o GG acesse sua biblioteca de fotos para escolher imagens de perfil e do chat da partida.";

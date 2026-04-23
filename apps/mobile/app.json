@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.martinsluan.goodgame",
-      "versionCode": 8,
+      "versionCode": 9,
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/icon-android-foreground.png",
         "backgroundColor": "#0C0E14"

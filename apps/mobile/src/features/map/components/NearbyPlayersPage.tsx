@@ -15,6 +15,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
 import { MapEmptyCard } from "@/features/map/components/MapFeedbackPrimitives";
+import { getCurrentLocale, useTranslation } from "@/i18n";
 import { analyticsCapture } from "@/lib/analytics";
 import { env } from "@/lib/env";
 import { useLiveLocation } from "@/features/app/LiveLocationContext";
@@ -27,7 +28,7 @@ import type { NearbyPlayer, PlayerProfile } from "@/types/domain";
 const FREE_PREVIEW_COUNT = 3;
 
 function formatDistanceKm(km: number) {
-  return `${new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }).format(km)} km`;
+  return `${new Intl.NumberFormat(getCurrentLocale(), { maximumFractionDigits: 1 }).format(km)} km`;
 }
 
 type NearbyPlayersPageProps = {
@@ -45,6 +46,7 @@ export function NearbyPlayersPage({
   onOpenPlayerProfile,
   onOpenProPaywall,
 }: NearbyPlayersPageProps) {
+  const { t } = useTranslation();
   const { coordinate, permissionStatus, requestAccess } = useLiveLocation();
   const coordRef = useRef(coordinate);
   coordRef.current = coordinate;
@@ -105,7 +107,7 @@ export function NearbyPlayersPage({
           });
         }
       } catch (fetchError) {
-        setError("Não foi possível carregar jogadores próximos. Tente novamente.");
+        setError(t("nearby.error"));
         if (__DEV__) {
           console.warn("[nearby-players]", fetchError);
         }
@@ -117,7 +119,7 @@ export function NearbyPlayersPage({
         }
       }
     },
-    [permissionStatus]
+    [permissionStatus, pro, t]
   );
 
   /** Uma busca automática ao abrir a tela (componente monta de novo ao voltar ao menu). */
@@ -197,7 +199,7 @@ export function NearbyPlayersPage({
         <View style={styles.loadingBox}>
           <LoadingSpinner size={24} />
           <Text style={styles.loadingHint}>
-            {locating ? "Obtendo sua posição…" : "Buscando jogadores…"}
+            {locating ? t("nearby.loadingLocation") : t("nearby.loadingPlayers")}
           </Text>
         </View>
       ) : error ? (
@@ -205,12 +207,12 @@ export function NearbyPlayersPage({
       ) : permissionDenied ? (
         <>
           <MapEmptyCard
-            title="Localização necessária"
-            body="O Good Game usa sua posição atual (GPS) para ordenar jogadores por distância. Toque abaixo para permitir o acesso nas configurações do iOS."
+            title={t("nearby.locationTitle")}
+            body={t("nearby.locationBody")}
           />
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Permitir acesso à localização"
+            accessibilityLabel={t("nearby.allowLocation")}
             disabled={requestingPermission}
             onPress={() => {
               void handleRequestPermission();
@@ -227,24 +229,24 @@ export function NearbyPlayersPage({
               <AppIcon iosName="location.fill" fallbackName="my-location" size={18} color={palette.parchment} />
             )}
             <Text style={styles.locationCtaLabel}>
-              {requestingPermission ? "Aguardando…" : "Permitir localização"}
+              {requestingPermission ? t("nearby.awaiting") : t("nearby.allowLocation")}
             </Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Abrir Ajustes do iOS"
+            accessibilityLabel={t("nearby.locationSettingsA11y")}
             onPress={() => {
               void Linking.openSettings();
             }}
             style={({ pressed }) => [styles.settingsCta, pressed ? styles.settingsCtaPressed : null]}
           >
-            <Text style={styles.settingsCtaLabel}>Abrir Ajustes</Text>
+            <Text style={styles.settingsCtaLabel}>{t("nearby.locationSettings")}</Text>
           </Pressable>
         </>
       ) : players.length === 0 ? (
         <MapEmptyCard
-          title="Nenhum jogador por aqui"
-          body="Quando outros jogadores estiverem no seu raio de busca, eles aparecem nesta lista."
+          title={t("nearby.emptyTitle")}
+          body={t("nearby.emptyBody")}
         />
       ) : (
         <View style={styles.list}>
@@ -306,8 +308,8 @@ export function NearbyPlayersPage({
               >
                 <ProFeatureGate
                   locked
-                  overlayTitle="Veja todos os jogadores próximos"
-                  ctaLabel="Tornar-se Pro Player"
+                  overlayTitle={t("nearby.paywallTitle")}
+                  ctaLabel={t("nearby.paywallCta")}
                   onRequestUnlock={requestUnlockFromGate}
                 >
                   {row}

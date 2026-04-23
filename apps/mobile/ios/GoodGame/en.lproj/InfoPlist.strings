@@ -1,0 +1,4 @@
+/* iOS permission dialogs - English */
+
+NSLocationWhenInUseUsageDescription = "Allow GG to use your approximate location to show nearby tables and venues.";
+NSPhotoLibraryUsageDescription = "Allow GG to access your photo library to choose profile pictures and match chat images.";

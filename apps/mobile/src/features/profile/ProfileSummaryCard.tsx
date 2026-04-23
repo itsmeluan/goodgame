@@ -2,6 +2,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { GlassCard } from "@/components/GlassCard";
+import { useTranslation } from "@/i18n";
 import { summarizeAvailabilityPeriods } from "@/lib/formatting";
 import { palette, radius, spacing } from "@/theme/tokens";
 import type { PlayerProfile } from "@/types/domain";
@@ -11,6 +12,7 @@ type ProfileSummaryCardProps = {
 };
 
 export function ProfileSummaryCard({ profile }: ProfileSummaryCardProps) {
+  const { t } = useTranslation();
   const availabilityLabels = summarizeAvailabilityPeriods(profile.availability);
 
   return (
@@ -19,7 +21,7 @@ export function ProfileSummaryCard({ profile }: ProfileSummaryCardProps) {
         <View style={styles.headerCopy}>
           <Text style={styles.name}>{profile.displayName}</Text>
           <Text style={styles.handle}>@{profile.handle}</Text>
-          <Text style={styles.subMeta}>{profile.neighborhood || "Bairro não informado"}</Text>
+          <Text style={styles.subMeta}>{profile.neighborhood || t("profile.noNeighborhood")}</Text>
         </View>
         <View style={styles.badge}>
           <AppleGlassSurface
@@ -29,7 +31,7 @@ export function ProfileSummaryCard({ profile }: ProfileSummaryCardProps) {
             style={styles.badgeSurface}
           />
           <Text style={styles.badgeText}>
-            {profile.canHost ? "Recebe pessoas" : "Encontro externo"}
+            {profile.canHost ? t("profile.receivesPeople") : t("profile.externalMeetup")}
           </Text>
         </View>
       </View>
@@ -37,7 +39,7 @@ export function ProfileSummaryCard({ profile }: ProfileSummaryCardProps) {
       {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
       <View style={styles.block}>
-        <Text style={styles.label}>Interesses</Text>
+        <Text style={styles.label}>{t("profile.interests")}</Text>
         <View style={styles.valueChips}>
           {profile.gameNames.length ? (
             profile.gameNames.map((gameName) => (
@@ -52,13 +54,13 @@ export function ProfileSummaryCard({ profile }: ProfileSummaryCardProps) {
               </View>
             ))
           ) : (
-            <Text style={styles.value}>Não informado</Text>
+            <Text style={styles.value}>{t("profile.notInformed")}</Text>
           )}
         </View>
       </View>
 
       <View style={styles.block}>
-        <Text style={styles.label}>Formatos</Text>
+        <Text style={styles.label}>{t("profile.formats")}</Text>
         <View style={styles.valueChips}>
           {profile.formatNames.length ? (
             profile.formatNames.map((formatName) => (
@@ -73,13 +75,13 @@ export function ProfileSummaryCard({ profile }: ProfileSummaryCardProps) {
               </View>
             ))
           ) : (
-            <Text style={styles.value}>Não informado</Text>
+            <Text style={styles.value}>{t("profile.notInformed")}</Text>
           )}
         </View>
       </View>
 
       <View style={styles.block}>
-        <Text style={styles.label}>Disponibilidade</Text>
+        <Text style={styles.label}>{t("profile.availability")}</Text>
         <View style={styles.valueChips}>
           {availabilityLabels.length ? (
             availabilityLabels.map((label) => (
@@ -94,7 +96,7 @@ export function ProfileSummaryCard({ profile }: ProfileSummaryCardProps) {
               </View>
             ))
           ) : (
-            <Text style={styles.value}>Não informada</Text>
+            <Text style={styles.value}>{t("profile.noAvailability")}</Text>
           )}
         </View>
       </View>

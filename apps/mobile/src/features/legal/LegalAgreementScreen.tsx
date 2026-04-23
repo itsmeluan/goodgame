@@ -6,12 +6,13 @@ import { GoodGameLogo } from "@/components/GoodGameLogo";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { SectionCard } from "@/components/SectionCard";
 import { LegalDocumentModal } from "@/features/legal/LegalDocumentModal";
+import { translate, useTranslation } from "@/i18n";
 import { acceptCurrentLegalDocuments } from "@/lib/api";
 import { appInfo } from "@/lib/appInfo";
 import { palette, spacing } from "@/theme/tokens";
 import type { LegalDocument } from "@/types/domain";
 
-import { legalContent } from "./legalContent";
+import { getLegalContent } from "./legalContent";
 
 type LegalAgreementScreenProps = {
   documents: LegalDocument[];
@@ -24,13 +25,16 @@ export function LegalAgreementScreen({
   onAccepted,
   onSignOut,
 }: LegalAgreementScreenProps) {
+  const { t, locale } = useTranslation();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDocumentKind, setSelectedDocumentKind] = useState<
     LegalDocument["kind"] | null
   >(null);
 
-  const selectedDocument = selectedDocumentKind ? legalContent[selectedDocumentKind] : null;
+  const selectedDocument = selectedDocumentKind
+    ? getLegalContent(selectedDocumentKind, locale)
+    : null;
   const pendingDocuments = useMemo(
     () => documents.filter((document) => document.acceptedAt === null),
     [documents]
@@ -60,53 +64,43 @@ export function LegalAgreementScreen({
           <Text style={styles.eyebrow}>Good Game</Text>
         </View>
 
-        <Text style={styles.title}>Antes de continuar</Text>
-        <Text style={styles.subtitle}>
-          Para usar o app, você precisa aceitar os documentos legais vigentes e confirmar que
-          compreende as regras de uso, privacidade e segurança da comunidade.
-        </Text>
+        <Text style={styles.title}>{t("legal.title")}</Text>
+        <Text style={styles.subtitle}>{t("legal.subtitle")}</Text>
 
         {pendingDocuments.map((document) => (
-          <SectionCard key={document.id}>
-            <View style={styles.documentHeader}>
-              <Text style={styles.documentTitle}>{document.title}</Text>
-              <Text style={styles.documentVersion}>v{document.version}</Text>
-            </View>
-            <Text style={styles.documentSummary}>{document.summary}</Text>
-            <PrimaryButton
-              label={`Ler ${document.kind === "privacy_policy" ? "política" : "termos"}`}
-              onPress={() => setSelectedDocumentKind(document.kind)}
-              tone="ghost"
-            />
-          </SectionCard>
+          <LocalizedDocumentCard
+            key={document.id}
+            document={document}
+            title={getLegalContent(document.kind, locale).title}
+            summary={
+              document.kind === "privacy_policy"
+                ? t("legal.privacySummary")
+                : t("legal.termsSummary")
+            }
+            ctaLabel={
+              document.kind === "privacy_policy" ? t("legal.readPrivacy") : t("legal.readTerms")
+            }
+            onPress={() => setSelectedDocumentKind(document.kind)}
+          />
         ))}
 
         <SectionCard>
-          <Text style={styles.commitmentTitle}>Seu aceite confirma que:</Text>
-          <Text style={styles.commitmentItem}>
-            Você leu os Termos de Uso e a Política de Privacidade vigentes.
-          </Text>
-          <Text style={styles.commitmentItem}>
-            Você entende que encontros presenciais exigem cautela e avaliação própria.
-          </Text>
-          <Text style={styles.commitmentItem}>
-            Você aceita respeitar as regras da comunidade e usar localização aproximada de forma
-            responsável.
-          </Text>
-          <Text style={styles.commitmentItem}>
-            Você é maior de idade ou usa o app com autorização do responsável, quando a lei exigir.
-          </Text>
+          <Text style={styles.commitmentTitle}>{t("legal.commitmentTitle")}</Text>
+          <Text style={styles.commitmentItem}>{t("legal.commitmentOne")}</Text>
+          <Text style={styles.commitmentItem}>{t("legal.commitmentTwo")}</Text>
+          <Text style={styles.commitmentItem}>{t("legal.commitmentThree")}</Text>
+          <Text style={styles.commitmentItem}>{t("legal.commitmentFour")}</Text>
         </SectionCard>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <View style={styles.footerActions}>
           <PrimaryButton
-            label="Aceitar e continuar"
+            label={t("legal.accept")}
             onPress={() => void handleAccept()}
             loading={submitting}
           />
-          <PrimaryButton label="Sair da conta" onPress={() => void onSignOut()} tone="ghost" />
+          <PrimaryButton label={t("legal.signOut")} onPress={() => void onSignOut()} tone="ghost" />
         </View>
       </ScrollView>
 
@@ -118,12 +112,37 @@ export function LegalAgreementScreen({
   );
 }
 
+function LocalizedDocumentCard({
+  document,
+  title,
+  summary,
+  ctaLabel,
+  onPress,
+}: {
+  document: LegalDocument;
+  title: string;
+  summary: string;
+  ctaLabel: string;
+  onPress: () => void;
+}) {
+  return (
+    <SectionCard>
+      <View style={styles.documentHeader}>
+        <Text style={styles.documentTitle}>{title}</Text>
+        <Text style={styles.documentVersion}>v{document.version}</Text>
+      </View>
+      <Text style={styles.documentSummary}>{summary}</Text>
+      <PrimaryButton label={ctaLabel} onPress={onPress} tone="ghost" />
+    </SectionCard>
+  );
+}
+
 function toMessage(error: unknown) {
   if (error instanceof Error) {
     return error.message;
   }
 
-  return "Não foi possível registrar o aceite agora.";
+  return translate("legal.acceptanceError");
 }
 
 const styles = StyleSheet.create({

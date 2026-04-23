@@ -19,6 +19,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { AddressAutocompleteField } from "@/features/map/components/AddressAutocompleteField";
 import { StatusChip } from "@/features/map/components/MapSheetPrimitives";
+import { useTranslation } from "@/i18n";
 import { formatHostMode } from "@/lib/formatting";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
@@ -82,6 +83,7 @@ type MeetupSheetCardProps = {
 };
 
 export function MeetupSheetCard(props: MeetupSheetCardProps) {
+  const { t } = useTranslation();
   const {
     mode,
     meetup,
@@ -134,12 +136,12 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
 
   function confirmLeaveMeetup() {
     Alert.alert(
-      "Sair da partida",
-      "Deseja sair deste jogo? Você perderá acesso ao chat e à participação.",
+      t("meetup.leaveTitle"),
+      t("meetup.leaveBody"),
       [
-        { text: "Cancelar", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Sair",
+          text: t("meetup.leave"),
           style: "destructive",
           onPress: () => {
             triggerHaptic("warning");
@@ -177,16 +179,16 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
       <View style={styles.root}>
         <Animated.View style={[styles.page, styles.managePage, pageMotionStyle]}>
           <View style={styles.manageLead}>
-            <Text style={styles.eyebrow}>Editar partida</Text>
+            <Text style={styles.eyebrow}>{t("meetup.edit")}</Text>
             <Text style={styles.manageTitle}>{meetup.title}</Text>
-            <Text style={styles.manageSupport}>Ajuste data, horário e local sem sair do drawer.</Text>
+            <Text style={styles.manageSupport}>{t("meetup.editSupport")}</Text>
           </View>
 
-          <AppleListSection title="Agenda" size="compact">
+          <AppleListSection title={t("meetup.agenda")} size="compact">
             <AppleListGroup>
               <AppleListRow
                 icon={{ iosName: "calendar", fallbackName: "calendar-month" }}
-                label="Data"
+                label={t("common.date")}
                 subtitle={manageDateLabel}
                 onPress={onOpenManageCalendar}
                 size="compact"
@@ -194,7 +196,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
               <AppleListRow
                 separator
                 icon={{ iosName: "clock.fill", fallbackName: "schedule" }}
-                label="Horário"
+                label={t("common.time")}
                 subtitle={`${manageHour}:${manageMinute}`}
                 onPress={onOpenManageTimePicker}
                 size="compact"
@@ -203,7 +205,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                 <AppleListRow
                   separator
                   icon={{ iosName: "person.3.fill", fallbackName: "groups" }}
-                  label="Participantes"
+                  label={t("meetup.participants")}
                   subtitle={String(meetup.joinedPlayers)}
                   onPress={onOpenManageParticipants}
                   size="compact"
@@ -212,9 +214,9 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
             </AppleListGroup>
           </AppleListSection>
 
-          <AppleListSection title="Local" size="compact">
+          <AppleListSection title={t("common.location")} size="compact">
             <AddressAutocompleteField
-              label="Endereço"
+              label={t("venue.address")}
               value={manageAddressQuery}
               focused={manageAddressFocused}
               onFocusChange={onManageAddressFocusChange}
@@ -224,24 +226,24 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
               onUseCurrentLocation={onManageAddressUseCurrentLocation}
               onUseTypedAddress={onManageAddressUseTyped}
               onSelectSuggestion={onManageAddressSelect}
-              placeholder="Toque para atualizar o endereço"
+              placeholder={t("address.placeholder")}
             />
           </AppleListSection>
 
           <View style={styles.actionSection}>
             <PrimaryButton
-              label="Salvar alterações"
+              label={t("meetup.saveChanges")}
               onPress={onSaveEdits}
               loading={savingEdits}
             />
           </View>
 
-          <AppleListSection title="Encerramento" size="compact">
+          <AppleListSection title={t("meetup.closing")} size="compact">
             <View style={styles.destructiveRow}>
               <View style={styles.destructiveRowCell}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Cancelar partida"
+                  accessibilityLabel={t("meetup.cancel")}
                   disabled={(actionsBusy && !cancelling) || cancelling}
                   onPress={() => {
                     triggerHaptic("warning");
@@ -257,13 +259,13 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                   {cancelling ? (
                     <LoadingSpinner size={20} color={WATERMELON_RED} />
                   ) : (
-                    <Text style={styles.watermelonOutlineLabel}>Cancelar</Text>
+                    <Text style={styles.watermelonOutlineLabel}>{t("common.cancel")}</Text>
                   )}
                 </Pressable>
               </View>
               <View style={styles.destructiveRowCell}>
                 <PrimaryButton
-                  label="Encerrar"
+                  label={t("meetup.close")}
                   onPress={onPromptClose}
                   tone="ghost"
                   loading={closing}
@@ -274,7 +276,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
               <View style={styles.destructiveRowCell}>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Excluir jogo"
+                  accessibilityLabel={t("meetup.delete")}
                   disabled={(actionsBusy && !deleting) || deleting}
                   onPress={() => {
                     triggerHaptic("warning");
@@ -290,7 +292,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                   {deleting ? (
                     <LoadingSpinner size={20} color={palette.ink} />
                   ) : (
-                    <Text style={styles.watermelonSolidLabel}>Excluir</Text>
+                    <Text style={styles.watermelonSolidLabel}>{t("common.delete")}</Text>
                   )}
                 </Pressable>
               </View>
@@ -326,7 +328,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                 {onShareMeetup ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Compartilhar partida"
+                    accessibilityLabel={t("meetup.share")}
                     onPress={() => {
                       triggerHaptic("selection");
                       onShareMeetup();
@@ -348,7 +350,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Ver no mapa"
+                  accessibilityLabel={t("venue.viewOnMap")}
                   onPress={() => {
                     triggerHaptic("selection");
                     onFocusMeetupOnMap();
@@ -370,7 +372,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                 {showEditAction ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Editar partida"
+                    accessibilityLabel={t("meetup.edit")}
                     onPress={() => {
                       triggerHaptic("selection");
                       onToggleManage();
@@ -392,7 +394,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Abrir chat"
+                  accessibilityLabel={t("meetup.chat")}
                   onPress={() => {
                     triggerHaptic("soft");
                     onOpenChat();
@@ -417,7 +419,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                 {onShareMeetup ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Compartilhar partida"
+                    accessibilityLabel={t("meetup.share")}
                     onPress={() => {
                       triggerHaptic("selection");
                       onShareMeetup();
@@ -439,7 +441,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Sair da partida"
+                  accessibilityLabel={t("meetup.leaveA11y")}
                   accessibilityState={{ disabled: leaving }}
                   disabled={leaving}
                   onPress={confirmLeaveMeetup}
@@ -465,7 +467,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Ver no mapa"
+                  accessibilityLabel={t("venue.viewOnMap")}
                   onPress={() => {
                     triggerHaptic("selection");
                     onFocusMeetupOnMap();
@@ -486,7 +488,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Abrir chat"
+                  accessibilityLabel={t("meetup.chat")}
                   onPress={() => {
                     triggerHaptic("soft");
                     onOpenChat();
@@ -511,7 +513,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
                 {onShareMeetup ? (
                   <Pressable
                     accessibilityRole="button"
-                    accessibilityLabel="Compartilhar partida"
+                    accessibilityLabel={t("meetup.share")}
                     onPress={() => {
                       triggerHaptic("selection");
                       onShareMeetup();
@@ -533,7 +535,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel={joinDisabled ? "Partida indisponível" : "Entrar na partida"}
+                  accessibilityLabel={joinDisabled ? t("meetup.unavailable") : t("meetup.join")}
                   accessibilityState={{ disabled: joinDisabled || joining }}
                   disabled={joinDisabled || joining}
                   onPress={() => {
@@ -565,7 +567,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
 
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Ver no mapa"
+                  accessibilityLabel={t("venue.viewOnMap")}
                   onPress={() => {
                     triggerHaptic("selection");
                     onFocusMeetupOnMap();
@@ -591,7 +593,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
         <AppleListGroup>
           <AppleListRow
             icon={{ iosName: "calendar", fallbackName: "calendar-month" }}
-            label="Quando"
+            label={t("meetup.when")}
             subtitle={formattedStartsAt}
             showChevron={false}
             size="compact"
@@ -599,16 +601,16 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
           <AppleListRow
             separator
             icon={{ iosName: "square.grid.2x2.fill", fallbackName: "grid-view" }}
-            label="Formato"
+            label={t("meetup.format")}
             subtitle={meetup.formatName}
             showChevron={false}
             size="compact"
           />
-          {onOpenDetailParticipants ? (
+          {onOpenDetailParticipants && (meetup.isMember || meetup.isCreator) ? (
             <AppleListRow
               separator
               icon={{ iosName: "person.3.fill", fallbackName: "groups" }}
-              label="Participantes"
+              label={t("meetup.participants")}
               subtitle={String(meetup.joinedPlayers)}
               onPress={() => {
                 triggerHaptic("selection");
@@ -616,11 +618,20 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
               }}
               size="compact"
             />
+          ) : onOpenDetailParticipants ? (
+            <AppleListRow
+              separator
+              icon={{ iosName: "person.3.fill", fallbackName: "groups" }}
+              label={t("meetup.participants")}
+              subtitle={t("meetup.participantsLocked")}
+              showChevron={false}
+              size="compact"
+            />
           ) : null}
           <AppleListRow
             separator
             icon={{ iosName: "globe", fallbackName: "public" }}
-            label="Modo"
+            label={t("meetup.mode")}
             subtitle={formatHostMode(meetup.hostMode)}
             showChevron={false}
             size="compact"
@@ -628,7 +639,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
           <AppleListRow
             separator
             icon={{ iosName: "mappin.and.ellipse", fallbackName: "location-on" }}
-            label="Local"
+            label={t("common.location")}
             subtitle={locationLabel}
             showChevron={false}
             size="compact"
@@ -637,7 +648,7 @@ export function MeetupSheetCard(props: MeetupSheetCardProps) {
 
         {meetup.description.trim() ? (
           <View style={styles.noteBlock}>
-            <Text style={styles.noteLabel}>Notas</Text>
+            <Text style={styles.noteLabel}>{t("meetup.notes")}</Text>
             <Text style={styles.description}>{meetup.description.trim()}</Text>
           </View>
         ) : null}

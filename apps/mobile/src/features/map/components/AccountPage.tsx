@@ -8,6 +8,7 @@ import { SlidingSheetStack } from "@/components/SlidingSheetStack";
 import { AccountOwnPublicProfileScene } from "@/features/map/components/AccountOwnPublicProfileScene";
 import { BlockedUsersPage } from "@/features/map/components/BlockedUsersPage";
 import { MapPageCloseFooter } from "@/features/map/components/MapPageCloseFooter";
+import { useTranslation, type LanguagePreference, type SupportedLocale } from "@/i18n";
 import { formatAverageRating, formatSyncLabel } from "@/lib/formatting";
 import { isUserPro } from "@/lib/proPlayer";
 import { palette, spacing } from "@/theme/tokens";
@@ -32,7 +33,7 @@ type AccountPageProps = {
   onClose: () => void;
 };
 
-type AccountRouteKey = "profile" | "reputation" | "blocked";
+type AccountRouteKey = "profile" | "reputation" | "blocked" | "language";
 
 export function AccountPage({
   profile,
@@ -52,6 +53,7 @@ export function AccountPage({
   onDeleteAccount,
   onClose,
 }: AccountPageProps) {
+  const { locale, preference, setLanguagePreference, t } = useTranslation();
   const [routeKeys, setRouteKeys] = useState<AccountRouteKey[]>([]);
 
   const pushRoute = (key: AccountRouteKey) => {
@@ -79,7 +81,7 @@ export function AccountPage({
             <View style={styles.accountHero}>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Editar foto do perfil"
+                accessibilityLabel={t("account.editProfilePhoto")}
                 onPress={onProfileEdit}
                 style={({ pressed }) => [
                   styles.accountAvatarButton,
@@ -97,8 +99,8 @@ export function AccountPage({
                 <Text style={styles.accountName}>{profile.displayName}</Text>
                 <Text style={styles.accountHandle}>@{profile.handle}</Text>
                 <Text style={styles.accountMeta}>
-                  {profile.neighborhood || "Sem bairro"} ·{" "}
-                  {profile.canHost ? "Recebe pessoas" : "Encontro externo"}
+                  {profile.neighborhood || t("account.noNeighborhood")} ·{" "}
+                  {profile.canHost ? t("account.receivesPeople") : t("account.externalMeetup")}
                 </Text>
               </View>
             </View>
@@ -111,15 +113,15 @@ export function AccountPage({
             <AppleListGroup>
               <AppleListRow
                 icon={{ iosName: "person.fill", fallbackName: "person" }}
-                label="Perfil"
+                label={t("account.profile")}
                 onPress={() => pushRoute("profile")}
                 size="compact"
               />
               <AppleListRow
                 separator
                 icon={{ iosName: "star.fill", fallbackName: "grade" }}
-                label="Reputação"
-                subtitle={`${reputationSummary.ratingsCount} avaliação(ões)`}
+                label={t("account.reputation")}
+                subtitle={t("account.ratingsCount", { count: reputationSummary.ratingsCount })}
                 trailingValue={formatAverageRating(reputationSummary.averageRating)}
                 onPress={() => pushRoute("reputation")}
                 size="compact"
@@ -127,7 +129,7 @@ export function AccountPage({
               <AppleListRow
                 separator
                 icon={{ iosName: "hand.raised.fill", fallbackName: "block" }}
-                label="Usuários bloqueados"
+                label={t("account.blockedUsers")}
                 trailingValue={String(blockedUsersCount)}
                 onPress={() => pushRoute("blocked")}
                 size="compact"
@@ -135,14 +137,27 @@ export function AccountPage({
             </AppleListGroup>
           </AppleListSection>
 
-          <AppleListSection title="Sessão" size="compact">
+          <AppleListSection title={t("account.languageSection")} size="compact">
+            <AppleListGroup>
+              <AppleListRow
+                icon={{ iosName: "globe", fallbackName: "language" }}
+                label={t("account.language")}
+                subtitle={t("account.languageSubtitle")}
+                trailingValue={formatLanguagePreference(preference, locale, t)}
+                onPress={() => pushRoute("language")}
+                size="compact"
+              />
+            </AppleListGroup>
+          </AppleListSection>
+
+          <AppleListSection title={t("account.session")} size="compact">
             <AppleListGroup>
               <AppleListRow
                 icon={{
                   iosName: "arrow.right.to.line",
                   fallbackName: "exit-to-app",
                 }}
-                label="Desconectar"
+                label={t("account.signOut")}
                 onPress={onSignOut}
                 showChevron={false}
                 size="compact"
@@ -150,7 +165,7 @@ export function AccountPage({
               <AppleListRow
                 separator
                 icon={{ iosName: "trash", fallbackName: "delete-outline" }}
-                label="Excluir conta"
+                label={t("account.deleteAccount")}
                 onPress={onDeleteAccount}
                 showChevron={false}
                 tone="danger"
@@ -179,16 +194,16 @@ export function AccountPage({
           content: (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
               <View style={styles.sceneLead}>
-                <Text style={styles.sceneLeadTitle}>Reputação</Text>
+                <Text style={styles.sceneLeadTitle}>{t("account.reputation")}</Text>
                 <Text style={styles.sceneLeadSubtitle}>
-                  {reputationSummary.ratingsCount} avaliação(ões)
+                  {t("account.ratingsCount", { count: reputationSummary.ratingsCount })}
                 </Text>
               </View>
               <AppleListSection subtitle={formatSyncLabel(lastAccountSyncAt)} size="compact">
                 <AppleListGroup>
                   <AppleListRow
                     icon={{ iosName: "star.fill", fallbackName: "stars" }}
-                    label="Nota média"
+                    label={t("account.averageRating")}
                     trailingValue={formatAverageRating(reputationSummary.averageRating)}
                     showChevron={false}
                     size="compact"
@@ -196,7 +211,7 @@ export function AccountPage({
                   <AppleListRow
                     separator
                     icon={{ iosName: "checkmark.circle.fill", fallbackName: "task-alt" }}
-                    label="Presenças"
+                    label={t("account.attendances")}
                     trailingValue={String(reputationSummary.attendedCount)}
                     showChevron={false}
                     size="compact"
@@ -204,7 +219,7 @@ export function AccountPage({
                   <AppleListRow
                     separator
                     icon={{ iosName: "xmark.circle.fill", fallbackName: "highlight-off" }}
-                    label="No-show"
+                    label={t("account.noShow")}
                     trailingValue={String(reputationSummary.noShowCount)}
                     showChevron={false}
                     size="compact"
@@ -212,9 +227,55 @@ export function AccountPage({
                   <AppleListRow
                     separator
                     icon={{ iosName: "dice.fill", fallbackName: "casino" }}
-                    label="Jogos criados"
+                    label={t("account.gamesCreated")}
                     trailingValue={String(reputationSummary.hostedCount)}
                     showChevron={false}
+                    size="compact"
+                  />
+                </AppleListGroup>
+              </AppleListSection>
+            </ScrollView>
+          ),
+        };
+      }
+
+      if (routeKey === "language") {
+        return {
+          key: routeKey,
+          content: (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sceneContent}>
+              <View style={styles.sceneLead}>
+                <Text style={styles.sceneLeadTitle}>{t("account.language")}</Text>
+                <Text style={styles.sceneLeadSubtitle}>
+                  {t("account.languageSystemDescription")}
+                </Text>
+              </View>
+              <AppleListSection size="compact">
+                <AppleListGroup>
+                  <AppleListRow
+                    icon={{ iosName: "iphone", fallbackName: "smartphone" }}
+                    label={t("account.languageSystem")}
+                    trailingValue={preference === "system" ? "✓" : null}
+                    showChevron={false}
+                    onPress={() => setLanguagePreference("system")}
+                    size="compact"
+                  />
+                  <AppleListRow
+                    separator
+                    icon={{ iosName: "textformat", fallbackName: "translate" }}
+                    label={t("account.languagePortuguese")}
+                    trailingValue={preference === "pt-BR" ? "✓" : null}
+                    showChevron={false}
+                    onPress={() => setLanguagePreference("pt-BR")}
+                    size="compact"
+                  />
+                  <AppleListRow
+                    separator
+                    icon={{ iosName: "textformat", fallbackName: "translate" }}
+                    label={t("account.languageEnglish")}
+                    trailingValue={preference === "en-US" ? "✓" : null}
+                    showChevron={false}
+                    onPress={() => setLanguagePreference("en-US")}
                     size="compact"
                   />
                 </AppleListGroup>
@@ -251,6 +312,20 @@ export function AccountPage({
       scenePaddingHorizontal={spacing.lg}
     />
   );
+}
+
+function formatLanguagePreference(
+  preference: LanguagePreference,
+  locale: SupportedLocale,
+  t: (key: "common.systemDefault" | "common.portuguese" | "common.english") => string
+) {
+  const languageName = locale === "pt-BR" ? t("common.portuguese") : t("common.english");
+
+  if (preference === "system") {
+    return `${t("common.systemDefault")} · ${languageName}`;
+  }
+
+  return languageName;
 }
 
 const styles = StyleSheet.create({

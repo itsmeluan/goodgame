@@ -17,6 +17,7 @@ import {
 import { FormatDetailTagBlock } from "@/features/map/components/FormatDetailTagBlock";
 import { NewMeetupCalendarOverlay } from "@/features/map/components/NewMeetupCalendarOverlay";
 import { NewMeetupTimeOverlay } from "@/features/map/components/NewMeetupTimeOverlay";
+import { useTranslation } from "@/i18n";
 import type { FormatDetailKind } from "@/lib/formatDetailTags";
 import type { HostModeOption } from "@/features/map/mapConfig";
 import type { AddressSuggestion } from "@/lib/placeSearch";
@@ -162,6 +163,8 @@ export function NewMeetupComposerSheet({
   timeHours,
   timeMinutes,
 }: NewMeetupComposerSheetProps) {
+  const { t } = useTranslation();
+
   return (
     <>
       <Animated.View
@@ -185,11 +188,11 @@ export function NewMeetupComposerSheet({
             <View style={styles.sheetDragZone}>
               <View style={styles.overlayHeader}>
                 <View style={styles.overlayTitleWrap}>
-                  <Text style={styles.overlayTitle}>Novo jogo</Text>
+                  <Text style={styles.overlayTitle}>{t("map.newGame")}</Text>
                 </View>
                 <Pressable
                   accessibilityRole="button"
-                  accessibilityLabel="Fechar criação de jogo"
+                  accessibilityLabel={t("composer.closeGameCreation")}
                   onPress={onClose}
                   style={({ pressed }) => [styles.overlayCloseButton, pressed ? styles.pressed : null]}
                 >
@@ -218,7 +221,7 @@ export function NewMeetupComposerSheet({
             ]}
             showsVerticalScrollIndicator={false}
           >
-          <NewMeetupComposerSectionBlock title="Tipo de jogo">
+          <NewMeetupComposerSectionBlock title={t("composer.sectionGameType")}>
             <HorizontalChipRail>
               {gameOptions.map((game) => (
                 <ChoiceChip
@@ -232,7 +235,7 @@ export function NewMeetupComposerSheet({
           </NewMeetupComposerSectionBlock>
 
           {showFormatSection ? (
-            <NewMeetupComposerSectionBlock title="Formato">
+            <NewMeetupComposerSectionBlock title={t("map.filterFormat")}>
               <HorizontalChipRail>
                 {formatOptions.map((format) => (
                   <ChoiceChip
@@ -247,7 +250,7 @@ export function NewMeetupComposerSheet({
           ) : null}
 
           {showFormatSection && selectedFormatId && formatDetailKind ? (
-            <NewMeetupComposerSectionBlock title="Preferências de formato" gap={spacing.xs}>
+            <NewMeetupComposerSectionBlock title={t("composer.sectionFormatPreferences")} gap={spacing.xs}>
               <FormatDetailTagBlock
                 kind={formatDetailKind}
                 selected={formatDetailSelected}
@@ -256,29 +259,29 @@ export function NewMeetupComposerSheet({
             </NewMeetupComposerSectionBlock>
           ) : null}
 
-          <SectionBlock title="Detalhes">
+          <SectionBlock title={t("common.details")}>
             <TextField
-              label="Título"
+              label={t("composer.gameTitle")}
               value={meetupTitle}
               onChangeText={onChangeMeetupTitle}
-              placeholder="Nome da partida (mín. 4 caracteres)"
+              placeholder={t("composer.gameTitlePlaceholder")}
               maxLength={80}
             />
             <TextField
-              label="Descrição"
+              label={t("composer.description")}
               value={meetupDescription}
               onChangeText={onChangeMeetupDescription}
-              placeholder="Opcional"
+              placeholder={t("composer.optional")}
               multiline
             />
           </SectionBlock>
 
-          <NewMeetupComposerSectionBlock title="Quando">
+          <NewMeetupComposerSectionBlock title={t("map.filterWhen")}>
             <View style={styles.scheduleStrip}>
               <AppleGlassSurface pointerEvents="none" variant="dark" intensity="clear" style={styles.scheduleStripSurface} />
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Alterar data do jogo"
+                accessibilityLabel={t("composer.changeGameDate")}
                 onPress={() => {
                   triggerHaptic("selection");
                   onOpenCalendar();
@@ -289,7 +292,7 @@ export function NewMeetupComposerSheet({
                   pressed ? styles.scheduleStripPressed : null,
                 ]}
               >
-                <Text style={styles.scheduleStripLabel}>Data</Text>
+                <Text style={styles.scheduleStripLabel}>{t("common.date")}</Text>
                 <Text style={styles.scheduleStripValue} numberOfLines={1}>
                   {composerDateLabel}
                 </Text>
@@ -297,7 +300,7 @@ export function NewMeetupComposerSheet({
               <View style={styles.scheduleStripDivider} />
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Alterar horário do jogo"
+                accessibilityLabel={t("composer.changeGameTime")}
                 onPress={() => {
                   triggerHaptic("selection");
                   onOpenTimePicker();
@@ -308,7 +311,7 @@ export function NewMeetupComposerSheet({
                   pressed ? styles.scheduleStripPressed : null,
                 ]}
               >
-                <Text style={styles.scheduleStripLabel}>Horário</Text>
+                <Text style={styles.scheduleStripLabel}>{t("common.time")}</Text>
                 <Text style={styles.scheduleStripValue} numberOfLines={1}>
                   {composerHour}:{composerMinute}
                 </Text>
@@ -316,12 +319,12 @@ export function NewMeetupComposerSheet({
             </View>
           </NewMeetupComposerSectionBlock>
 
-          <NewMeetupComposerSectionBlock title="Onde">
+          <NewMeetupComposerSectionBlock title={t("composer.sectionWhere")}>
             <HorizontalChipRail>
-              {hostModeOptions.map(([value, label]) => (
+              {hostModeOptions.map(([value]) => (
                 <ChoiceChip
                   key={value}
-                  label={label}
+                  label={formatHostModeOptionLabel(value, t)}
                   selected={hostMode === value}
                   onPress={() => onSelectHostMode(value)}
                 />
@@ -338,7 +341,7 @@ export function NewMeetupComposerSheet({
                       <ListRowGameListIcon
                         variant="venue"
                         size={APPLE_LIST_COMPACT_ICON_SIZE}
-                        accessibilityLabel={`Local: ${venue.name}`}
+                        accessibilityLabel={t("composer.locationVenue", { name: venue.name })}
                       />
                     }
                     label={venue.name}
@@ -356,7 +359,7 @@ export function NewMeetupComposerSheet({
 
             {hostMode === "search_address" || hostMode === "looking_for_host" ? (
               <AddressAutocompleteField
-                label="Endereço"
+                label={t("composer.address")}
                 value={addressQuery}
                 focused={addressFocused}
                 onFocusChange={onAddressFocusChange}
@@ -366,13 +369,13 @@ export function NewMeetupComposerSheet({
                 onUseCurrentLocation={onUseCurrentLocation}
                 onUseTypedAddress={onUseTypedAddress}
                 onSelectSuggestion={onSelectAddressSuggestion}
-                placeholder="Rua, número, bairro"
+                placeholder={t("composer.addressPlaceholder")}
               />
             ) : null}
 
             {hostMode === "can_host" ? (
               <AddressAutocompleteField
-                label="Bairro"
+                label={t("composer.neighborhood")}
                 value={addressQuery}
                 focused={addressFocused}
                 onFocusChange={onAddressFocusChange}
@@ -382,7 +385,7 @@ export function NewMeetupComposerSheet({
                 onUseCurrentLocation={onUseCurrentLocation}
                 onUseTypedAddress={onUseTypedAddress}
                 onSelectSuggestion={onSelectAddressSuggestion}
-                placeholder={addressQuery ? undefined : "Bairro"}
+                placeholder={addressQuery ? undefined : t("composer.neighborhood")}
               />
             ) : null}
           </NewMeetupComposerSectionBlock>
@@ -392,11 +395,11 @@ export function NewMeetupComposerSheet({
 
           <View style={[styles.footerBar, { paddingBottom: spacing.lg + bottomInset }]}>
             <View style={styles.footerButtonCell}>
-              <PrimaryButton label="Cancelar" onPress={onClose} tone="ghost" />
+              <PrimaryButton label={t("common.cancel")} onPress={onClose} tone="ghost" />
             </View>
             <View style={styles.footerButtonCell}>
               <PrimaryButton
-                label="Publicar"
+                label={t("composer.publish")}
                 onPress={onPublish}
                 loading={creatingMeetup}
                 disabled={publishDisabled}
@@ -451,6 +454,31 @@ function SectionBlock({ title, children }: { title: string; children: ReactNode 
       {children}
     </View>
   );
+}
+
+function formatHostModeOptionLabel(
+  value: string,
+  t: (
+    key:
+      | "composer.hostSearchAddress"
+      | "composer.hostPublicPlace"
+      | "composer.hostSpecialtyStore"
+      | "composer.hostCanHost"
+      | "composer.hostLookingForHost"
+  ) => string
+) {
+  switch (value) {
+    case "public_place":
+      return t("composer.hostPublicPlace");
+    case "specialty_store":
+      return t("composer.hostSpecialtyStore");
+    case "can_host":
+      return t("composer.hostCanHost");
+    case "looking_for_host":
+      return t("composer.hostLookingForHost");
+    default:
+      return t("composer.hostSearchAddress");
+  }
 }
 
 const styles = StyleSheet.create({

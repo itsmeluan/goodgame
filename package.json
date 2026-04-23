@@ -5,7 +5,8 @@
     "db:push": "supabase db push",
     "db:pull": "supabase db pull",
     "db:diff": "supabase db diff",
-    "db:status": "supabase migration list"
+    "db:status": "supabase migration list",
+    "dashboard:start": "node scripts/run-dashboard.mjs"
   },
   "devDependencies": {
     "supabase": "^2.92.1"

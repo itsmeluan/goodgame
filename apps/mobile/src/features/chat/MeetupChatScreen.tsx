@@ -32,6 +32,7 @@ import {
 } from "@/features/chat/MeetupParticipantsBlock";
 import { MeetupShareBubble } from "@/features/chat/MeetupShareBubble";
 import { VenueShareBubble } from "@/features/chat/VenueShareBubble";
+import { getCurrentLocale, useTranslation } from "@/i18n";
 import {
   formatAttendanceStatus,
   formatCompactAddress,
@@ -147,6 +148,7 @@ export function MeetupChatScreen({
   onOpenSharedMeetupDeepLink,
   onOpenSharedVenueDeepLink,
 }: MeetupChatScreenProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const isPrivateThread = threadKind === "private" && privatePeer !== null;
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -410,19 +412,17 @@ export function MeetupChatScreen({
       <View style={styles.emptyScreen}>
         <View style={[styles.chatHeaderBar, styles.chatHeaderBarEmpty]}>
           <View style={[styles.chatHeaderBarSide, styles.chatHeaderBarSideStart]}>
-            <SheetBackButton onPress={onBack} accessibilityLabel="Voltar ao mapa" iconCircle />
+            <SheetBackButton onPress={onBack} accessibilityLabel={t("chat.backToMap")} iconCircle />
           </View>
           <Text style={styles.emptyHeaderTitle} numberOfLines={1}>
-            Grupo
+            {t("chat.emptyGroupHeader")}
           </Text>
           <View style={styles.chatHeaderBarSide} />
         </View>
 
         <View style={styles.emptyBodyWrap}>
-          <Text style={styles.emptyTitle}>Escolha um grupo no menu</Text>
-          <Text style={styles.emptyBody}>
-            Abra o menu, toque em Chats e selecione uma partida para ver a conversa aqui.
-          </Text>
+          <Text style={styles.emptyTitle}>{t("chat.emptyGroupTitle")}</Text>
+          <Text style={styles.emptyBody}>{t("chat.emptyGroupBody")}</Text>
         </View>
       </View>
     );
@@ -439,13 +439,13 @@ export function MeetupChatScreen({
             content: (
               <View style={styles.screen}>
                 <View style={styles.chatHeaderBar}>
-                  <SheetBackButton onPress={onBack} accessibilityLabel="Voltar ao mapa" iconCircle />
+                  <SheetBackButton onPress={onBack} accessibilityLabel={t("chat.backToMap")} iconCircle />
 
                   {isPrivateThread && privatePeer ? (
                     <View style={styles.chatHeaderMainRow}>
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel="Abrir perfil"
+                        accessibilityLabel={t("chat.openProfile")}
                         onPress={() => onOpenPlayerProfile(privatePeer.userId)}
                         style={({ pressed }) => [
                           styles.chatAvatarButton,
@@ -470,7 +470,7 @@ export function MeetupChatScreen({
                       </View>
                       {onOpenMapDirect ? (
                         <SheetCircleIconButton
-                          accessibilityLabel="Ir para o mapa"
+                          accessibilityLabel={t("chat.openMap")}
                           iosName="map.fill"
                           fallbackName="map"
                           iconSize={15}
@@ -485,7 +485,7 @@ export function MeetupChatScreen({
                     <View style={styles.chatHeaderMainRow}>
                       <Pressable
                         accessibilityRole={meetup.isCreator ? "button" : undefined}
-                        accessibilityLabel={meetup.isCreator ? "Trocar foto do grupo" : undefined}
+                        accessibilityLabel={meetup.isCreator ? t("chat.changeGroupPhoto") : undefined}
                         onPress={meetup.isCreator ? onPickChatImage : undefined}
                         style={({ pressed }) => [
                           styles.chatAvatarButton,
@@ -529,7 +529,7 @@ export function MeetupChatScreen({
                         </Text>
                       </View>
                       <SheetCircleIconButton
-                        accessibilityLabel="Abrir detalhes da partida"
+                        accessibilityLabel={t("chat.details")}
                         iosName="info"
                         fallbackName="info"
                         iconSize={14}
@@ -566,10 +566,8 @@ export function MeetupChatScreen({
                     renderItem={renderMessage}
                     ListEmptyComponent={
                       <View style={styles.emptyChatWrap}>
-                        <Text style={styles.emptyChatTitle}>Sem mensagens ainda</Text>
-                        <Text style={styles.emptyChatBody}>
-                          Essa conversa começa quando alguém mandar a primeira mensagem.
-                        </Text>
+                        <Text style={styles.emptyChatTitle}>{t("chat.emptyMessagesTitle")}</Text>
+                        <Text style={styles.emptyChatBody}>{t("chat.emptyMessagesBody")}</Text>
                       </View>
                     }
                   />
@@ -583,8 +581,8 @@ export function MeetupChatScreen({
                       accessibilityRole="button"
                       accessibilityLabel={
                         ratingPanelExpanded
-                          ? "Recolher avaliação de participantes"
-                          : "Avaliar participantes"
+                          ? t("chat.rateCollapseA11y")
+                          : t("chat.rate")
                       }
                       onPress={() => {
                         triggerHaptic("selection");
@@ -606,7 +604,7 @@ export function MeetupChatScreen({
                             : styles.ratingTogglePillTextOrange,
                         ]}
                       >
-                        {ratingPanelExpanded ? "Recolher" : "Avaliar participantes"}
+                        {ratingPanelExpanded ? t("chat.rateCollapse") : t("chat.rate")}
                       </Text>
                     </Pressable>
                     {showRatingExpandedList ? (
@@ -629,20 +627,20 @@ export function MeetupChatScreen({
                                   !revisingRatedUserIds.has(member.userId) ? (
                                   <Pressable
                                     accessibilityRole="button"
-                                    accessibilityLabel="Revisar avaliação"
+                                    accessibilityLabel={t("chat.reviewRating")}
                                     onPress={() => beginMemberRating(member.userId)}
                                     style={({ pressed }) => [
                                       styles.ratingRevisarButton,
                                       pressed ? styles.ratingRevisarButtonPressed : null,
                                     ]}
                                   >
-                                    <Text style={styles.ratingRevisarButtonLabel}>Revisar</Text>
+                                    <Text style={styles.ratingRevisarButtonLabel}>{t("chat.review")}</Text>
                                   </Pressable>
                                 ) : (
                                   <View style={styles.ratingIconRow}>
                                     <Pressable
                                       accessibilityRole="button"
-                                      accessibilityLabel="Nota 5, compareceu"
+                                      accessibilityLabel={t("chat.rateAttended")}
                                       onPress={() => {
                                         void submitMemberRating(member.userId, true, 5);
                                       }}
@@ -662,7 +660,7 @@ export function MeetupChatScreen({
                                     </Pressable>
                                     <Pressable
                                       accessibilityRole="button"
-                                      accessibilityLabel="No-show, não compareceu"
+                                      accessibilityLabel={t("chat.rateAbsent")}
                                       onPress={() => {
                                         void submitMemberRating(member.userId, false);
                                       }}
@@ -708,7 +706,7 @@ export function MeetupChatScreen({
                         <View style={styles.replyComposerStripe} />
                         <View style={styles.replyComposerCopy}>
                           <Text style={styles.replyComposerAuthor} numberOfLines={1}>
-                            Respondendo a {replyingToMessage.authorName}
+                            {t("chat.replyingTo", { name: replyingToMessage.authorName })}
                           </Text>
                           <Text style={styles.replyComposerText} numberOfLines={2}>
                             {replyingToMessage.body}
@@ -716,7 +714,7 @@ export function MeetupChatScreen({
                         </View>
                         <Pressable
                           accessibilityRole="button"
-                          accessibilityLabel="Cancelar resposta"
+                          accessibilityLabel={t("chat.cancelReply")}
                           onPress={onClearReply}
                           style={({ pressed }) => [
                             styles.replyComposerClose,
@@ -736,14 +734,14 @@ export function MeetupChatScreen({
                       <TextInput
                         value={messageBody}
                         onChangeText={onChangeMessageBody}
-                        placeholder="Mensagem"
+                        placeholder={t("chat.messagePlaceholder")}
                         placeholderTextColor={palette.pine}
                         multiline
                         style={styles.composerInput}
                       />
                       <Pressable
                         accessibilityRole="button"
-                        accessibilityLabel="Enviar mensagem"
+                        accessibilityLabel={t("chat.sendMessage")}
                         onPress={() => {
                           triggerHaptic("soft");
                           onSendMessage();
@@ -780,9 +778,9 @@ export function MeetupChatScreen({
                   >
                     <Text style={styles.closedGroupNoticeText}>
                       {isPrivateThread
-                        ? "Vocês não podem enviar mensagens enquanto houver bloqueio entre vocês."
+                        ? t("chat.blockedThread")
                         : meetup
-                          ? `Esse grupo está ${formatMeetupStatus(meetup.status).toLowerCase()} e não aceita novas mensagens.`
+                          ? t("chat.closedGroup", { status: formatMeetupStatus(meetup.status).toLowerCase() })
                           : ""}
                     </Text>
                   </View>
@@ -796,7 +794,7 @@ export function MeetupChatScreen({
                   key: "details",
                   headerRight: (
                     <SheetCircleIconButton
-                      accessibilityLabel="Ver no mapa"
+                      accessibilityLabel={t("venue.viewOnMap")}
                       iosName="map.fill"
                       fallbackName="map"
                       diameter={SHEET_BACK_BUTTON_MIN_HEIGHT}
@@ -844,7 +842,7 @@ export function MeetupChatScreen({
                         <View style={styles.actionRow}>
                           <View style={styles.actionCell}>
                             <PrimaryButton
-                              label={leavingMeetup ? "Saindo..." : "Sair da partida"}
+                              label={leavingMeetup ? t("chat.leaving") : t("chat.leaveMeetup")}
                               onPress={onLeaveMeetup}
                               tone="dangerGhost"
                               loading={leavingMeetup}
@@ -867,12 +865,12 @@ export function MeetupChatScreen({
                       {meetup.isCreator ? (
                         <View style={styles.creatorSection}>
                           <View style={styles.sectionHeaderRow}>
-                            <Text style={styles.sectionCaption}>Gerenciar partida</Text>
+                            <Text style={styles.sectionCaption}>{t("chat.manageMeetup")}</Text>
                           </View>
                           <View style={styles.actionRow}>
                             <View style={styles.actionCell}>
                               <PrimaryButton
-                                label="Editar"
+                                label={t("common.edit")}
                                 onPress={onEditMeetup}
                                 tone="ghost"
                                 fullWidth
@@ -883,7 +881,7 @@ export function MeetupChatScreen({
                                 label={
                                   updatingMeetupAction === "chat-status:closed"
                                     ? "..."
-                                    : "Encerrar"
+                                    : t("chat.closeMeetup")
                                 }
                                 onPress={() => onUpdateMeetupStatus("closed")}
                                 tone="ghost"
@@ -895,7 +893,7 @@ export function MeetupChatScreen({
                                 label={
                                   updatingMeetupAction === "chat-status:cancelled"
                                     ? "..."
-                                    : "Cancelar"
+                                    : t("common.cancel")
                                 }
                                 onPress={() => onUpdateMeetupStatus("cancelled")}
                                 tone="dangerGhost"
@@ -1028,14 +1026,14 @@ function ReplySwipeMessage({
 }
 
 function formatMessageClock(iso: string) {
-  return new Date(iso).toLocaleTimeString("pt-BR", {
+  return new Date(iso).toLocaleTimeString(getCurrentLocale(), {
     hour: "2-digit",
     minute: "2-digit",
   });
 }
 
 function formatMeetupDate(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-BR", {
+  return new Date(iso).toLocaleDateString(getCurrentLocale(), {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
@@ -1043,7 +1041,7 @@ function formatMeetupDate(iso: string) {
 }
 
 function formatMeetupTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("pt-BR", {
+  return new Date(iso).toLocaleTimeString(getCurrentLocale(), {
     hour: "2-digit",
     minute: "2-digit",
   });

@@ -16,6 +16,7 @@ import { GoodGameLogo } from "@/components/GoodGameLogo";
 import { KeyboardAwareScrollView } from "@/components/KeyboardAwareScrollView";
 import { PrimaryButton } from "@/components/PrimaryButton";
 import { TextField } from "@/components/TextField";
+import { translate, useTranslation } from "@/i18n";
 import { updateMyPassword } from "@/lib/api";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, radius, spacing } from "@/theme/tokens";
@@ -29,6 +30,7 @@ export function PasswordRecoveryScreen({
   onCompleted,
   onCancel,
 }: PasswordRecoveryScreenProps) {
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -67,24 +69,19 @@ export function PasswordRecoveryScreen({
 
           <View style={styles.hero}>
             <GoodGameLogo size="md" monochrome />
-            <Text style={styles.title}>Defina sua nova senha</Text>
-            <Text style={styles.subtitle}>
-              O link foi confirmado. Agora escolha uma nova senha para voltar ao app com segurança.
-            </Text>
+            <Text style={styles.title}>{t("auth.passwordRecoveryTitle")}</Text>
+            <Text style={styles.subtitle}>{t("auth.passwordRecoverySubtitle")}</Text>
           </View>
 
           <GlassCard style={styles.formCard}>
             <View style={styles.formHeader}>
               <View style={styles.formHeaderCopy}>
-                <Text style={styles.sectionTitle}>Redefinir senha</Text>
-                <Text style={styles.formSubtitle}>
-                  Use pelo menos 6 caracteres. Se preferir, você pode cancelar e voltar para a tela
-                  de login.
-                </Text>
+                <Text style={styles.sectionTitle}>{t("auth.passwordRecoverySectionTitle")}</Text>
+                <Text style={styles.formSubtitle}>{t("auth.passwordRecoveryFormSubtitle")}</Text>
               </View>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Cancelar redefinição de senha"
+                accessibilityLabel={t("auth.passwordRecoveryCancel")}
                 onPress={() => {
                   triggerHaptic("selection");
                   void onCancel();
@@ -102,18 +99,18 @@ export function PasswordRecoveryScreen({
             </View>
 
             <TextField
-              label="Nova senha"
+              label={t("auth.passwordRecoveryNewLabel")}
               value={password}
               onChangeText={setPassword}
-              placeholder="Mínimo de 6 caracteres"
+              placeholder={t("auth.passwordPlaceholder")}
               autoCapitalize="none"
               secureTextEntry
             />
             <TextField
-              label="Confirmar senha"
+              label={t("auth.passwordRecoveryConfirmLabel")}
               value={confirmPassword}
               onChangeText={setConfirmPassword}
-              placeholder="Digite a mesma senha novamente"
+              placeholder={t("auth.passwordRecoveryConfirmPlaceholder")}
               autoCapitalize="none"
               secureTextEntry
             />
@@ -122,13 +119,13 @@ export function PasswordRecoveryScreen({
 
             <View style={styles.formActions}>
               <PrimaryButton
-                label="Salvar nova senha"
+                label={t("auth.passwordRecoverySave")}
                 onPress={() => void handleSubmit()}
                 disabled={!passwordsMatch}
                 loading={loading}
               />
               <PrimaryButton
-                label="Voltar ao login"
+                label={t("auth.backToLogin")}
                 onPress={() => void onCancel()}
                 tone="ghost"
               />
@@ -145,7 +142,7 @@ function toMessage(error: unknown) {
     return error.message;
   }
 
-  return "Não foi possível redefinir a senha agora.";
+  return translate("auth.passwordRecoveryError");
 }
 
 const styles = StyleSheet.create({

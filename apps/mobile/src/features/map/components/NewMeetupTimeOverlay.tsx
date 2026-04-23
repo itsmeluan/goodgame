@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { PrimaryButton } from "@/components/PrimaryButton";
+import { useTranslation } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 
 type NewMeetupTimeOverlayProps = {
@@ -27,11 +28,13 @@ export function NewMeetupTimeOverlay({
   onClose,
   onConfirm,
 }: NewMeetupTimeOverlayProps) {
+  const { t } = useTranslation();
+
   return (
     <View style={styles.pickerOverlayWrap} pointerEvents="box-none">
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Fechar seleção de horário"
+        accessibilityLabel={t("time.closeSelection")}
         style={styles.pickerScrim}
         onPress={onClose}
       />
@@ -42,17 +45,17 @@ export function NewMeetupTimeOverlay({
           intensity="clear"
           style={styles.timePopoverSurface}
         />
-        <Text style={styles.timePopoverTitle}>Escolha o horário</Text>
+        <Text style={styles.timePopoverTitle}>{t("time.choose")}</Text>
         <View style={styles.timeWheelRow}>
           <TimeWheelColumn
-            label="Hora"
+            label={t("common.hour")}
             values={hours}
             selectedValue={selectedHour}
             onChange={onChangeHour}
           />
           <Text style={styles.timeSeparator}>:</Text>
           <TimeWheelColumn
-            label="Min"
+            label={t("common.minuteShort")}
             values={minutes}
             selectedValue={selectedMinute}
             onChange={onChangeMinute}
@@ -60,10 +63,10 @@ export function NewMeetupTimeOverlay({
         </View>
         <View style={styles.rowActions}>
           <View style={styles.rowActionCell}>
-            <PrimaryButton label="Fechar" onPress={onClose} tone="ghost" />
+            <PrimaryButton label={t("common.close")} onPress={onClose} tone="ghost" />
           </View>
           <View style={styles.rowActionCell}>
-            <PrimaryButton label="Usar horário" onPress={onConfirm} />
+            <PrimaryButton label={t("time.useTime")} onPress={onConfirm} />
           </View>
         </View>
       </View>
