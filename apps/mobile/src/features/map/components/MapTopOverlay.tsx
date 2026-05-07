@@ -7,6 +7,7 @@ import { Avatar } from "@/components/Avatar";
 import { GoodGameLogo } from "@/components/GoodGameLogo";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { MapCircleActionButton } from "@/features/map/components/MapCircleActionButton";
+import { useOnboardingTarget } from "@/features/map/onboardingTargets";
 import { useTranslation } from "@/i18n";
 import { styles } from "@/features/map/MapHomeScreen.styles";
 import { triggerHaptic } from "@/lib/haptics";
@@ -51,6 +52,11 @@ export function MapTopOverlay({
 }: MapTopOverlayProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  const menuTarget = useOnboardingTarget("menu_button");
+  const filtersTarget = useOnboardingTarget("filters_button");
+  const profileTarget = useOnboardingTarget("profile_button");
+  const friendsTarget = useOnboardingTarget("friends_button");
+  const newGameTarget = useOnboardingTarget("new_game_button");
 
   return (
     <SafeAreaView
@@ -61,29 +67,36 @@ export function MapTopOverlay({
     >
       <View style={styles.mapTopBar} pointerEvents="box-none">
         <View style={styles.mapTopStack}>
-          <MapCircleActionButton
-            icon="menu"
-            accessibilityLabel={t("map.openMenu")}
-            onPress={() => {
-              onDismissPinCallout?.();
-              onOpenDrawer();
-            }}
-            showDot={showUnreadMenuIndicator}
-          />
-          <MapCircleActionButton
-            icon="filter-list"
-            accessibilityLabel={t("map.openFilters")}
-            onPress={() => {
-              onDismissPinCallout?.();
-              onToggleFilters();
-            }}
-            active={filtersActive || filtersOpen}
-            badge={activeFilterCount ? String(activeFilterCount) : null}
-          />
+          <View ref={menuTarget.ref} onLayout={menuTarget.onLayout} collapsable={false}>
+            <MapCircleActionButton
+              icon="menu"
+              accessibilityLabel={t("map.openMenu")}
+              onPress={() => {
+                onDismissPinCallout?.();
+                onOpenDrawer();
+              }}
+              showDot={showUnreadMenuIndicator}
+            />
+          </View>
+          <View ref={filtersTarget.ref} onLayout={filtersTarget.onLayout} collapsable={false}>
+            <MapCircleActionButton
+              icon="filter-list"
+              accessibilityLabel={t("map.openFilters")}
+              onPress={() => {
+                onDismissPinCallout?.();
+                onToggleFilters();
+              }}
+              active={filtersActive || filtersOpen}
+              badge={activeFilterCount ? String(activeFilterCount) : null}
+            />
+          </View>
         </View>
 
         <View style={styles.mapTopStack}>
           <Pressable
+            ref={profileTarget.ref}
+            onLayout={profileTarget.onLayout}
+            collapsable={false}
             accessibilityRole="button"
             accessibilityLabel={t("map.openAccount")}
             onPress={() => {
@@ -108,24 +121,28 @@ export function MapTopOverlay({
               <Avatar name={profileName} uri={profileAvatarUrl} size={56} isPro={profileIsPro} />
             </View>
           </Pressable>
-          <MapCircleActionButton
-            icon="groups-2"
-            accessibilityLabel={t("map.openFriends")}
-            onPress={() => {
-              onDismissPinCallout?.();
-              onOpenFriends();
-            }}
-            badge={incomingFriendRequestsCount ? String(incomingFriendRequestsCount) : null}
-          />
-          <MapCircleActionButton
-            icon="add"
-            accessibilityLabel={t("map.newGame")}
-            onPress={() => {
-              onDismissPinCallout?.();
-              onOpenComposer();
-            }}
-            accent
-          />
+          <View ref={friendsTarget.ref} onLayout={friendsTarget.onLayout} collapsable={false}>
+            <MapCircleActionButton
+              icon="groups-2"
+              accessibilityLabel={t("map.openFriends")}
+              onPress={() => {
+                onDismissPinCallout?.();
+                onOpenFriends();
+              }}
+              badge={incomingFriendRequestsCount ? String(incomingFriendRequestsCount) : null}
+            />
+          </View>
+          <View ref={newGameTarget.ref} onLayout={newGameTarget.onLayout} collapsable={false}>
+            <MapCircleActionButton
+              icon="add"
+              accessibilityLabel={t("map.newGame")}
+              onPress={() => {
+                onDismissPinCallout?.();
+                onOpenComposer();
+              }}
+              accent
+            />
+          </View>
         </View>
       </View>
 

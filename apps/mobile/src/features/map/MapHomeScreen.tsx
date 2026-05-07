@@ -43,6 +43,7 @@ import { VenueSheetCardContainer } from "@/features/map/components/VenueSheetCar
 import { VenueSheetListRowContainer } from "@/features/map/components/VenueSheetListRowContainer";
 import { GAMES_SHEET_HEADER_COLLAPSED_HEIGHT } from "@/features/map/components/GamesSheetHeader";
 import { MapOnboardingOverlay } from "@/features/map/components/MapOnboardingOverlay";
+import { OnboardingTargetsProvider, OnboardingTargetView } from "@/features/map/onboardingTargets";
 import {
   inferCatalogGameSlugFromFormatName,
   inferGameLabelsFromVenue,
@@ -283,6 +284,18 @@ const COMPOSER_OPEN_OFFSET = 28;
 const MAP_ONBOARDING_MANUAL_STEPS: readonly MapOnboardingStepId[] = [
   "welcome",
   "map_overview",
+  "games_sheet_info",
+  "venues_tab_info",
+  "suggest_venue_sheet",
+  "create_meetup_sheet",
+  "friends_page",
+  "profile_page",
+  "nearby_page",
+  "chats_page",
+  "alerts_page",
+  "news_page",
+  "history_page",
+  "feedback_page",
   "feedback_finish",
 ];
 
@@ -2033,12 +2046,14 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   );
 
   const venuesSheetComposer = (
-    <MapCircleActionButton
-      icon="add"
-      pillLabel={t("map.newVenue")}
-      accessibilityLabel={t("map.newVenue")}
-      onPress={openVenueComposerSheet}
-    />
+    <OnboardingTargetView targetKey="sheet_new_venue_button">
+      <MapCircleActionButton
+        icon="add"
+        pillLabel={t("map.newVenue")}
+        accessibilityLabel={t("map.newVenue")}
+        onPress={openVenueComposerSheet}
+      />
+    </OnboardingTargetView>
   );
 
   const gamesSheetTop = insets.top + 92;
@@ -5857,6 +5872,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const mapOnboardingAwaitingInteraction = Boolean(
     activeMapOnboardingStepId && !MAP_ONBOARDING_MANUAL_STEPS.includes(activeMapOnboardingStepId)
   );
+  const mapOnboardingCanGoBack = Boolean(mapOnboardingState?.completedStepIds.length);
 
   function handleMapOnboardingContinue() {
     if (
@@ -5867,6 +5883,23 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     }
 
     markMapOnboardingStep(activeMapOnboardingStepId, "coachmark_cta");
+  }
+
+  function handleMapOnboardingBack() {
+    const current = mapOnboardingStateRef.current;
+
+    if (!current || current.completedStepIds.length === 0) {
+      return;
+    }
+
+    const completedStepIds = current.completedStepIds.slice(0, -1);
+    const nextState: MapOnboardingState = {
+      ...current,
+      completedStepIds,
+      completedAt: null,
+    };
+
+    commitMapOnboardingState(nextState);
   }
 
   useEffect(() => {
@@ -5880,17 +5913,24 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     const stepCompleted =
       (activeMapOnboardingStepId === "open_games_sheet" && gamesSheetExpanded) ||
       (activeMapOnboardingStepId === "venues_tab" && gamesSheetExpanded && gamesSheetSection === "venues") ||
-      (activeMapOnboardingStepId === "suggest_venue" && venueComposerOpen) ||
-      (activeMapOnboardingStepId === "create_meetup" && composerOpen) ||
-      (activeMapOnboardingStepId === "friends" && activeScreen === "friends") ||
-      (activeMapOnboardingStepId === "profile" && activeScreen === "account") ||
+      (activeMapOnboardingStepId === "suggest_venue_open" && venueComposerOpen) ||
+      (activeMapOnboardingStepId === "suggest_venue_back_map" && !venueComposerOpen && activeScreen === "map") ||
+      (activeMapOnboardingStepId === "create_meetup_open" && composerOpen) ||
+      (activeMapOnboardingStepId === "create_meetup_back_map" && !composerOpen && activeScreen === "map") ||
+      (activeMapOnboardingStepId === "friends_open" && activeScreen === "friends") ||
+      (activeMapOnboardingStepId === "profile_open" && activeScreen === "account") ||
       (activeMapOnboardingStepId === "menu_open" && drawerOpen) ||
-      (activeMapOnboardingStepId === "menu_nearby_players" && activeScreen === "nearby_players") ||
-      (activeMapOnboardingStepId === "menu_chats" && activeScreen === "chats") ||
-      (activeMapOnboardingStepId === "menu_alerts" && activeScreen === "alerts") ||
-      (activeMapOnboardingStepId === "menu_news" && activeScreen === "novidades") ||
-      (activeMapOnboardingStepId === "menu_history" && activeScreen === "history") ||
-      (activeMapOnboardingStepId === "menu_feedback" && activeScreen === "feedback");
+      (activeMapOnboardingStepId === "menu_nearby_open" && activeScreen === "nearby_players") ||
+      (activeMapOnboardingStepId === "menu_reopen_after_nearby" && drawerOpen && activeScreen === "nearby_players") ||
+      (activeMapOnboardingStepId === "menu_chats_open" && activeScreen === "chats") ||
+      (activeMapOnboardingStepId === "menu_reopen_after_chats" && drawerOpen && activeScreen === "chats") ||
+      (activeMapOnboardingStepId === "menu_alerts_open" && activeScreen === "alerts") ||
+      (activeMapOnboardingStepId === "menu_reopen_after_alerts" && drawerOpen && activeScreen === "alerts") ||
+      (activeMapOnboardingStepId === "menu_news_open" && activeScreen === "novidades") ||
+      (activeMapOnboardingStepId === "menu_reopen_after_news" && drawerOpen && activeScreen === "novidades") ||
+      (activeMapOnboardingStepId === "menu_history_open" && activeScreen === "history") ||
+      (activeMapOnboardingStepId === "menu_reopen_after_history" && drawerOpen && activeScreen === "history") ||
+      (activeMapOnboardingStepId === "menu_feedback_open" && activeScreen === "feedback");
 
     if (!stepCompleted) {
       return;
@@ -6063,18 +6103,25 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     },
   };
 
-  const floatingOnboardingOverlay =
+  const onboardingOverlayElement =
     mapOnboardingVisible && mapOnboardingState && activeMapOnboardingStepId ? (
       <MapOnboardingOverlay
         stepId={activeMapOnboardingStepId}
-        completedCount={mapOnboardingState.completedStepIds.length}
         bottomOffset={mapOnboardingBottomOffset}
         awaitingInteraction={mapOnboardingAwaitingInteraction}
         canContinue={!mapOnboardingAwaitingInteraction}
+        canGoBack={mapOnboardingCanGoBack}
         onContinue={handleMapOnboardingContinue}
+        onBack={handleMapOnboardingBack}
         onDismiss={dismissMapOnboarding}
+        drawerWidth={drawerWidth}
+        gamesSheetTop={gamesSheetTop}
+        activeScreen={activeScreen}
       />
     ) : null;
+  const isAnyComposerOpen = composerOpen || venueComposerOpen;
+  const floatingOnboardingOverlay = !isAnyComposerOpen ? onboardingOverlayElement : null;
+  const composerOnboardingOverlay = isAnyComposerOpen ? onboardingOverlayElement : null;
 
   const pageLayerProps = {
     active: activeScreen !== "map",
@@ -6289,6 +6336,11 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         void handleSignOut();
       },
       onDeleteAccount: handleDeleteAccountPress,
+      onRestartMapOnboarding: () => {
+        const freshState = createInitialMapOnboardingState();
+        commitMapOnboardingState(freshState);
+        closeCurrentPageToMap();
+      },
       viewedPlayerProfile,
       loadingViewedPlayer,
       viewedPlayerError,
@@ -6457,6 +6509,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     onCloseComposer: () => closeComposer(),
     venueComposerVisible: venueComposerOpen,
     onCloseVenueComposer: cancelVenueComposer,
+    topOverlay: composerOnboardingOverlay,
     manageCalendarOverlay: {
       open: manageCalendarOpen,
       monthLabel: formatCalendarMonthLabel(manageCalendarMonthCursor),
@@ -6651,13 +6704,15 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   return (
     <>
       <StatusBar style="light" />
-      <MapHomeSurface
-        screenLayerProps={screenLayerProps}
-        pageLayerProps={pageLayerProps}
-        drawerProps={drawerProps}
-        modalLayerProps={modalLayerProps}
-        floatingOverlay={floatingOnboardingOverlay}
-      />
+      <OnboardingTargetsProvider>
+        <MapHomeSurface
+          screenLayerProps={screenLayerProps}
+          pageLayerProps={pageLayerProps}
+          drawerProps={drawerProps}
+          modalLayerProps={modalLayerProps}
+          floatingOverlay={floatingOnboardingOverlay}
+        />
+      </OnboardingTargetsProvider>
       {env.proPlayerPaywallEnabled ? (
         <ProPlayerPaywallModal
           visible={proPaywallVisible}

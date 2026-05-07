@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { MapFiltersModal } from "@/features/map/components/MapFiltersModal";
 import { MeetupComposerModal } from "@/features/map/components/MeetupComposerModal";
@@ -26,6 +26,7 @@ export type MapModalLayerProps = {
   venueComposerSheetProps: VenuesSheetComposerProps;
   manageCalendarOverlay: CalendarOverlayProps;
   manageTimeOverlay: TimeOverlayProps;
+  topOverlay?: ReactNode;
 };
 
 export function MapModalLayer({
@@ -38,6 +39,7 @@ export function MapModalLayer({
   venueComposerSheetProps,
   manageCalendarOverlay,
   manageTimeOverlay,
+  topOverlay,
 }: MapModalLayerProps) {
   return (
     <>
@@ -70,6 +72,7 @@ export function MapModalLayer({
       <MeetupComposerModal
         visible={composerVisible}
         onClose={onCloseComposer}
+        overlayContent={composerVisible ? topOverlay : undefined}
       >
         <NewMeetupComposerSheet {...composerSheetProps} />
       </MeetupComposerModal>
@@ -77,6 +80,7 @@ export function MapModalLayer({
       <MeetupComposerModal
         visible={venueComposerVisible}
         onClose={onCloseVenueComposer}
+        overlayContent={venueComposerVisible ? topOverlay : undefined}
       >
         <VenuesSheetComposer {...venueComposerSheetProps} />
       </MeetupComposerModal>

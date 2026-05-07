@@ -10,6 +10,7 @@ import { AddressAutocompleteField } from "@/features/map/components/AddressAutoc
 import { HorizontalChipRail } from "@/features/map/components/HorizontalChipRail";
 import { MapInlineNotice } from "@/features/map/components/MapFeedbackPrimitives";
 import { NewMeetupComposerSectionBlock } from "@/features/map/components/NewMeetupComposerPrimitives";
+import { OnboardingTargetView } from "@/features/map/onboardingTargets";
 import { useTranslation } from "@/i18n";
 import { formatVenueKind } from "@/lib/formatting";
 import type { AddressSuggestion } from "@/lib/placeSearch";
@@ -117,23 +118,25 @@ export function VenuesSheetComposer({
               <View style={styles.overlayTitleWrap}>
                 <Text style={styles.overlayTitle}>{t("venue.new")}</Text>
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("common.close")}
-                onPress={() => {
-                  triggerHaptic("selection");
-                  onClose();
-                }}
-                style={({ pressed }) => [styles.overlayCloseButton, pressed ? styles.pressed : null]}
-              >
-                <AppleGlassSurface
-                  pointerEvents="none"
-                  variant="dark"
-                  intensity="clear"
-                  style={styles.overlayCloseButtonSurface}
-                />
-                <AppIcon iosName="xmark" fallbackName="close" size={20} color={palette.sand} />
-              </Pressable>
+              <OnboardingTargetView targetKey="venue_sheet_close">
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={t("common.close")}
+                  onPress={() => {
+                    triggerHaptic("selection");
+                    onClose();
+                  }}
+                  style={({ pressed }) => [styles.overlayCloseButton, pressed ? styles.pressed : null]}
+                >
+                  <AppleGlassSurface
+                    pointerEvents="none"
+                    variant="dark"
+                    intensity="clear"
+                    style={styles.overlayCloseButtonSurface}
+                  />
+                  <AppIcon iosName="xmark" fallbackName="close" size={20} color={palette.sand} />
+                </Pressable>
+              </OnboardingTargetView>
             </View>
           </View>
           <SheetGlassHairline />

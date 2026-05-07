@@ -125,6 +125,7 @@ type MapPageContentProps = {
   onProfileEdit: () => void;
   onSignOut: () => void;
   onDeleteAccount: () => void;
+  onRestartMapOnboarding: () => void;
   viewedPlayerProfile: PublicPlayerProfile | null;
   loadingViewedPlayer: boolean;
   viewedPlayerError: string | null;
@@ -220,6 +221,7 @@ export function MapPageContent({
   onProfileEdit,
   onSignOut,
   onDeleteAccount,
+  onRestartMapOnboarding,
   viewedPlayerProfile,
   loadingViewedPlayer,
   viewedPlayerError,
@@ -392,6 +394,7 @@ export function MapPageContent({
         onUnblockUser={onUnblockUser}
         onSignOut={onSignOut}
         onDeleteAccount={onDeleteAccount}
+        onRestartMapOnboarding={onRestartMapOnboarding}
         onClose={onClose}
       />
     );

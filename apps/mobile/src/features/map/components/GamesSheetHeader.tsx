@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, Pressable, StyleSheet, Text, View, type ViewProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useOnboardingTarget } from "@/features/map/onboardingTargets";
 import { useTranslation } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 
@@ -31,6 +32,8 @@ export function GamesSheetHeader({
   const insets = useSafeAreaInsets();
   const [tabsRailWidth, setTabsRailWidth] = useState(0);
   const tabHighlightProgress = useRef(new Animated.Value(section === "venues" ? 1 : 0)).current;
+  const handleTarget = useOnboardingTarget("sheet_handle");
+  const tabsTarget = useOnboardingTarget("sheet_tabs");
 
   useEffect(() => {
     tabHighlightProgress.stopAnimation();
@@ -61,15 +64,18 @@ export function GamesSheetHeader({
       {...panHandlers}
       onTouchStart={onDismissPinCallout}
     >
-      <View style={styles.handle} />
+      <View ref={handleTarget.ref} onLayout={handleTarget.onLayout} collapsable={false} style={styles.handle} />
       <Text style={styles.subtitle}>
         {t("map.sheetSummary", { meetups: meetupCount, venues: venueCount })}
       </Text>
 
       <View style={styles.tabsRow}>
         <View
+          ref={tabsTarget.ref}
+          collapsable={false}
           style={styles.tabsRail}
           onLayout={(event) => {
+            tabsTarget.onLayout();
             const nextWidth = event.nativeEvent.layout.width;
             if (nextWidth > 0 && nextWidth !== tabsRailWidth) {
               setTabsRailWidth(nextWidth);

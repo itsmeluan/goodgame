@@ -7,6 +7,7 @@ import {
 } from "@/components/AppleListNavigation";
 import { AppIcon } from "@/components/AppIcon";
 import { Avatar } from "@/components/Avatar";
+import { OnboardingTargetView } from "@/features/map/onboardingTargets";
 import { useTranslation } from "@/i18n";
 import { triggerHaptic } from "@/lib/haptics";
 import { palette, spacing } from "@/theme/tokens";
@@ -77,83 +78,101 @@ export function DrawerRootPanel({
     >
       <AppleListSection size="compact">
         <AppleListGroup>
-          <AppleListRow
-            icon={{ iosName: "map.fill", fallbackName: "map" }}
-            label={t("nav.map")}
-            onPress={onOpenMap}
-            tone={mapActive ? "accent" : "default"}
-            size="compact"
-          />
-          <AppleListRow
-            separator
-            icon={{ iosName: "dice.fill", fallbackName: "casino" }}
-            label={t("common.games")}
-            onPress={onOpenGames}
-            tone={gamesActive ? "accent" : "default"}
-            size="compact"
-          />
-          <AppleListRow
-            separator
-            icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
-            label={t("nav.places")}
-            onPress={onOpenPlaces}
-            tone={placesActive ? "accent" : "default"}
-            size="compact"
-          />
-          <AppleListRow
-            separator
-            icon={{ iosName: "location.magnifyingglass", fallbackName: "travel-explore" }}
-            label={t("nav.nearbyPlayers")}
-            onPress={onOpenNearbyPlayers}
-            tone={nearbyPlayersActive ? "accent" : "default"}
-            size="compact"
-          />
-          <AppleListRow
-            separator
-            icon={{
-              iosName: "bubble.left.and.bubble.right.fill",
-              fallbackName: "forum",
-            }}
-            label={t("nav.chats")}
-            onPress={onOpenChats}
-            trailingValue={unreadChatCount ? String(unreadChatCount) : null}
-            tone={unreadChatCount || chatsActive ? "accent" : "default"}
-            size="compact"
-          />
-          <AppleListRow
-            separator
-            icon={{ iosName: "bell.fill", fallbackName: "notifications" }}
-            label={t("nav.alerts")}
-            onPress={onOpenAlerts}
-            trailingValue={unreadAlertCount ? String(unreadAlertCount) : null}
-            tone={unreadAlertCount || alertsActive ? "accent" : "default"}
-            size="compact"
-          />
-          <AppleListRow
-            separator
-            icon={{ iosName: "sparkles", fallbackName: "auto-awesome" }}
-            label={t("nav.news")}
-            showUnreadDot={unreadNovidadesCount > 0}
-            onPress={onOpenNovidades}
-            tone={novidadesActive || unreadNovidadesCount > 0 ? "accent" : "default"}
-            size="compact"
-          />
-          <AppleListRow
-            separator
-            icon={{ iosName: "clock.arrow.circlepath", fallbackName: "history" }}
-            label={t("nav.history")}
-            onPress={onOpenHistory}
-            tone={historyActive ? "accent" : "default"}
-            size="compact"
-          />
-          <AppleListRow
-            separator
-            icon={{ iosName: "envelope.open.fill", fallbackName: "mail-outline" }}
-            label={t("nav.feedback")}
-            onPress={onOpenFeedback}
-            tone={feedbackActive ? "accent" : "default"}
-            size="compact"
-          />
+          <OnboardingTargetView targetKey="drawer_map">
+            <AppleListRow
+              icon={{ iosName: "map.fill", fallbackName: "map" }}
+              label={t("nav.map")}
+              onPress={onOpenMap}
+              tone={mapActive ? "accent" : "default"}
+              size="compact"
+            />
+          </OnboardingTargetView>
+          <OnboardingTargetView targetKey="drawer_games">
+            <AppleListRow
+              separator
+              icon={{ iosName: "dice.fill", fallbackName: "casino" }}
+              label={t("common.games")}
+              onPress={onOpenGames}
+              tone={gamesActive ? "accent" : "default"}
+              size="compact"
+            />
+          </OnboardingTargetView>
+          <OnboardingTargetView targetKey="drawer_places">
+            <AppleListRow
+              separator
+              icon={{ iosName: "storefront.fill", fallbackName: "storefront" }}
+              label={t("nav.places")}
+              onPress={onOpenPlaces}
+              tone={placesActive ? "accent" : "default"}
+              size="compact"
+            />
+          </OnboardingTargetView>
+          <OnboardingTargetView targetKey="drawer_nearby">
+            <AppleListRow
+              separator
+              icon={{ iosName: "location.magnifyingglass", fallbackName: "travel-explore" }}
+              label={t("nav.nearbyPlayers")}
+              onPress={onOpenNearbyPlayers}
+              tone={nearbyPlayersActive ? "accent" : "default"}
+              size="compact"
+            />
+          </OnboardingTargetView>
+          <OnboardingTargetView targetKey="drawer_chats">
+            <AppleListRow
+              separator
+              icon={{
+                iosName: "bubble.left.and.bubble.right.fill",
+                fallbackName: "forum",
+              }}
+              label={t("nav.chats")}
+              onPress={onOpenChats}
+              trailingValue={unreadChatCount ? String(unreadChatCount) : null}
+              tone={unreadChatCount || chatsActive ? "accent" : "default"}
+              size="compact"
+            />
+          </OnboardingTargetView>
+          <OnboardingTargetView targetKey="drawer_alerts">
+            <AppleListRow
+              separator
+              icon={{ iosName: "bell.fill", fallbackName: "notifications" }}
+              label={t("nav.alerts")}
+              onPress={onOpenAlerts}
+              trailingValue={unreadAlertCount ? String(unreadAlertCount) : null}
+              tone={unreadAlertCount || alertsActive ? "accent" : "default"}
+              size="compact"
+            />
+          </OnboardingTargetView>
+          <OnboardingTargetView targetKey="drawer_news">
+            <AppleListRow
+              separator
+              icon={{ iosName: "sparkles", fallbackName: "auto-awesome" }}
+              label={t("nav.news")}
+              showUnreadDot={unreadNovidadesCount > 0}
+              onPress={onOpenNovidades}
+              tone={novidadesActive || unreadNovidadesCount > 0 ? "accent" : "default"}
+              size="compact"
+            />
+          </OnboardingTargetView>
+          <OnboardingTargetView targetKey="drawer_history">
+            <AppleListRow
+              separator
+              icon={{ iosName: "clock.arrow.circlepath", fallbackName: "history" }}
+              label={t("nav.history")}
+              onPress={onOpenHistory}
+              tone={historyActive ? "accent" : "default"}
+              size="compact"
+            />
+          </OnboardingTargetView>
+          <OnboardingTargetView targetKey="drawer_feedback">
+            <AppleListRow
+              separator
+              icon={{ iosName: "envelope.open.fill", fallbackName: "mail-outline" }}
+              label={t("nav.feedback")}
+              onPress={onOpenFeedback}
+              tone={feedbackActive ? "accent" : "default"}
+              size="compact"
+            />
+          </OnboardingTargetView>
         </AppleListGroup>
       </AppleListSection>
 

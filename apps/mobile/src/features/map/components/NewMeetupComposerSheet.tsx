@@ -15,6 +15,7 @@ import {
   NewMeetupComposerSectionBlock,
 } from "@/features/map/components/NewMeetupComposerPrimitives";
 import { FormatDetailTagBlock } from "@/features/map/components/FormatDetailTagBlock";
+import { OnboardingTargetView } from "@/features/map/onboardingTargets";
 import { NewMeetupCalendarOverlay } from "@/features/map/components/NewMeetupCalendarOverlay";
 import { NewMeetupTimeOverlay } from "@/features/map/components/NewMeetupTimeOverlay";
 import { useTranslation } from "@/i18n";
@@ -190,20 +191,22 @@ export function NewMeetupComposerSheet({
                 <View style={styles.overlayTitleWrap}>
                   <Text style={styles.overlayTitle}>{t("map.newGame")}</Text>
                 </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={t("composer.closeGameCreation")}
-                  onPress={onClose}
-                  style={({ pressed }) => [styles.overlayCloseButton, pressed ? styles.pressed : null]}
-                >
-                  <AppleGlassSurface
-                    pointerEvents="none"
-                    variant="dark"
-                    intensity="clear"
-                    style={styles.overlayCloseButtonSurface}
-                  />
-                  <AppIcon iosName="xmark" fallbackName="close" size={20} color={palette.sand} />
-                </Pressable>
+                <OnboardingTargetView targetKey="meetup_sheet_close">
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={t("composer.closeGameCreation")}
+                    onPress={onClose}
+                    style={({ pressed }) => [styles.overlayCloseButton, pressed ? styles.pressed : null]}
+                  >
+                    <AppleGlassSurface
+                      pointerEvents="none"
+                      variant="dark"
+                      intensity="clear"
+                      style={styles.overlayCloseButtonSurface}
+                    />
+                    <AppIcon iosName="xmark" fallbackName="close" size={20} color={palette.sand} />
+                  </Pressable>
+                </OnboardingTargetView>
               </View>
             </View>
             <SheetGlassHairline />

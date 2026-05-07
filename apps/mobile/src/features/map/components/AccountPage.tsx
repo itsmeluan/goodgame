@@ -30,6 +30,7 @@ type AccountPageProps = {
   onUnblockUser: (user: BlockedUserProfile) => void;
   onSignOut: () => void;
   onDeleteAccount: () => void;
+  onRestartMapOnboarding: () => void;
   onClose: () => void;
 };
 
@@ -51,6 +52,7 @@ export function AccountPage({
   onUnblockUser,
   onSignOut,
   onDeleteAccount,
+  onRestartMapOnboarding,
   onClose,
 }: AccountPageProps) {
   const { locale, preference, setLanguagePreference, t } = useTranslation();
@@ -145,6 +147,15 @@ export function AccountPage({
                 subtitle={t("account.languageSubtitle")}
                 trailingValue={formatLanguagePreference(preference, locale, t)}
                 onPress={() => pushRoute("language")}
+                size="compact"
+              />
+              <AppleListRow
+                separator
+                icon={{ iosName: "sparkles", fallbackName: "auto-awesome" }}
+                label={t("account.restartTutorial")}
+                subtitle={t("account.restartTutorialSubtitle")}
+                onPress={onRestartMapOnboarding}
+                showChevron={false}
                 size="compact"
               />
             </AppleListGroup>

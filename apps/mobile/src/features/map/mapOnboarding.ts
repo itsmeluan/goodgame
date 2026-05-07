@@ -4,36 +4,55 @@ export const MAP_ONBOARDING_STEPS = [
   "welcome",
   "map_overview",
   "open_games_sheet",
+  "games_sheet_info",
   "venues_tab",
-  "suggest_venue",
-  "create_meetup",
-  "friends",
-  "profile",
+  "venues_tab_info",
+  "suggest_venue_open",
+  "suggest_venue_sheet",
+  "suggest_venue_back_map",
+  "create_meetup_open",
+  "create_meetup_sheet",
+  "create_meetup_back_map",
+  "friends_open",
+  "friends_page",
+  "profile_open",
+  "profile_page",
   "menu_open",
-  "menu_nearby_players",
-  "menu_chats",
-  "menu_alerts",
-  "menu_news",
-  "menu_history",
-  "menu_feedback",
+  "menu_nearby_open",
+  "nearby_page",
+  "menu_reopen_after_nearby",
+  "menu_chats_open",
+  "chats_page",
+  "menu_reopen_after_chats",
+  "menu_alerts_open",
+  "alerts_page",
+  "menu_reopen_after_alerts",
+  "menu_news_open",
+  "news_page",
+  "menu_reopen_after_news",
+  "menu_history_open",
+  "history_page",
+  "menu_reopen_after_history",
+  "menu_feedback_open",
+  "feedback_page",
   "feedback_finish",
 ] as const;
 
 export type MapOnboardingStepId = (typeof MAP_ONBOARDING_STEPS)[number];
 
 export type MapOnboardingState = {
-  version: 2;
+  version: 3;
   startedAt: string;
   completedStepIds: MapOnboardingStepId[];
   completedAt: string | null;
   dismissedAt: string | null;
 };
 
-const MAP_ONBOARDING_STORAGE_PREFIX = "good-game:map-onboarding:v2";
+const MAP_ONBOARDING_STORAGE_PREFIX = "good-game:map-onboarding:v3";
 
 export function createInitialMapOnboardingState(): MapOnboardingState {
   return {
-    version: 2,
+    version: 3,
     startedAt: new Date().toISOString(),
     completedStepIds: [],
     completedAt: null,
@@ -91,7 +110,7 @@ function normalizeMapOnboardingState(value: unknown): MapOnboardingState | null 
     : [];
 
   return {
-    version: 2,
+    version: 3,
     startedAt: typeof candidate.startedAt === "string" ? candidate.startedAt : new Date().toISOString(),
     completedStepIds: Array.from(new Set(completedStepIds)),
     completedAt: typeof candidate.completedAt === "string" ? candidate.completedAt : null,
