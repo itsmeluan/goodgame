@@ -42,6 +42,7 @@ import { MeetupSheetListRowContainer } from "@/features/map/components/MeetupShe
 import { VenueSheetCardContainer } from "@/features/map/components/VenueSheetCardContainer";
 import { VenueSheetListRowContainer } from "@/features/map/components/VenueSheetListRowContainer";
 import { GAMES_SHEET_HEADER_COLLAPSED_HEIGHT } from "@/features/map/components/GamesSheetHeader";
+import { MapOnboardingOverlay } from "@/features/map/components/MapOnboardingOverlay";
 import {
   inferCatalogGameSlugFromFormatName,
   inferGameLabelsFromVenue,
@@ -104,6 +105,18 @@ import {
   shouldRefreshViewportBounds,
   type ViewportFeedBounds,
 } from "@/features/map/viewport";
+import {
+  MAP_ONBOARDING_STEPS,
+  createInitialMapOnboardingState,
+  getMapOnboardingStepIndex,
+  getNextMapOnboardingStepId,
+  isMapOnboardingComplete,
+  isMapOnboardingDismissed,
+  loadMapOnboardingState,
+  saveMapOnboardingState,
+  type MapOnboardingState,
+  type MapOnboardingStepId,
+} from "@/features/map/mapOnboarding";
 import { isMeetupOverdue, resolveMeetupEffectiveStatus } from "@/features/map/meetupTiming";
 import {
   buildDetailTagFilterForBoundsRpc,
@@ -189,7 +202,7 @@ import { trackProductEvent } from "@/lib/productAnalytics";
 import { isUserPro } from "@/lib/proPlayer";
 import { resolveTypedAddress, type AddressSuggestion } from "@/lib/placeSearch";
 import { supabase } from "@/lib/supabase";
-import { palette, spacing } from "@/theme/tokens";
+import { spacing } from "@/theme/tokens";
 import type {
   AppNewsItem,
   AttendanceStatus,
@@ -267,6 +280,11 @@ const venueKindOptions = [
   ["specialty_store", "Loja especializada"],
 ] as const;
 const COMPOSER_OPEN_OFFSET = 28;
+const MAP_ONBOARDING_MANUAL_STEPS: readonly MapOnboardingStepId[] = [
+  "welcome",
+  "map_overview",
+  "feedback_finish",
+];
 
 export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapHomeScreenProps) {
   const { t } = useTranslation();
@@ -503,13 +521,12 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const [composerOpen, setComposerOpen] = useState(false);
   const [composerKeyboardHeight, setComposerKeyboardHeight] = useState(0);
   const [uploadingChatImage, setUploadingChatImage] = useState(false);
-  const [demoMeetupOverrides, setDemoMeetupOverrides] = useState<
-    Record<string, Partial<MeetupPost>>
-  >({});
   const [demoNotifications, setDemoNotifications] = useState<InAppNotification[]>([]);
   const [demoMeetupPresenceById, setDemoMeetupPresenceById] = useState<
     Record<string, MeetupMemberPresence[]>
   >({});
+  const [mapOnboardingState, setMapOnboardingState] = useState<MapOnboardingState | null>(null);
+  const mapOnboardingStateRef = useRef<MapOnboardingState | null>(null);
   const [sheetMeetupPresenceById, setSheetMeetupPresenceById] = useState<
     Record<string, MeetupMemberPresence[]>
   >({});
@@ -2020,7 +2037,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       icon="add"
       pillLabel={t("map.newVenue")}
       accessibilityLabel={t("map.newVenue")}
-      onPress={() => setVenueComposerOpen(true)}
+      onPress={openVenueComposerSheet}
     />
   );
 
@@ -2102,6 +2119,127 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const lastViewportFeedBoundsRef = useRef<ViewportFeedBounds | null>(null);
   const viewportFeedSupportedRef = useRef(true);
   const filterUsageReadyRef = useRef(false);
+
+  const commitMapOnboardingState = useCallback(
+    (nextState: MapOnboardingState) => {
+      mapOnboardingStateRef.current = nextState;
+      setMapOnboardingState(nextState);
+      void saveMapOnboardingState(profile.userId, nextState).catch(() => {});
+    },
+    [profile.userId]
+  );
+
+  const markMapOnboardingStep = useCallback(
+    (stepId: MapOnboardingStepId, source: "interaction" | "coachmark_cta" | "auto" = "interaction") => {
+      const current = mapOnboardingStateRef.current;
+
+      if (
+        !current ||
+        isMapOnboardingComplete(current) ||
+        isMapOnboardingDismissed(current) ||
+        current.completedStepIds.includes(stepId)
+      ) {
+        return;
+      }
+
+      const completedStepIds = [...current.completedStepIds, stepId];
+      const completedAt =
+        completedStepIds.length === MAP_ONBOARDING_STEPS.length ? new Date().toISOString() : null;
+      const nextState: MapOnboardingState = {
+        ...current,
+        completedStepIds,
+        completedAt,
+      };
+
+      commitMapOnboardingState(nextState);
+
+      void trackProductEvent({
+        eventName: "map_onboarding_step_completed",
+        eventCategory: "onboarding",
+        screenName: "map_home",
+        region: profile.neighborhood || null,
+        context: {
+          step_id: stepId,
+          step_index: getMapOnboardingStepIndex(stepId) + 1,
+          source,
+          completed_steps_count: completedStepIds.length,
+          total_steps_count: MAP_ONBOARDING_STEPS.length,
+        },
+      });
+
+      if (completedAt) {
+        void trackProductEvent({
+          eventName: "map_onboarding_completed",
+          eventCategory: "onboarding",
+          oncePerUser: true,
+          screenName: "map_home",
+          region: profile.neighborhood || null,
+          context: {
+            total_steps_count: MAP_ONBOARDING_STEPS.length,
+          },
+        });
+      }
+    },
+    [commitMapOnboardingState, profile.neighborhood]
+  );
+
+  const dismissMapOnboarding = useCallback(() => {
+    const current = mapOnboardingStateRef.current;
+
+    if (!current || isMapOnboardingComplete(current) || isMapOnboardingDismissed(current)) {
+      return;
+    }
+
+    const nextState: MapOnboardingState = {
+      ...current,
+      dismissedAt: new Date().toISOString(),
+    };
+
+    commitMapOnboardingState(nextState);
+
+    void trackProductEvent({
+      eventName: "map_onboarding_dismissed",
+      eventCategory: "onboarding",
+      screenName: "map_home",
+      region: profile.neighborhood || null,
+      context: {
+        completed_steps_count: current.completedStepIds.length,
+        total_steps_count: MAP_ONBOARDING_STEPS.length,
+      },
+    });
+  }, [commitMapOnboardingState, profile.neighborhood]);
+
+  useEffect(() => {
+    let cancelled = false;
+    mapOnboardingStateRef.current = null;
+    setMapOnboardingState(null);
+
+    void loadMapOnboardingState(profile.userId).then((storedState) => {
+      if (cancelled) {
+        return;
+      }
+
+      const nextState = storedState ?? createInitialMapOnboardingState();
+      commitMapOnboardingState(nextState);
+
+      if (!storedState) {
+        void trackProductEvent({
+          eventName: "map_onboarding_started",
+          eventCategory: "onboarding",
+          oncePerUser: true,
+          screenName: "map_home",
+          region: profile.neighborhood || null,
+          context: {
+            total_steps_count: MAP_ONBOARDING_STEPS.length,
+          },
+        });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [commitMapOnboardingState, profile.neighborhood, profile.userId]);
 
   useEffect(() => {
     const nextScreen =
@@ -2233,14 +2371,14 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     });
   }, [
     distanceFilter,
-    entityFilters.join("|"),
+    entityFilters,
     filterDateFrom,
     filterDateTo,
     filtersActive,
-    periodFilters.join("|"),
+    periodFilters,
     profile.neighborhood,
-    selectedFormatFilterIds.join("|"),
-    selectedGameFilterIds.join("|"),
+    selectedFormatFilterIds,
+    selectedGameFilterIds,
   ]);
 
   useEffect(() => {
@@ -3821,13 +3959,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     }
 
     if (isDemoId(selectedChatMeetup.id)) {
-      setDemoMeetupOverrides((current) => ({
-        ...current,
-        [selectedChatMeetup.id]: {
-          ...(current[selectedChatMeetup.id] ?? {}),
-          status,
-        },
-      }));
       return;
     }
 
@@ -4795,6 +4926,14 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     setComposerOpen(true);
   }
 
+  function openVenueComposerSheet() {
+    Keyboard.dismiss();
+    closeComposer(false);
+    hideDrawerImmediately();
+    setFiltersOpen(false);
+    setVenueComposerOpen(true);
+  }
+
   function openDrawerRootPanel() {
     Animated.timing(drawerPanelProgress, {
       toValue: 0,
@@ -5543,6 +5682,10 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       return;
     }
 
+    if (isDemoId(selectedChatMeetup.id)) {
+      return;
+    }
+
     try {
       setUploadingChatImage(true);
       setMessageError(null);
@@ -5574,18 +5717,6 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
           format: ImageManipulator.SaveFormat.JPEG,
         }
       );
-
-      if (isDemoId(selectedChatMeetup.id)) {
-        setDemoMeetupOverrides((current) => ({
-          ...current,
-          [selectedChatMeetup.id]: {
-            ...(current[selectedChatMeetup.id] ?? {}),
-            chatImageUrl: processedImage.uri,
-            chatImagePath: null,
-          },
-        }));
-        return;
-      }
 
       await uploadMeetupChatImage({
         meetupId: selectedChatMeetup.id,
@@ -5714,6 +5845,69 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     };
   }, []);
 
+  const activeMapOnboardingStepId =
+    mapOnboardingState &&
+    !isMapOnboardingComplete(mapOnboardingState) &&
+    !isMapOnboardingDismissed(mapOnboardingState)
+      ? getNextMapOnboardingStepId(mapOnboardingState.completedStepIds)
+      : null;
+  const mapOnboardingVisible = Boolean(activeMapOnboardingStepId);
+  const mapOnboardingBottomOffset =
+    activeScreen === "map" ? gamesSheetPeek + spacing.sm : insets.bottom + 16;
+  const mapOnboardingAwaitingInteraction = Boolean(
+    activeMapOnboardingStepId && !MAP_ONBOARDING_MANUAL_STEPS.includes(activeMapOnboardingStepId)
+  );
+
+  function handleMapOnboardingContinue() {
+    if (
+      !activeMapOnboardingStepId ||
+      !MAP_ONBOARDING_MANUAL_STEPS.includes(activeMapOnboardingStepId)
+    ) {
+      return;
+    }
+
+    markMapOnboardingStep(activeMapOnboardingStepId, "coachmark_cta");
+  }
+
+  useEffect(() => {
+    if (
+      !activeMapOnboardingStepId ||
+      MAP_ONBOARDING_MANUAL_STEPS.includes(activeMapOnboardingStepId)
+    ) {
+      return;
+    }
+
+    const stepCompleted =
+      (activeMapOnboardingStepId === "open_games_sheet" && gamesSheetExpanded) ||
+      (activeMapOnboardingStepId === "venues_tab" && gamesSheetExpanded && gamesSheetSection === "venues") ||
+      (activeMapOnboardingStepId === "suggest_venue" && venueComposerOpen) ||
+      (activeMapOnboardingStepId === "create_meetup" && composerOpen) ||
+      (activeMapOnboardingStepId === "friends" && activeScreen === "friends") ||
+      (activeMapOnboardingStepId === "profile" && activeScreen === "account") ||
+      (activeMapOnboardingStepId === "menu_open" && drawerOpen) ||
+      (activeMapOnboardingStepId === "menu_nearby_players" && activeScreen === "nearby_players") ||
+      (activeMapOnboardingStepId === "menu_chats" && activeScreen === "chats") ||
+      (activeMapOnboardingStepId === "menu_alerts" && activeScreen === "alerts") ||
+      (activeMapOnboardingStepId === "menu_news" && activeScreen === "novidades") ||
+      (activeMapOnboardingStepId === "menu_history" && activeScreen === "history") ||
+      (activeMapOnboardingStepId === "menu_feedback" && activeScreen === "feedback");
+
+    if (!stepCompleted) {
+      return;
+    }
+
+    markMapOnboardingStep(activeMapOnboardingStepId, "auto");
+  }, [
+    activeMapOnboardingStepId,
+    activeScreen,
+    composerOpen,
+    drawerOpen,
+    gamesSheetExpanded,
+    gamesSheetSection,
+    markMapOnboardingStep,
+    venueComposerOpen,
+  ]);
+
   useEffect(() => {
     if (pageScreen !== "chats") {
       pendingMapShareTargetRef.current = null;
@@ -5780,6 +5974,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       profileIsPro: isUserPro(profile),
     },
     drawerEdgePanHandlers: drawerPanResponders.edgePanResponder.panHandlers,
+    onboardingOverlay: null,
     gamesSheet: {
       onDismissPinCallout: dismissPinCallout,
       top: gamesSheetTop,
@@ -5867,6 +6062,19 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       renderVenueManage: renderVenueSheetManage,
     },
   };
+
+  const floatingOnboardingOverlay =
+    mapOnboardingVisible && mapOnboardingState && activeMapOnboardingStepId ? (
+      <MapOnboardingOverlay
+        stepId={activeMapOnboardingStepId}
+        completedCount={mapOnboardingState.completedStepIds.length}
+        bottomOffset={mapOnboardingBottomOffset}
+        awaitingInteraction={mapOnboardingAwaitingInteraction}
+        canContinue={!mapOnboardingAwaitingInteraction}
+        onContinue={handleMapOnboardingContinue}
+        onDismiss={dismissMapOnboarding}
+      />
+    ) : null;
 
   const pageLayerProps = {
     active: activeScreen !== "map",
@@ -6448,6 +6656,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
         pageLayerProps={pageLayerProps}
         drawerProps={drawerProps}
         modalLayerProps={modalLayerProps}
+        floatingOverlay={floatingOnboardingOverlay}
       />
       {env.proPlayerPaywallEnabled ? (
         <ProPlayerPaywallModal

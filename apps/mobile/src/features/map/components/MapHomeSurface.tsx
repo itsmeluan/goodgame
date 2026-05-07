@@ -1,3 +1,4 @@
+import type { ReactElement } from "react";
 import { View } from "react-native";
 
 import { MapDrawer, type MapDrawerProps } from "@/features/map/components/MapDrawer";
@@ -18,6 +19,7 @@ type MapHomeSurfaceProps<
   pageLayerProps: MapPageLayerProps;
   drawerProps: MapDrawerProps;
   modalLayerProps: MapModalLayerProps;
+  floatingOverlay?: ReactElement | null;
 };
 
 export function MapHomeSurface<
@@ -28,6 +30,7 @@ export function MapHomeSurface<
   pageLayerProps,
   drawerProps,
   modalLayerProps,
+  floatingOverlay,
 }: MapHomeSurfaceProps<MeetupItem, VenueItem>) {
   return (
     <View style={styles.screen}>
@@ -35,6 +38,7 @@ export function MapHomeSurface<
       <MapPageLayer {...pageLayerProps} />
       <MapDrawer {...drawerProps} />
       <MapModalLayer {...modalLayerProps} />
+      {floatingOverlay}
     </View>
   );
 }
