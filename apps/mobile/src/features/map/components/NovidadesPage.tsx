@@ -9,7 +9,7 @@ import { MapEmptyCard, MapInlineNotice } from "@/features/map/components/MapFeed
 import { useTranslation } from "@/i18n";
 import { listAppNews, markAppNewsInboxOpened } from "@/lib/api";
 import { formatDateTime } from "@/lib/formatting";
-import { palette, spacing } from "@/theme/tokens";
+import { spacing } from "@/theme/tokens";
 import type { AppNewsItem } from "@/types/domain";
 
 type NovidadesPageProps = {

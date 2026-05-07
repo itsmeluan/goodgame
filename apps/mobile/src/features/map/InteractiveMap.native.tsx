@@ -431,6 +431,7 @@ export function InteractiveMap({
     onSelectVenue,
     viewRegion,
     mapSize,
+    t,
   ]);
 
   const selectedPinOverlayKey = useMemo(() => {
@@ -468,7 +469,7 @@ export function InteractiveMap({
         />
       ),
     };
-  }, [profile.lat, profile.lng, selectedVenueId, venues]);
+  }, [profile.lat, profile.lng, selectedVenueId, t, venues]);
 
   const selectedRawOverlayPin = useMemo(() => {
     if (selectedPinOverlayKey) {
@@ -1239,20 +1240,6 @@ function isMeetupOverdueForMap(meetup: InteractiveMapProps["meetups"][number]) {
   return startsAtTimestamp <= Date.now() - OVERDUE_MEETUP_AFTER_MS;
 }
 
-function distanceBetweenCoordinatesMeters(left: MapCoordinate, right: MapCoordinate) {
-  const earthRadiusMeters = 6371000;
-  const dLat = ((right.latitude - left.latitude) * Math.PI) / 180;
-  const dLng = ((right.longitude - left.longitude) * Math.PI) / 180;
-  const leftLat = (left.latitude * Math.PI) / 180;
-  const rightLat = (right.latitude * Math.PI) / 180;
-
-  const haversine =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(leftLat) * Math.cos(rightLat) * Math.sin(dLng / 2) ** 2;
-
-  return 2 * earthRadiusMeters * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
-}
-
 function offsetCoordinateByMeters(
   coordinate: MapCoordinate,
   {
@@ -1289,13 +1276,6 @@ function offsetCoordinateByPixelOffset(
     eastMeters: offset.x * metersPerPixelEast,
     northMeters: -offset.y * metersPerPixelNorth,
   });
-}
-
-function distanceBetweenPoints(left: { x: number; y: number }, right: { x: number; y: number }) {
-  const deltaX = left.x - right.x;
-  const deltaY = left.y - right.y;
-
-  return Math.sqrt(deltaX * deltaX + deltaY * deltaY);
 }
 
 function clampNumber(value: number, min: number, max: number) {

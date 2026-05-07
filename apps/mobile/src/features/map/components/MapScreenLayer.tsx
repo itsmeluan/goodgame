@@ -39,6 +39,7 @@ export type MapScreenLayerProps<
     profileIsPro: boolean;
   };
   drawerEdgePanHandlers?: ViewProps;
+  onboardingOverlay?: ReactElement | null;
   gamesSheet: {
     onDismissPinCallout?: () => void;
     top: number;
@@ -106,6 +107,7 @@ export function MapScreenLayer<
   mapProps,
   topOverlay,
   drawerEdgePanHandlers,
+  onboardingOverlay,
   gamesSheet,
 }: MapScreenLayerProps<MeetupItem, VenueItem>) {
   return (
@@ -118,6 +120,8 @@ export function MapScreenLayer<
       />
 
       <MapTopOverlay {...topOverlay} />
+
+      {onboardingOverlay}
 
       <MapGamesSheet {...gamesSheet} />
     </View>
