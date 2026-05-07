@@ -1,14 +1,18 @@
 import {
   Platform,
+  Pressable,
   StyleSheet,
   Text,
   TextInput,
   type TextInputProps,
   View,
 } from "react-native";
+import { useState } from "react";
 
+import { AppIcon } from "@/components/AppIcon";
 import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { useKeyboardAwareInputFocus } from "@/components/KeyboardAwareScrollView";
+import { useTranslation } from "@/i18n";
 import { palette, radius, spacing } from "@/theme/tokens";
 
 type TextFieldProps = {
@@ -42,7 +46,11 @@ export function TextField({
   labelTone = "default",
   maxLength,
 }: TextFieldProps) {
+  const { t } = useTranslation();
   const { inputRef, handleFocus } = useKeyboardAwareInputFocus(multiline ? 148 : 110);
+  const [passwordVisible, setPasswordVisible] = useState(false);
+  const canTogglePasswordVisibility = secureTextEntry && !multiline;
+  const effectiveSecureTextEntry = secureTextEntry && !passwordVisible;
 
   return (
     <View style={[styles.wrapper, density === "compact" ? styles.wrapperCompact : null]}>
@@ -61,7 +69,7 @@ export function TextField({
           placeholder={placeholder}
           placeholderTextColor={palette.pine}
           keyboardAppearance="dark"
-          secureTextEntry={secureTextEntry}
+          secureTextEntry={effectiveSecureTextEntry}
           autoCapitalize={autoCapitalize}
           keyboardType={keyboardType}
           multiline={multiline}
@@ -69,11 +77,34 @@ export function TextField({
             handleFocus();
             onFocus?.(event);
           }}
-          style={[styles.input, multiline && styles.multiline]}
+          style={[
+            styles.input,
+            canTogglePasswordVisibility ? styles.inputWithTrailingAction : null,
+            multiline && styles.multiline,
+          ]}
           allowFontScaling
           maxLength={maxLength}
           {...(Platform.OS === "android" ? { includeFontPadding: false } : null)}
         />
+        {canTogglePasswordVisibility ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t(passwordVisible ? "auth.hidePassword" : "auth.showPassword")}
+            onPress={() => setPasswordVisible((current) => !current)}
+            hitSlop={8}
+            style={({ pressed }) => [
+              styles.passwordVisibilityButton,
+              pressed ? styles.passwordVisibilityButtonPressed : null,
+            ]}
+          >
+            <AppIcon
+              iosName={passwordVisible ? "eye.slash.fill" : "eye.fill"}
+              fallbackName={passwordVisible ? "visibility-off" : "visibility"}
+              size={20}
+              color={palette.pine}
+            />
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
@@ -103,6 +134,19 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.015)",
     overflow: "hidden",
   },
+  passwordVisibilityButton: {
+    position: "absolute",
+    right: 5,
+    top: 5,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  passwordVisibilityButtonPressed: {
+    backgroundColor: "rgba(255,255,255,0.04)",
+  },
   inputSurface: {
     ...StyleSheet.absoluteFillObject,
     borderRadius: radius.lg,
@@ -116,6 +160,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     // Omit fixed lineHeight on single-line so vertical centering matches native metrics.
     backgroundColor: "transparent",
+  },
+  inputWithTrailingAction: {
+    paddingRight: 54,
   },
   multiline: {
     minHeight: 118,
