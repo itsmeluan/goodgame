@@ -197,7 +197,7 @@ const stepCopyById: Record<MapOnboardingStepId, StepCopy> = {
     hintKey: "mapOnboarding.createMeetupSheetHint",
     continueKey: "mapOnboarding.next",
     waitingKey: "mapOnboarding.waitingNone",
-    target: "meetup_sheet_close",
+    target: "none",
     iosName: "calendar.badge.plus",
     fallbackName: "event-available",
   },

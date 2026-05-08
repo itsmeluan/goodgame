@@ -438,7 +438,7 @@ export const enUS = {
   "mapOnboarding.createMeetupOpenHint": "Tap the highlighted New game button.",
   "mapOnboarding.createMeetupSheetTitle": "New game",
   "mapOnboarding.createMeetupSheetBody": "Fill game type, title, description, date, time, and location.",
-  "mapOnboarding.createMeetupSheetHint": "Tap X to return to the map and continue.",
+  "mapOnboarding.createMeetupSheetHint": "When you are ready, tap Continue.",
   "mapOnboarding.createMeetupBackTitle": "Return to the map",
   "mapOnboarding.createMeetupBackBody": "Close this sheet to continue.",
   "mapOnboarding.createMeetupBackHint": "Tap the highlighted X.",

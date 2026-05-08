@@ -436,7 +436,7 @@ export const ptBR = {
   "mapOnboarding.createMeetupOpenHint": "Toque no botão Novo jogo destacado.",
   "mapOnboarding.createMeetupSheetTitle": "Novo jogo",
   "mapOnboarding.createMeetupSheetBody": "Preencha tipo de jogo, título, descrição, data, hora e local.",
-  "mapOnboarding.createMeetupSheetHint": "Toque no X para voltar ao mapa e seguir o tutorial.",
+  "mapOnboarding.createMeetupSheetHint": "Quando estiver pronto, toque em Continuar.",
   "mapOnboarding.createMeetupBackTitle": "Volte para o mapa",
   "mapOnboarding.createMeetupBackBody": "Feche esta sheet para continuar.",
   "mapOnboarding.createMeetupBackHint": "Toque no X destacado.",
