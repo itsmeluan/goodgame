@@ -754,8 +754,9 @@ function inflateRect(rect: OnboardingRect, target: SpotlightTarget): SpotlightRe
   const padX = isDrawerRow ? 6 : 4;
   const padY = isDrawerRow ? 2 : 4;
   // The Jogos/Locais tabs rail sits inside a translated parent; the measured
-  // rect lands a couple of pixels lower than expected, so nudge the highlight up.
-  const offsetY = target === "sheet_tabs" ? -6 : 0;
+  // rect lands a couple of pixels lower than expected, so nudge the highlight
+  // up just slightly to align with the pill buttons.
+  const offsetY = target === "sheet_tabs" ? -2 : 0;
   const left = rect.x - padX;
   const top = rect.y - padY + offsetY;
   const width = rect.width + padX * 2;
