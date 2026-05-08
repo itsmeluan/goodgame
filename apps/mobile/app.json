@@ -2,7 +2,7 @@
   "expo": {
     "name": "Good Game",
     "slug": "good-game",
-    "version": "1.1.1",
+    "version": "1.1.2",
     "owner": "good-game",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.martinsluan.goodgame",
-      "versionCode": 10,
+      "versionCode": 11,
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/icon-android-foreground.png",
         "backgroundColor": "#0C0E14"
