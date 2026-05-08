@@ -7,7 +7,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { View, type ViewProps } from "react-native";
+import { Platform, StatusBar, View, type ViewProps } from "react-native";
+
+// On Android with edge-to-edge enabled, the application window covers the
+// full screen but `measureInWindow` returns y coordinates excluding the
+// status bar inset. Our onboarding overlay sits at the top of the window
+// (y = 0), so we must add the status bar height back in to align the
+// spotlight with the actual element on screen. iOS reports y in the same
+// coordinate space as the overlay, so no adjustment is needed there.
+const ANDROID_MEASURE_Y_OFFSET =
+  Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 0;
 
 export type OnboardingTargetKey =
   | "menu_button"
@@ -162,7 +171,12 @@ export function useOnboardingTarget(key: OnboardingTargetKey | null) {
       if (width <= 0 || height <= 0) {
         return;
       }
-      api.setRect(key, { x, y, width, height });
+      api.setRect(key, {
+        x,
+        y: y + ANDROID_MEASURE_Y_OFFSET,
+        width,
+        height,
+      });
     });
   }, [api, key]);
 

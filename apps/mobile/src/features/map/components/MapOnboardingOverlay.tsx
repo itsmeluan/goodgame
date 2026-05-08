@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import {
   Animated,
   Easing,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -478,13 +479,24 @@ export function MapOnboardingOverlay({
     // No standing interval — onLayout (and the few timeouts below) is
     // sufficient now that the targets context is stable, and an interval
     // forces unnecessary state churn that previously caused flicker.
-    const t1 = setTimeout(remeasureAll, 80);
-    const t2 = setTimeout(remeasureAll, 320);
-    const t3 = setTimeout(remeasureAll, 600);
+    const timeouts: ReturnType<typeof setTimeout>[] = [
+      setTimeout(remeasureAll, 80),
+      setTimeout(remeasureAll, 320),
+      setTimeout(remeasureAll, 600),
+    ];
+    // Android sheet animations can take longer to settle and
+    // `measureInWindow` may report stale positions while the native
+    // transform is still in flight. Add a few extra remeasure ticks to
+    // catch the final position once the spring has come to rest.
+    if (Platform.OS === "android") {
+      timeouts.push(
+        setTimeout(remeasureAll, 900),
+        setTimeout(remeasureAll, 1200),
+        setTimeout(remeasureAll, 1600)
+      );
+    }
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
+      timeouts.forEach(clearTimeout);
     };
   }, [remeasureAll, stepId]);
 
