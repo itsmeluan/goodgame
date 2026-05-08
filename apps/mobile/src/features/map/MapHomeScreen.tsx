@@ -5962,6 +5962,22 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     venueComposerOpen,
   ]);
 
+  // Ensure the games sheet is fully expanded when entering info steps that
+  // explain the sheet contents. Otherwise the highlighted Jogos/Locais tabs
+  // would sit at their peek position near the bottom of the screen.
+  const snapGamesSheetRef = useRef(snapGamesSheetToState);
+  snapGamesSheetRef.current = snapGamesSheetToState;
+  useEffect(() => {
+    if (
+      activeMapOnboardingStepId === "games_sheet_info" ||
+      activeMapOnboardingStepId === "venues_tab_info"
+    ) {
+      if (!gamesSheetExpandedRef.current) {
+        snapGamesSheetRef.current("expanded");
+      }
+    }
+  }, [activeMapOnboardingStepId]);
+
   useEffect(() => {
     if (pageScreen !== "chats") {
       pendingMapShareTargetRef.current = null;

@@ -81,6 +81,15 @@ type StepCopy = {
   fallbackName: Parameters<typeof AppIcon>[0]["fallbackName"];
 };
 
+// Steps where the card must always sit at the bottom of the screen,
+// regardless of where the target is measured. Used when the highlighted
+// element lives near the top of the screen and would otherwise be
+// covered by the card.
+const STEPS_WITH_FORCED_BOTTOM_CARD = new Set<MapOnboardingStepId>([
+  "games_sheet_info",
+  "venues_tab_info",
+]);
+
 const stepCopyById: Record<MapOnboardingStepId, StepCopy> = {
   welcome: {
     titleKey: "mapOnboarding.welcomeTitle",
@@ -522,8 +531,15 @@ export function MapOnboardingOverlay({
   );
 
   const cardPlacement = useMemo(
-    () => resolveCardPlacement({ targetRect, height, insetsTop: insets.top, bottomOffset }),
-    [bottomOffset, height, insets.top, targetRect]
+    () =>
+      resolveCardPlacement({
+        targetRect,
+        height,
+        insetsTop: insets.top,
+        bottomOffset,
+        forceBottom: STEPS_WITH_FORCED_BOTTOM_CARD.has(stepId),
+      }),
+    [bottomOffset, height, insets.top, stepId, targetRect]
   );
 
   const pulseScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.1] });
@@ -877,15 +893,21 @@ function resolveCardPlacement({
   height,
   insetsTop,
   bottomOffset,
+  forceBottom,
 }: {
   targetRect: SpotlightRect | null;
   height: number;
   insetsTop: number;
   bottomOffset: number;
+  forceBottom?: boolean;
 }) {
   const cardApproxHeight = 310;
   const topY = insetsTop + 74;
   const bottomY = bottomOffset + spacing.sm;
+
+  if (forceBottom) {
+    return { bottom: bottomY };
+  }
 
   if (!targetRect) {
     return { bottom: bottomY };
