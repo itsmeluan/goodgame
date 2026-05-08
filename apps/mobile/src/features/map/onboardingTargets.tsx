@@ -3,7 +3,6 @@ import {
   useCallback,
   useContext,
   useEffect,
-  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -40,15 +39,22 @@ export type OnboardingRect = {
 
 type RectMap = Partial<Record<OnboardingTargetKey, OnboardingRect>>;
 
-type OnboardingTargetsContextValue = {
-  rects: RectMap;
+// API context is intentionally separated from the rects context so that
+// the API methods (`setRect`, `registerMeasurer`, `remeasureAll`) keep a
+// stable identity across renders. If they were bundled together with the
+// `rects` map, every measurement update would produce a new context value,
+// invalidating every `useOnboardingTarget` effect's deps and causing
+// cascading register/unregister churn — which previously made the
+// spotlight intermittently show the previous step's target while the
+// current step's rect was momentarily nulled.
+type OnboardingTargetsApi = {
   setRect: (key: OnboardingTargetKey, rect: OnboardingRect | null) => void;
   registerMeasurer: (key: OnboardingTargetKey, measurer: () => void) => () => void;
   remeasureAll: () => void;
 };
 
-const OnboardingTargetsContext =
-  createContext<OnboardingTargetsContextValue | null>(null);
+const OnboardingTargetsApiContext = createContext<OnboardingTargetsApi | null>(null);
+const OnboardingTargetsRectsContext = createContext<RectMap>({});
 
 export function OnboardingTargetsProvider({ children }: { children: ReactNode }) {
   const [rects, setRects] = useState<RectMap>({});
@@ -56,8 +62,10 @@ export function OnboardingTargetsProvider({ children }: { children: ReactNode })
     new Map<OnboardingTargetKey, Set<() => void>>()
   );
 
-  const setRect = useCallback(
-    (key: OnboardingTargetKey, rect: OnboardingRect | null) => {
+  // The API value is constructed once and never changes identity.
+  const apiRef = useRef<OnboardingTargetsApi | null>(null);
+  if (!apiRef.current) {
+    const setRect: OnboardingTargetsApi["setRect"] = (key, rect) => {
       setRects((prev) => {
         const existing = prev[key];
         if (!rect) {
@@ -77,12 +85,9 @@ export function OnboardingTargetsProvider({ children }: { children: ReactNode })
         }
         return { ...prev, [key]: rect };
       });
-    },
-    []
-  );
+    };
 
-  const registerMeasurer = useCallback(
-    (key: OnboardingTargetKey, measurer: () => void) => {
+    const registerMeasurer: OnboardingTargetsApi["registerMeasurer"] = (key, measurer) => {
       const map = measurersRef.current;
       let bucket = map.get(key);
       if (!bucket) {
@@ -96,48 +101,53 @@ export function OnboardingTargetsProvider({ children }: { children: ReactNode })
         current.delete(measurer);
         if (current.size === 0) {
           map.delete(key);
-          setRect(key, null);
+          // Intentionally do NOT null the rect here. The next time a
+          // component for the same key mounts, its onLayout/measure will
+          // overwrite the rect. Nulling on unmount caused flicker because
+          // a transient re-mount or list-key churn would leave the
+          // spotlight without a rect for a paint or two.
         }
       };
-    },
-    [setRect]
-  );
+    };
 
-  const remeasureAll = useCallback(() => {
-    measurersRef.current.forEach((bucket) => {
-      bucket.forEach((measurer) => measurer());
-    });
-  }, []);
+    const remeasureAll: OnboardingTargetsApi["remeasureAll"] = () => {
+      measurersRef.current.forEach((bucket) => {
+        bucket.forEach((measurer) => measurer());
+      });
+    };
 
-  const value = useMemo(
-    () => ({ rects, setRect, registerMeasurer, remeasureAll }),
-    [rects, setRect, registerMeasurer, remeasureAll]
-  );
+    apiRef.current = { setRect, registerMeasurer, remeasureAll };
+  }
 
   return (
-    <OnboardingTargetsContext.Provider value={value}>
-      {children}
-    </OnboardingTargetsContext.Provider>
+    <OnboardingTargetsApiContext.Provider value={apiRef.current}>
+      <OnboardingTargetsRectsContext.Provider value={rects}>
+        {children}
+      </OnboardingTargetsRectsContext.Provider>
+    </OnboardingTargetsApiContext.Provider>
   );
 }
 
 export function useOnboardingTargetRects(): RectMap {
-  return useContext(OnboardingTargetsContext)?.rects ?? {};
+  return useContext(OnboardingTargetsRectsContext);
 }
 
 export function useOnboardingRemeasure(): () => void {
-  const ctx = useContext(OnboardingTargetsContext);
-  return ctx?.remeasureAll ?? noop;
+  const api = useContext(OnboardingTargetsApiContext);
+  return api?.remeasureAll ?? noop;
 }
 
 function noop() {}
 
 export function useOnboardingTarget(key: OnboardingTargetKey | null) {
-  const ctx = useContext(OnboardingTargetsContext);
+  const api = useContext(OnboardingTargetsApiContext);
   const ref = useRef<View>(null);
 
+  // `api` identity is stable for the lifetime of the provider, so the
+  // measure callback only changes when `key` changes (which never happens
+  // for a given OnboardingTargetView in practice).
   const measure = useCallback(() => {
-    if (!ctx || !key) return;
+    if (!api || !key) return;
     const node = ref.current;
     if (!node || typeof node.measureInWindow !== "function") return;
     node.measureInWindow((x, y, width, height) => {
@@ -150,17 +160,16 @@ export function useOnboardingTarget(key: OnboardingTargetKey | null) {
         return;
       }
       if (width <= 0 || height <= 0) {
-        ctx.setRect(key, null);
         return;
       }
-      ctx.setRect(key, { x, y, width, height });
+      api.setRect(key, { x, y, width, height });
     });
-  }, [ctx, key]);
+  }, [api, key]);
 
   useEffect(() => {
-    if (!ctx || !key) return undefined;
-    return ctx.registerMeasurer(key, measure);
-  }, [ctx, key, measure]);
+    if (!api || !key) return undefined;
+    return api.registerMeasurer(key, measure);
+  }, [api, key, measure]);
 
   return { ref, onLayout: measure, measure };
 }

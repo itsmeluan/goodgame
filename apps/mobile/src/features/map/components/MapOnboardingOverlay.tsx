@@ -464,17 +464,18 @@ export function MapOnboardingOverlay({
   const remeasureAll = useOnboardingRemeasure();
 
   useEffect(() => {
-    // Re-measure right after the step changes so any sheet/drawer
+    // Re-measure shortly after the step changes so any sheet/drawer
     // animation that just settled is captured before we paint.
+    // No standing interval — onLayout (and the few timeouts below) is
+    // sufficient now that the targets context is stable, and an interval
+    // forces unnecessary state churn that previously caused flicker.
     const t1 = setTimeout(remeasureAll, 80);
     const t2 = setTimeout(remeasureAll, 320);
     const t3 = setTimeout(remeasureAll, 600);
-    const interval = setInterval(remeasureAll, 500);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
       clearTimeout(t3);
-      clearInterval(interval);
     };
   }, [remeasureAll, stepId]);
 
@@ -736,8 +737,11 @@ function inflateRect(rect: OnboardingRect, target: SpotlightTarget): SpotlightRe
   const isCircle = target.endsWith("_button") || target === "venue_sheet_close" || target === "meetup_sheet_close";
   const padX = isDrawerRow ? 6 : 4;
   const padY = isDrawerRow ? 2 : 4;
+  // The Jogos/Locais tabs rail sits inside a translated parent; the measured
+  // rect lands a couple of pixels lower than expected, so nudge the highlight up.
+  const offsetY = target === "sheet_tabs" ? -6 : 0;
   const left = rect.x - padX;
-  const top = rect.y - padY;
+  const top = rect.y - padY + offsetY;
   const width = rect.width + padX * 2;
   const height = rect.height + padY * 2;
   const baseRadius = isCircle ? Math.min(width, height) / 2 : Math.min(width, height) / 2;
