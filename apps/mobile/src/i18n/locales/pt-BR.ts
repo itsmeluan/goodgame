@@ -427,7 +427,7 @@ export const ptBR = {
   "mapOnboarding.suggestVenueOpenHint": "Toque no botão Novo local destacado.",
   "mapOnboarding.suggestVenueSheetTitle": "Novo local",
   "mapOnboarding.suggestVenueSheetBody": "Preencha nome, endereço, detalhes, tipo de local e jogos suportados.",
-  "mapOnboarding.suggestVenueSheetHint": "Quando terminar, toque no X para voltar ao mapa e continuar.",
+  "mapOnboarding.suggestVenueSheetHint": "Quando estiver pronto, toque em Continuar.",
   "mapOnboarding.suggestVenueBackTitle": "Volte para o mapa",
   "mapOnboarding.suggestVenueBackBody": "Feche esta sheet para continuar o tutorial.",
   "mapOnboarding.suggestVenueBackHint": "Toque no X destacado.",

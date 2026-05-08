@@ -429,7 +429,7 @@ export const enUS = {
   "mapOnboarding.suggestVenueOpenHint": "Tap the highlighted New place button.",
   "mapOnboarding.suggestVenueSheetTitle": "New place",
   "mapOnboarding.suggestVenueSheetBody": "Fill name, address, details, place type, and supported games.",
-  "mapOnboarding.suggestVenueSheetHint": "When done, tap X to return to the map and continue.",
+  "mapOnboarding.suggestVenueSheetHint": "When you are ready, tap Continue.",
   "mapOnboarding.suggestVenueBackTitle": "Return to the map",
   "mapOnboarding.suggestVenueBackBody": "Close this sheet to continue the tutorial.",
   "mapOnboarding.suggestVenueBackHint": "Tap the highlighted X.",

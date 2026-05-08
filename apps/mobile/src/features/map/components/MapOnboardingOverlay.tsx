@@ -167,7 +167,7 @@ const stepCopyById: Record<MapOnboardingStepId, StepCopy> = {
     hintKey: "mapOnboarding.suggestVenueSheetHint",
     continueKey: "mapOnboarding.next",
     waitingKey: "mapOnboarding.waitingNone",
-    target: "venue_sheet_close",
+    target: "none",
     iosName: "square.and.pencil",
     fallbackName: "edit-location-alt",
   },
