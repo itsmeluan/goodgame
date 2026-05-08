@@ -582,6 +582,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
   const closeCurrentPageToMapRef = useRef<() => void>(() => {});
   const closePlayerProfileRef = useRef<() => void>(() => {});
   const cancelVenueComposerRef = useRef<() => void>(() => {});
+  const mapOnboardingVisibleRef = useRef(false);
   const handleMarkNotificationsReadRef = useRef<(notificationIds?: string[]) => Promise<void>>(
     async () => {}
   );
@@ -4901,6 +4902,12 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     setComposerAddressFocused(false);
     setComposerAddressSuggestions([]);
     setDraftCoordinate(null);
+    if (mapOnboardingVisibleRef.current) {
+      // Mirror the venue composer behavior: collapse the bottom drawer
+      // during the tour so the next on-map target is fully visible.
+      setGamesSheetPreviewMode(false);
+      animateGamesSheetRef.current?.(false);
+    }
     if (!composerOpen) {
       composerSheetTranslateY.setValue(0);
       currentComposerSheetValueRef.current = 0;
@@ -4929,6 +4936,12 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
     setVenueAddressSuggestions([]);
     setSelectedVenueKind("public_place");
     setSelectedVenueGameIds([]);
+    if (mapOnboardingVisibleRef.current) {
+      // During the guided tour, fully collapse the bottom drawer so the
+      // tutorial's next-step targets on the map are not occluded.
+      setGamesSheetPreviewMode(false);
+      animateGamesSheetRef.current?.(false);
+    }
   }
   cancelVenueComposerRef.current = cancelVenueComposer;
 
@@ -5867,6 +5880,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
       ? getNextMapOnboardingStepId(mapOnboardingState.completedStepIds)
       : null;
   const mapOnboardingVisible = Boolean(activeMapOnboardingStepId);
+  mapOnboardingVisibleRef.current = mapOnboardingVisible;
   const mapOnboardingBottomOffset =
     activeScreen === "map" ? gamesSheetPeek + spacing.sm : insets.bottom + 16;
   const mapOnboardingAwaitingInteraction = Boolean(

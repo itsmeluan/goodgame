@@ -2,6 +2,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -42,6 +43,8 @@ type RectMap = Partial<Record<OnboardingTargetKey, OnboardingRect>>;
 type OnboardingTargetsContextValue = {
   rects: RectMap;
   setRect: (key: OnboardingTargetKey, rect: OnboardingRect | null) => void;
+  registerMeasurer: (key: OnboardingTargetKey, measurer: () => void) => () => void;
+  remeasureAll: () => void;
 };
 
 const OnboardingTargetsContext =
@@ -49,6 +52,9 @@ const OnboardingTargetsContext =
 
 export function OnboardingTargetsProvider({ children }: { children: ReactNode }) {
   const [rects, setRects] = useState<RectMap>({});
+  const measurersRef = useRef(
+    new Map<OnboardingTargetKey, Set<() => void>>()
+  );
 
   const setRect = useCallback(
     (key: OnboardingTargetKey, rect: OnboardingRect | null) => {
@@ -75,7 +81,38 @@ export function OnboardingTargetsProvider({ children }: { children: ReactNode })
     []
   );
 
-  const value = useMemo(() => ({ rects, setRect }), [rects, setRect]);
+  const registerMeasurer = useCallback(
+    (key: OnboardingTargetKey, measurer: () => void) => {
+      const map = measurersRef.current;
+      let bucket = map.get(key);
+      if (!bucket) {
+        bucket = new Set();
+        map.set(key, bucket);
+      }
+      bucket.add(measurer);
+      return () => {
+        const current = map.get(key);
+        if (!current) return;
+        current.delete(measurer);
+        if (current.size === 0) {
+          map.delete(key);
+          setRect(key, null);
+        }
+      };
+    },
+    [setRect]
+  );
+
+  const remeasureAll = useCallback(() => {
+    measurersRef.current.forEach((bucket) => {
+      bucket.forEach((measurer) => measurer());
+    });
+  }, []);
+
+  const value = useMemo(
+    () => ({ rects, setRect, registerMeasurer, remeasureAll }),
+    [rects, setRect, registerMeasurer, remeasureAll]
+  );
 
   return (
     <OnboardingTargetsContext.Provider value={value}>
@@ -88,11 +125,13 @@ export function useOnboardingTargetRects(): RectMap {
   return useContext(OnboardingTargetsContext)?.rects ?? {};
 }
 
-/**
- * Returns props (`ref`, `onLayout`) to attach to a `<View>` so that its
- * window-relative rectangle is registered for the given onboarding target
- * key. Pass `null` to disable registration.
- */
+export function useOnboardingRemeasure(): () => void {
+  const ctx = useContext(OnboardingTargetsContext);
+  return ctx?.remeasureAll ?? noop;
+}
+
+function noop() {}
+
 export function useOnboardingTarget(key: OnboardingTargetKey | null) {
   const ctx = useContext(OnboardingTargetsContext);
   const ref = useRef<View>(null);
@@ -118,6 +157,11 @@ export function useOnboardingTarget(key: OnboardingTargetKey | null) {
     });
   }, [ctx, key]);
 
+  useEffect(() => {
+    if (!ctx || !key) return undefined;
+    return ctx.registerMeasurer(key, measure);
+  }, [ctx, key, measure]);
+
   return { ref, onLayout: measure, measure };
 }
 
@@ -126,10 +170,6 @@ type OnboardingTargetViewProps = ViewProps & {
   children: ReactNode;
 };
 
-/**
- * Convenience wrapper that registers its layout for the given onboarding
- * target key. Acts as a transparent `<View>`.
- */
 export function OnboardingTargetView({
   targetKey,
   children,

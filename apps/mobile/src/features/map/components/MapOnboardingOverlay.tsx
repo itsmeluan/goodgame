@@ -14,6 +14,7 @@ import { AppleGlassSurface } from "@/components/AppleGlassSurface";
 import { AppIcon } from "@/components/AppIcon";
 import type { MapOnboardingStepId } from "@/features/map/mapOnboarding";
 import {
+  useOnboardingRemeasure,
   useOnboardingTargetRects,
   type OnboardingRect,
   type OnboardingTargetKey,
@@ -460,6 +461,22 @@ export function MapOnboardingOverlay({
   const pulse = useRef(new Animated.Value(0)).current;
   const stepCopy = stepCopyById[stepId];
   const measuredRects = useOnboardingTargetRects();
+  const remeasureAll = useOnboardingRemeasure();
+
+  useEffect(() => {
+    // Re-measure right after the step changes so any sheet/drawer
+    // animation that just settled is captured before we paint.
+    const t1 = setTimeout(remeasureAll, 80);
+    const t2 = setTimeout(remeasureAll, 320);
+    const t3 = setTimeout(remeasureAll, 600);
+    const interval = setInterval(remeasureAll, 500);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearInterval(interval);
+    };
+  }, [remeasureAll, stepId]);
 
   useEffect(() => {
     pulse.stopAnimation();
@@ -723,13 +740,13 @@ function inflateRect(rect: OnboardingRect, target: SpotlightTarget): SpotlightRe
   const top = rect.y - padY;
   const width = rect.width + padX * 2;
   const height = rect.height + padY * 2;
-  const baseRadius = isCircle ? Math.max(width, height) / 2 : Math.min(width, height) / 2;
+  const baseRadius = isCircle ? Math.min(width, height) / 2 : Math.min(width, height) / 2;
   return {
     left,
     top,
     width,
     height,
-    radius: Math.min(baseRadius, 28),
+    radius: isCircle ? baseRadius : Math.min(baseRadius, 28),
   };
 }
 
