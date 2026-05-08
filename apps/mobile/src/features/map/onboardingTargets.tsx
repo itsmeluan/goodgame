@@ -18,6 +18,15 @@ import { Platform, StatusBar, View, type ViewProps } from "react-native";
 const ANDROID_MEASURE_Y_OFFSET =
   Platform.OS === "android" ? StatusBar.currentHeight ?? 0 : 0;
 
+// Keys whose target view lives inside an Android `<Modal>` (which has its
+// own window that already starts below the status bar). For those, the
+// measured y is in the same coordinate space as the overlay rendered as
+// the modal's `overlayContent`, so no extra offset is needed.
+const KEYS_RENDERED_IN_MODAL = new Set<OnboardingTargetKey>([
+  "venue_sheet_close",
+  "meetup_sheet_close",
+]);
+
 export type OnboardingTargetKey =
   | "menu_button"
   | "profile_button"
@@ -171,9 +180,10 @@ export function useOnboardingTarget(key: OnboardingTargetKey | null) {
       if (width <= 0 || height <= 0) {
         return;
       }
+      const yOffset = KEYS_RENDERED_IN_MODAL.has(key) ? 0 : ANDROID_MEASURE_Y_OFFSET;
       api.setRect(key, {
         x,
-        y: y + ANDROID_MEASURE_Y_OFFSET,
+        y: y + yOffset,
         width,
         height,
       });
