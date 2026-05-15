@@ -1,0 +1,115 @@
+diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenWindowTraits.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenWindowTraits.kt
+index dc6a96e..2df5038 100644
+--- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenWindowTraits.kt
++++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenWindowTraits.kt
+@@ -7,6 +7,7 @@ import android.content.pm.ActivityInfo
+ import android.graphics.Color
+ import android.os.Build
+ import android.view.View
++import android.view.Window
+ import android.view.ViewParent
+ import androidx.core.graphics.Insets
+ import androidx.core.view.OnApplyWindowInsetsListener
+@@ -25,6 +26,7 @@ object ScreenWindowTraits {
+     private var didSetOrientation = false
+     private var didSetStatusBarAppearance = false
+     private var didSetNavigationBarAppearance = false
++    private const val ANDROID_15_API_LEVEL = 35
+     private var defaultStatusBarColor: Int? = null
+ 
+     private var windowInsetsListener =
+@@ -91,7 +93,7 @@ object ScreenWindowTraits {
+             return
+         }
+         if (defaultStatusBarColor == null) {
+-            defaultStatusBarColor = activity.window.statusBarColor
++            defaultStatusBarColor = getStatusBarColorCompat(activity.window)
+         }
+         val screenForColor = findScreenForTrait(screen, WindowTraits.COLOR)
+         val screenForAnimated = findScreenForTrait(screen, WindowTraits.ANIMATED)
+@@ -102,10 +104,10 @@ object ScreenWindowTraits {
+             object : GuardedRunnable(context.exceptionHandler) {
+                 override fun runGuarded() {
+                     val window = activity.window
+-                    val curColor: Int = window.statusBarColor
++                    val curColor: Int = getStatusBarColorCompat(window)
+                     val colorAnimation = ValueAnimator.ofObject(ArgbEvaluator(), curColor, color)
+                     colorAnimation.addUpdateListener { animator ->
+-                        window.statusBarColor = animator.animatedValue as Int
++                        setStatusBarColorCompat(window, animator.animatedValue as Int)
+                     }
+                     if (animated) {
+                         colorAnimation.setDuration(300).startDelay = 0
+@@ -198,13 +200,13 @@ object ScreenWindowTraits {
+         val window = activity.window
+ 
+         val screenForNavBarColor = findScreenForTrait(screen, WindowTraits.NAVIGATION_BAR_COLOR)
+-        val color = screenForNavBarColor?.navigationBarColor ?: window.navigationBarColor
++        val color = screenForNavBarColor?.navigationBarColor ?: getNavigationBarColorCompat(window)
+ 
+         UiThreadUtil.runOnUiThread {
+             WindowInsetsControllerCompat(window, window.decorView).isAppearanceLightNavigationBars =
+                 isColorLight(color)
+         }
+-        window.navigationBarColor = color
++        setNavigationBarColorCompat(window, color)
+     }
+ 
+     @Deprecated(
+@@ -224,6 +226,45 @@ object ScreenWindowTraits {
+         WindowCompat.setDecorFitsSystemWindows(window, !translucent)
+     }
+ 
++    private fun getStatusBarColorCompat(window: Window): Int {
++        if (Build.VERSION.SDK_INT >= ANDROID_15_API_LEVEL) {
++            return Color.TRANSPARENT
++        }
++
++        return runCatching {
++            Window::class.java.getMethod("getStatusBarColor").invoke(window) as Int
++        }.getOrDefault(Color.TRANSPARENT)
++    }
++
++    private fun setStatusBarColorCompat(
++        window: Window,
++        color: Int,
++    ) {
++        if (Build.VERSION.SDK_INT >= ANDROID_15_API_LEVEL) {
++            return
++        }
++
++        runCatching {
++            Window::class.java
++                .getMethod("setStatusBarColor", Int::class.javaPrimitiveType)
++                .invoke(window, color)
++        }.getOrNull()
++    }
++
++    private fun getNavigationBarColorCompat(window: Window): Int {
++        if (Build.VERSION.SDK_INT >= ANDROID_15_API_LEVEL) {
++            return Color.TRANSPARENT
++        }
++
++        return runCatching {
++            Window::class.java.getMethod("getNavigationBarColor").invoke(window) as Int
++        }.getOrDefault(Color.TRANSPARENT)
++    }
++
++    private fun setNavigationBarColorCompat(
++        window: Window,
++        color: Int,
++    ) {
++        if (Build.VERSION.SDK_INT >= ANDROID_15_API_LEVEL) {
++            return
++        }
++
++        runCatching {
++            Window::class.java
++                .getMethod("setNavigationBarColor", Int::class.javaPrimitiveType)
++                .invoke(window, color)
++        }.getOrNull()
++    }
++
+     internal fun setNavigationBarHidden(
+         screen: Screen,
+         activity: Activity?,
