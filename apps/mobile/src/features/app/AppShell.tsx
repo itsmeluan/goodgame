@@ -1,6 +1,5 @@
 import { startTransition, useCallback, useEffect, useRef, useState } from "react";
-import { Linking, LogBox, StyleSheet, Text, View } from "react-native";
-import { StatusBar } from "expo-status-bar";
+import { Linking, LogBox, Platform, StatusBar, StyleSheet, Text, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import type { Session } from "@supabase/supabase-js";
 
@@ -371,7 +370,7 @@ function AppShellContent() {
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="light" />
+      {Platform.OS === "ios" ? <StatusBar barStyle="light-content" /> : null}
       <AppErrorBoundary>
         {booting || loadingProfile ? (
           <SafeAreaView style={styles.safeArea}>

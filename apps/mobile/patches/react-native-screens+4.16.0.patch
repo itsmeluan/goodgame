@@ -1,3 +1,16 @@
+diff --git a/node_modules/react-native-screens/android/build.gradle b/node_modules/react-native-screens/android/build.gradle
+index 98847f3..6ac5dd8 100644
+--- a/node_modules/react-native-screens/android/build.gradle
++++ b/node_modules/react-native-screens/android/build.gradle
+@@ -234,7 +234,7 @@ dependencies {
+     implementation 'androidx.appcompat:appcompat:1.6.1'
+     implementation 'androidx.fragment:fragment-ktx:1.6.1'
+     implementation 'androidx.coordinatorlayout:coordinatorlayout:1.2.0'
+-    implementation 'com.google.android.material:material:1.12.0'
++    implementation 'com.google.android.material:material:1.13.0'
+     implementation "androidx.core:core-ktx:1.8.0"
+ 
+     def COIL_VERSION = "3.0.4"
 diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenWindowTraits.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenWindowTraits.kt
 index dc6a96e..2df5038 100644
 --- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenWindowTraits.kt
@@ -113,3 +126,15 @@ index dc6a96e..2df5038 100644
      internal fun setNavigationBarHidden(
          screen: Screen,
          activity: Activity?,
+diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/gamma/tabs/TabsHostAppearanceApplicator.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/gamma/tabs/TabsHostAppearanceApplicator.kt
+index 700db14..10ee026 100644
+--- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/gamma/tabs/TabsHostAppearanceApplicator.kt
++++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/gamma/tabs/TabsHostAppearanceApplicator.kt
+@@ -193,5 +193,5 @@ class TabsHostAppearanceApplicator(
+ 
+         badge.backgroundColor =
+             tabScreen.tabBarItemBadgeBackgroundColor
+-                ?: resolveColorAttr(com.google.android.material.R.attr.colorError)
++                ?: resolveColorAttr(androidx.appcompat.R.attr.colorError)
+     }
+ }

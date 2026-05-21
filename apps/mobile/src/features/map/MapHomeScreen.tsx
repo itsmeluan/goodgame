@@ -17,6 +17,7 @@ import {
   Linking,
   Platform,
   Share,
+  StatusBar,
   Text,
   View,
   useWindowDimensions,
@@ -27,7 +28,6 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import * as ImagePicker from "expo-image-picker";
 import * as ImageManipulator from "expo-image-manipulator";
 import * as Notifications from "expo-notifications";
-import { StatusBar } from "expo-status-bar";
 
 import type { ChatListSection } from "@/features/map/components/ChatsPage";
 import { ProPlayerPaywallModal } from "@/features/monetization/ProPlayerPaywallModal";
@@ -6733,7 +6733,7 @@ export function MapHomeScreen({ profile, onProfileEdit, onProfileRefresh }: MapH
 
   return (
     <>
-      <StatusBar style="light" />
+      {Platform.OS === "ios" ? <StatusBar barStyle="light-content" /> : null}
       <OnboardingTargetsProvider>
         <MapHomeSurface
           screenLayerProps={screenLayerProps}
